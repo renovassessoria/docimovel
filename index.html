@@ -185,6 +185,7 @@ const AppContent=({session})=>{
   const [custos,setCustos]=useState({vals:{aluguel:{},energia:{},iptu:{},agua:{},condominio:{},contabilidade:{},impostos:{}},funcs:[],outros:[],ano:new Date().getFullYear()});
   const [loadingData,setLoadingData]=useState(true);
   const [toast,setToast]=useState(null);
+  const [modalBackup,setModalBackup]=useState(false);
   const [servicoAberto,setServicoAberto]=useState(null);
   const [abaServico,setAbaServico]=useState("visao");
   const [processoAberto,setProcessoAberto]=useState(null);
@@ -213,7 +214,7 @@ const AppContent=({session})=>{
         sb.from("usuarios").select("*"),
         sb.from("leads").select("*").order("created_at",{ascending:false}),
       ]);
-      if(c.data)setClientes(c.data);
+      if(c.data)setClientes(c.data.map(x=>({...x,estadoCivil:x.estado_civil||"",profissao:x.profissao||"",naturalidade:x.naturalidade||"",filiacao:x.filiacao||"",dataNascimento:x.data_nascimento||"",cnh:x.cnh||"",conjugeNome:x.conjuge_nome||"",conjugeCpf:x.conjuge_cpf||"",conjugeRg:x.conjuge_rg||"",conjugeProfissao:x.conjuge_profissao||"",conjugeNaturalidade:x.conjuge_naturalidade||"",conjugeFiliacao:x.conjuge_filiacao||"",regimeBens:x.regime_bens||"",dataCasamento:x.data_casamento||"",cartorioCasamento:x.cartorio_casamento||"",casamentoLivro:x.casamento_livro||"",casamentoFolha:x.casamento_folha||""})));
       if(s.data)setServicos(s.data.map(sv=>({...sv,clienteId:sv.cliente_id,tipoProcesso:sv.tipo_processo||sv.tipoProcesso||(sv.dados_judiciais&&Object.keys(sv.dados_judiciais||{}).length>0?"judicial":(sv.estagio==="Judiciário"||sv.estagio==="Judicial"?"judicial":"extrajudicial")),dadosJudiciais:sv.dados_judiciais||sv.dadosJudiciais||{},prazoConclusao:sv.prazo_conclusao||sv.prazoConclusao||null,diligencias:sv.diligencias||[],pagamentos:sv.pagamentos_processo||[],estagios:sv.estagios||[],checklist:sv.checklist||{},outrosDesc:sv.outros_desc||"",orcamento:sv.orcamento||{valor:0,desconto:0,obs:"",status:"Orçamento"}})));
       if(r.data)setRecebimentos(r.data);
       if(p.data)setPagamentos(p.data);
@@ -282,7 +283,17 @@ const AppContent=({session})=>{
       const sv=servicos.find(s=>s.id===id);
       const antigas=(sv?.pagamentos||[]).map(p=>p.id);
       for(const p of patch.pagamentos){
-        if(!p.id||String(p.id).length<20){const{data}=await sb.from("pagamentos_processo").insert({servico_id:id,descricao:p.descricao,valor:Number(p.valor),forma:p.forma,data:p.data}).select().single();if(data)p.id=data.id;}
+        if(!p.id||String(p.id).length<20){
+          const{data}=await sb.from("pagamentos_processo").insert({servico_id:id,descricao:p.descricao,valor:Number(p.valor),forma:p.forma,data:p.data}).select().single();
+          if(data){
+            p.id=data.id;
+            const sv=servicos.find(s=>s.id===id);
+            const cli=sv?clientes.find(c=>c.id===(sv.clienteId||sv.cliente_id)):null;
+            const recPay={descricao:p.descricao+" - "+(sv?.tipo||"Serviço"),categoria:"Honorários",valor:Number(p.valor),forma:p.forma,data:p.data,cliente:cli?.nome||"",protocolo:sv?.protocolo||"",servico_id:id};
+            const{data:recData}=await sb.from("recebimentos").insert(recPay).select().single();
+            if(recData){p.recebimento_id=recData.id;setRecebimentos(prev=>[recData,...prev]);}
+          }
+        }
       }
       const novosIds=patch.pagamentos.map(p=>p.id).filter(Boolean);
       for(const oid of antigas)if(!novosIds.includes(oid))await sb.from("pagamentos_processo").delete().eq("id",oid);
@@ -293,9 +304,9 @@ const AppContent=({session})=>{
   };
 
   const salvarCliente=async(form)=>{
-    const pay={tipo:form.tipo,nome:form.nome,cpf:form.cpf,rg:form.rg,cnpj:form.cnpj,fantasia:form.fantasia,email:form.email,telefone:form.telefone,whatsapp:form.whatsapp,endereco:form.endereco,cidade:form.cidade,estado:form.estado,cep:form.cep,obs:form.obs};
-    if(form.id){await sb.from("clientes").update(pay).eq("id",form.id);setClientes(prev=>prev.map(c=>c.id===form.id?{...c,...pay}:c));}
-    else{const{data}=await sb.from("clientes").insert(pay).select().single();if(data)setClientes(prev=>[data,...prev]);}
+    const pay={tipo:form.tipo,nome:form.nome,cpf:form.cpf,rg:form.rg,cnpj:form.cnpj,fantasia:form.fantasia,email:form.email,telefone:form.telefone,whatsapp:form.whatsapp,endereco:form.endereco,cidade:form.cidade,estado:form.estado,cep:form.cep,obs:form.obs,estado_civil:form.estadoCivil||"",profissao:form.profissao||"",naturalidade:form.naturalidade||"",filiacao:form.filiacao||"",data_nascimento:form.dataNascimento||null,cnh:form.cnh||"",conjuge_nome:form.conjugeNome||"",conjuge_cpf:form.conjugeCpf||"",conjuge_rg:form.conjugeRg||"",conjuge_profissao:form.conjugeProfissao||"",conjuge_naturalidade:form.conjugeNaturalidade||"",conjuge_filiacao:form.conjugeFiliacao||"",regime_bens:form.regimeBens||"",data_casamento:form.dataCasamento||null,cartorio_casamento:form.cartorioCasamento||"",casamento_livro:form.casamentoLivro||"",casamento_folha:form.casamentoFolha||""};
+    if(form.id){await sb.from("clientes").update(pay).eq("id",form.id);setClientes(prev=>prev.map(c=>c.id===form.id?{...c,...pay,estadoCivil:pay.estado_civil,profissao:pay.profissao,naturalidade:pay.naturalidade,filiacao:pay.filiacao,dataNascimento:pay.data_nascimento,cnh:pay.cnh,conjugeNome:pay.conjuge_nome,conjugeCpf:pay.conjuge_cpf,conjugeRg:pay.conjuge_rg,conjugeProfissao:pay.conjuge_profissao,conjugeNaturalidade:pay.conjuge_naturalidade,conjugeFiliacao:pay.conjuge_filiacao,regimeBens:pay.regime_bens,dataCasamento:pay.data_casamento,cartorioCasamento:pay.cartorio_casamento,casamentoLivro:pay.casamento_livro,casamentoFolha:pay.casamento_folha}:c));}
+    else{const{data}=await sb.from("clientes").insert(pay).select().single();if(data)setClientes(prev=>[{...data,estadoCivil:data.estado_civil||"",profissao:data.profissao||"",naturalidade:data.naturalidade||"",filiacao:data.filiacao||"",dataNascimento:data.data_nascimento||"",cnh:data.cnh||"",conjugeNome:data.conjuge_nome||"",conjugeCpf:data.conjuge_cpf||"",conjugeRg:data.conjuge_rg||"",conjugeProfissao:data.conjuge_profissao||"",conjugeNaturalidade:data.conjuge_naturalidade||"",conjugeFiliacao:data.conjuge_filiacao||"",regimeBens:data.regime_bens||"",dataCasamento:data.data_casamento||"",cartorioCasamento:data.cartorio_casamento||"",casamentoLivro:data.casamento_livro||"",casamentoFolha:data.casamento_folha||""},...prev]);}
     fecharModal("cliente");showToast("Cliente salvo!");
   };
 
@@ -372,6 +383,32 @@ const AppContent=({session})=>{
   const filtC=clientes.filter(c=>c.nome?.toLowerCase().includes(searchC.toLowerCase())||(c.cpf||c.cnpj||"").includes(searchC));
   const filtS=servicos.filter(s=>s.protocolo?.toLowerCase().includes(searchS.toLowerCase())||cn(s.clienteId).toLowerCase().includes(searchS.toLowerCase())||s.tipo?.toLowerCase().includes(searchS.toLowerCase()));
 
+  // Verificar backup semanal (sexta-feira) - apenas para admin Carlos Alberto
+  useEffect(()=>{
+    const hoje=new Date();
+    if(hoje.getDay()!==5)return; // só sexta-feira
+    const perfil=session?.user?.user_metadata?.perfil||"admin";
+    const email=session?.user?.email||"";
+    const isAdmin=perfil==="admin"&&email==="renov.assessoria@hotmail.com";
+    if(!isAdmin)return; // só para o administrador Carlos Alberto
+    sb.from("configuracoes").select("dados").eq("id","ultimo_backup").single().then(({data})=>{
+      const ultimoBackup=data?.dados?.data||"";
+      const ultimaSegunda=new Date(hoje);
+      ultimaSegunda.setDate(hoje.getDate()-hoje.getDay()+1);
+      const seg=ultimaSegunda.toISOString().slice(0,10);
+      if(!ultimoBackup||ultimoBackup<seg){
+        setModalBackup(true);
+      }
+    }).catch(()=>{});
+  },[]);
+
+  const confirmarBackup=async()=>{
+    await fazerBackup(sb,showToast);
+    const hoje=new Date().toISOString().slice(0,10);
+    await sb.from("configuracoes").upsert({id:"ultimo_backup",dados:{data:hoje},updated_at:new Date().toISOString()});
+    setModalBackup(false);
+  };
+
   if(loadingData)return<Splash msg="Carregando dados..."/>;
 
   return(
@@ -410,7 +447,7 @@ const AppContent=({session})=>{
 
       {/* MAIN */}
       <main style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-        {tela==="dashboard"&&<TelaDashboard clientes={clientes} servicos={servicos} abrirServico={(s)=>{setServicoAberto(s);setAbaServico("diligencias");setTela("servicos");}} irAgenda={()=>setTela("agenda")} diligVenc={[...diligVenc,...prazosVenc,...parcelasVenc,...agendaVenc.map(a=>({descricao:a.titulo,clienteNome:cn(a.cliente_id),protocolo:"",tipo:"agenda",id:a.id}))]} diligHoje={[...diligHoje,...prazosHoje,...prazosProx,...parcelasHoje,...agendaHoje.map(a=>({descricao:a.titulo+" ("+(a.hora||"")+")",clienteNome:cn(a.cliente_id),protocolo:"",tipo:"agenda",id:a.id}))]} leadsN={leadsN} orcA={orcA} cn={cn} irPara={setTela}/>}
+        {tela==="dashboard"&&<TelaDashboard clientes={clientes} servicos={servicos} abrirServico={(s)=>{setServicoAberto(s);setAbaServico("diligencias");setTela("servicos");}} abrirServicoVisao={(s)=>{setServicoAberto(s);setAbaServico("visao");setTela("servicos");}} irAgenda={()=>setTela("agenda")} agenda={agenda} diligVenc={[...diligVenc,...prazosVenc,...parcelasVenc]} diligHoje={[...diligHoje,...prazosHoje,...prazosProx,...parcelasHoje]} leadsN={leadsN} orcA={orcA} cn={cn} irPara={setTela}/>}
         {tela==="clientes"&&<TelaClientes clientes={filtC} servicos={servicos} search={searchC} setSearch={setSearchC} abrirModal={abrirModal} setClientes={setClientes}/>}
         {tela==="servicos"&&!servicoAberto&&<TelaServicos servicos={filtS} search={searchS} setSearch={setSearchS} cn={cn} abrirModal={abrirModal} abrirServico={s=>{setServicoAberto(s);setAbaServico("visao");}} setPrintData={setPrintData} setServicos={setServicos} showToast={showToast}/>}
         {tela==="servicos"&&servicoAberto&&<TelaServicoDetalhe servico={servicoAberto} clientes={clientes} aba={abaServico} setAba={setAbaServico} atualizar={p=>atualizarServico(servicoAberto.id,p)} showToast={showToast} sb={sb} abrirModal={abrirModal} voltar={()=>setServicoAberto(null)} setPrintData={setPrintData}/>}
@@ -432,26 +469,67 @@ const AppContent=({session})=>{
       {modais.usuario&&<ModalUsuario inicial={modais.usuario} onSave={salvarUser} onClose={()=>fecharModal("usuario")}/>}
       {printData&&<PrintProtocolo servico={printData} cliente={clientes.find(c=>c.id===printData.clienteId)} onClose={()=>setPrintData(null)}/>}
       {reciboData&&<Recibo data={reciboData} onClose={()=>setReciboData(null)} clientes={clientes}/>}
+      {modalBackup&&(
+        <div style={S.overlay}>
+          <div style={{...S.modal,maxWidth:420,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
+            <div style={{padding:"28px 24px 0"}}>
+              <div style={{fontSize:40,marginBottom:14}}>💾</div>
+              <div style={{fontSize:17,fontWeight:800,color:"#e2e8f0",marginBottom:8}}>Lembrete de Backup Semanal</div>
+              <div style={{fontSize:13,color:"#94a3b8",lineHeight:1.6,marginBottom:20}}>Hoje é sexta-feira! Faça o backup dos dados do sistema para garantir a segurança das informações. Este backup é importante e deve ser feito semanalmente.</div>
+              <div style={{background:"#f59e0b0d",border:"1px solid #f59e0b33",borderRadius:8,padding:"10px 14px",marginBottom:20,fontSize:12,color:"#f59e0b",textAlign:"left"}}>⚠ O backup salva todos os clientes, serviços, recebimentos e pagamentos em um arquivo JSON no seu computador.</div>
+            </div>
+            <div style={{...S.modalFooter,justifyContent:"center",gap:10}}>
+              <button style={{...S.btnSec,minWidth:120}} onClick={()=>setModalBackup(false)} className="bs">Lembrar depois</button>
+              <button style={{...S.btnPrimary,minWidth:160,background:"linear-gradient(135deg,#f59e0b,#d97706)"}} onClick={confirmarBackup} className="bp">💾 Fazer Backup Agora</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 // ── TELAS ──
-const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPara,abrirServico,irAgenda})=>{
+const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPara,abrirServico,abrirServicoVisao,irAgenda,agenda:agendaItens})=>{
   const hoje=new Date();
+  const hojeTD=hoje.toISOString().slice(0,10);
   const ativos=servicos.filter(s=>s.status!=="Concluido"&&s.status!=="Concluído");
-  const agenda=[
+  const orcamentos=servicos.filter(s=>s.orcamento?.status==="Orçamento"||s.orcamento?.status==="Orcamento");
+
+  // Agenda: agendamentos dos próximos 3 dias + vencidos
+  const agendaCard=[
+    ...(agendaItens||[]).filter(a=>a.status!=="cancelado"&&a.status!=="realizado"&&a.data<hojeTD)
+      .map(a=>({...a,cor:"#ef4444",lbl:"VENCIDO",tipo:"agenda"})),
+    ...(agendaItens||[]).filter(a=>a.status!=="cancelado"&&a.status!=="realizado"&&a.data===hojeTD)
+      .map(a=>({...a,cor:"#f97316",lbl:"HOJE",tipo:"agenda"})),
+    ...(agendaItens||[]).filter(a=>{
+      if(a.status==="cancelado"||a.status==="realizado")return false;
+      const diff=Math.ceil((new Date(a.data)-new Date(hoje.toDateString()))/(864e5));
+      return diff>0&&diff<=7;
+    }).map(a=>({...a,cor:"#3b82f6",lbl:"+"+Math.ceil((new Date(a.data)-new Date(hoje.toDateString()))/(864e5))+"d",tipo:"agenda"})),
     ...diligVenc.map(d=>({...d,cor:"#ef4444",lbl:"VENCIDO"})),
     ...diligHoje.map(d=>({...d,cor:"#f59e0b",lbl:"HOJE"})),
-    ...servicos.flatMap(s=>(s.diligencias||[]).filter(d=>{
-      if(d.status==="Concluida"||!d.prazo)return false;
-      const diff=Math.ceil((new Date(d.prazo)-new Date(hoje.toDateString()))/(864e5));
-      return diff>0&&diff<=3;
-    }).map(d=>({...d,cor:"#3b82f6",lbl:"+"+ Math.ceil((new Date(d.prazo)-new Date(hoje.toDateString()))/(864e5))+"d",clienteNome:cn(s.clienteId||s.cliente_id)}))),
   ];
+
+  // Diligências: todas dos serviços agrupadas por urgência
+  const todasDilig=servicos.flatMap(s=>(s.diligencias||[]).map(d=>({
+    ...d,
+    clienteNome:cn(s.clienteId||s.cliente_id),
+    servicoId:s.id,
+    protocolo:s.protocolo,
+    servicoTipo:s.tipo,
+  })));
+  const ddiff=(p)=>{if(!p)return 99;return Math.ceil((new Date(p+"T12:00:00")-new Date(hoje.toDateString()))/(864e5));};
+  const diligVencDash=todasDilig.filter(d=>d.status!=="Concluída"&&d.prazo&&ddiff(d.prazo)<0);
+  const diligHojeDash=todasDilig.filter(d=>d.status!=="Concluída"&&d.prazo&&ddiff(d.prazo)===0);
+  const diligAmanha=todasDilig.filter(d=>d.status!=="Concluída"&&d.prazo&&ddiff(d.prazo)===1);
+  const diligProx=todasDilig.filter(d=>d.status!=="Concluída"&&d.prazo&&ddiff(d.prazo)>1&&ddiff(d.prazo)<=7);
+  const diligOk=todasDilig.filter(d=>d.status==="Concluída");
+
   return <div style={S.tela}>
     <PageHeader title="Dashboard" sub={hoje.toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}/>
     <div style={S.body}>
+      {/* Cards topo */}
       <div style={S.sg4}>
         <div style={{...S.card,borderTop:"3px solid #8b5cf6"}}>
           <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",marginBottom:6}}>Processos ativos</div>
@@ -459,14 +537,14 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
           <div style={{fontSize:11,color:"#334155",marginTop:4}}>Em andamento</div>
         </div>
         <div style={{...S.card,borderTop:"3px solid #f59e0b"}}>
-          <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",marginBottom:6}}>Orcamentos pendentes</div>
-          <div style={{fontSize:22,fontWeight:800,color:"#f59e0b"}}>{orcA}</div>
+          <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",marginBottom:6}}>Orçamentos abertos</div>
+          <div style={{fontSize:22,fontWeight:800,color:"#f59e0b"}}>{orcamentos.length}</div>
           <div style={{fontSize:11,color:"#334155",marginTop:4}}>Aguardando fechamento</div>
         </div>
         <div style={{...S.card,borderTop:"3px solid #ef4444"}}>
-          <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",marginBottom:6}}>Prazos vencidos</div>
-          <div style={{fontSize:22,fontWeight:800,color:"#ef4444"}}>{diligVenc.length}</div>
-          <div style={{fontSize:11,color:"#334155",marginTop:4}}>Diligencias em atraso</div>
+          <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",marginBottom:6}}>Diligências vencidas</div>
+          <div style={{fontSize:22,fontWeight:800,color:"#ef4444"}}>{diligVencDash.length}</div>
+          <div style={{fontSize:11,color:"#334155",marginTop:4}}>Em atraso</div>
         </div>
         <div style={{...S.card,borderTop:"3px solid #3b82f6"}}>
           <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",marginBottom:6}}>Clientes cadastrados</div>
@@ -474,47 +552,91 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
           <div style={{fontSize:11,color:"#334155",marginTop:4}}>Total na base</div>
         </div>
       </div>
+
+      {/* Linha 2: Orçamentos + Agenda lado a lado */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginTop:14}}>
-        <div style={S.card}>
-          <div style={S.cardTitle}>Processos ativos ({ativos.length})</div>
-          {ativos.length===0&&<div style={S.empty}>Nenhum processo ativo.</div>}
-          {ativos.slice(0,6).map(s=>{
-            const done=(s.estagios||[]).filter(e=>e.concluido).length;
-            const total=Math.max((s.estagios||[]).length,1);
-            const pct=Math.round((done/total)*100);
-            return <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:"1px solid #0f1f35",cursor:"pointer"}} onClick={()=>irPara("servicos")}>
-              <div style={{flex:1}}>
-                <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{cn(s.clienteId||s.cliente_id)}</div>
-                <div style={{fontSize:11,color:"#475569"}}>{s.tipo} - {s.protocolo}</div>
-                <div style={{height:3,background:"#0f1f35",borderRadius:999,overflow:"hidden",marginTop:4}}>
-                  <div style={{width:pct+"%",height:"100%",background:"linear-gradient(90deg,#1d4ed8,#7c3aed)",borderRadius:999}}/>
+        {/* Orçamentos em aberto */}
+        <div style={{...S.card,borderTop:"3px solid #f59e0b"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+            <div style={S.cardTitle}>Orçamentos em aberto ({orcamentos.length})</div>
+            {orcamentos.length>0&&<div style={{fontSize:12,fontWeight:800,color:"#f59e0b"}}>R$ {fmt(orcamentos.reduce((s,x)=>s+Number(x.orcamento?.valor||0),0))}</div>}
+          </div>
+          {orcamentos.length===0&&<div style={S.empty}>Nenhum orçamento pendente.</div>}
+          <div style={{maxHeight:240,overflowY:"auto"}}>
+            {orcamentos.map(s=>(
+              <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid #0f1f35",cursor:"pointer"}} onClick={()=>abrirServicoVisao&&abrirServicoVisao(s)}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{cn(s.clienteId||s.cliente_id)}</div>
+                  <div style={{fontSize:11,color:"#475569"}}>{s.tipo} · {s.protocolo}</div>
                 </div>
+                <div style={{textAlign:"right",flexShrink:0}}>
+                  <div style={{fontSize:12,fontWeight:800,color:"#f59e0b"}}>R$ {fmt(s.orcamento?.valor||0)}</div>
+                </div>
+                <span style={{fontSize:11,color:"#f59e0b",fontWeight:700}}>→</span>
               </div>
-              <Tag label={s.estagio} color={ECOR[s.estagio]||"#64748b"}/>
-            </div>;
-          })}
+            ))}
+          </div>
         </div>
-        <div style={S.card}>
-          <div style={S.cardTitle}>Agenda do dia</div>
-          {agenda.length===0&&<div style={{fontSize:13,color:"#22c55e",padding:"10px 0"}}>Nenhuma demanda urgente!</div>}
-          {agenda.slice(0,8).map((d,i)=>(
-            <div key={i} style={{display:"flex",gap:8,padding:"8px",background:d.cor+"11",borderRadius:7,border:"1px solid "+d.cor+"22",marginBottom:4,alignItems:"center"}}>
-              <div style={{flex:1}}>
-                <div style={{fontSize:12,fontWeight:600,color:d.cor}}>{d.descricao}</div>
-                <div style={{fontSize:11,color:"#475569"}}>{d.clienteNome}{d.protocolo?" - "+d.protocolo:""}</div>
+
+        {/* Agenda — agendamentos próximos 3 dias */}
+        <div style={{...S.card,borderTop:"3px solid #6366f1"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+            <div style={S.cardTitle}>Agenda (próximos 7 dias)</div>
+            <button style={{...S.btnSm,fontSize:10,color:"#6366f1",borderColor:"#6366f133"}} onClick={()=>irAgenda?irAgenda():irPara("agenda")} className="bs">Ver tudo</button>
+          </div>
+          {agendaCard.length===0&&<div style={{fontSize:13,color:"#22c55e",padding:"10px 0"}}>Nenhum agendamento nos próximos 7 dias!</div>}
+          <div style={{maxHeight:240,overflowY:"auto"}}>
+            {agendaCard.slice(0,10).map((d,i)=>(
+              <div key={i} style={{display:"flex",gap:8,padding:"7px 8px",background:d.cor+"11",borderRadius:7,border:"1px solid "+d.cor+"22",marginBottom:4,alignItems:"center"}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:12,fontWeight:600,color:d.cor}}>{d.titulo||d.descricao}</div>
+                  <div style={{fontSize:11,color:"#475569"}}>{d.clienteNome||cn(d.cliente_id)}{d.hora?" · "+d.hora:""}{d.protocolo?" · "+d.protocolo:""}</div>
+                </div>
+                <span style={{fontSize:10,fontWeight:800,color:d.cor,whiteSpace:"nowrap"}}>{d.lbl}</span>
+                <button style={{...S.btnSm,fontSize:10,padding:"3px 8px",color:d.cor,borderColor:d.cor+"44",flexShrink:0}} onClick={()=>{
+                  if(d.tipo==="agenda"){irAgenda?irAgenda():irPara("agenda");}
+                  else{const sv=servicos.find(s=>s.id===d.servicoId);if(sv&&abrirServico)abrirServico(sv);else irPara("servicos");}
+                }} className="bs">Abrir</button>
               </div>
-              <span style={{fontSize:10,fontWeight:800,color:d.cor,whiteSpace:"nowrap",marginRight:4}}>{d.lbl}</span>
-              <button style={{...S.btnSm,fontSize:10,padding:"3px 8px",color:d.cor,borderColor:d.cor+"44",flexShrink:0}} onClick={()=>{
-                if(d.tipo==="agenda"){irAgenda?irAgenda():irPara("agenda");}
-                else if(d.tipo==="diligencia"||d.tipo==="servico"){
-                  const sv=servicos.find(s=>s.id===d.servicoId);
-                  if(sv&&abrirServico)abrirServico(sv);
-                  else irPara("servicos");
-                }else{irPara("servicos");}
-              }} className="bs">Abrir</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Linha 3: Diligências completas */}
+      <div style={{...S.card,marginTop:14,borderTop:"3px solid #ef4444"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+          <div style={S.cardTitle}>Diligências — Todos os Serviços</div>
+          <div style={{display:"flex",gap:6}}>
+            {diligVencDash.length>0&&<span style={{background:"#ef444422",color:"#ef4444",border:"1px solid #ef444433",fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:4}}>{diligVencDash.length} vencida(s)</span>}
+            {diligHojeDash.length>0&&<span style={{background:"#f9731622",color:"#f97316",border:"1px solid #f9731633",fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:4}}>{diligHojeDash.length} hoje</span>}
+            {diligAmanha.length>0&&<span style={{background:"#eab30822",color:"#eab308",border:"1px solid #eab30833",fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:4}}>{diligAmanha.length} amanhã</span>}
+          </div>
+        </div>
+        {todasDilig.filter(d=>d.status!=="Concluída").length===0&&<div style={S.empty}>Nenhuma diligência pendente.</div>}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          {[
+            {grupo:"🚨 Vencidas",items:diligVencDash,cor:"#ef4444"},
+            {grupo:"🔥 Hoje",items:diligHojeDash,cor:"#f97316"},
+            {grupo:"⏰ Amanhã",items:diligAmanha,cor:"#eab308"},
+            {grupo:"📅 Próximos 7 dias",items:diligProx,cor:"#3b82f6"},
+          ].filter(g=>g.items.length>0).map(g=>(
+            <div key={g.grupo}>
+              <div style={{fontSize:11,fontWeight:800,color:g.cor,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6,paddingLeft:8,borderLeft:"3px solid "+g.cor}}>{g.grupo} ({g.items.length})</div>
+              {g.items.map(d=>(
+                <div key={d.id} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"8px 10px",background:g.cor+"0d",border:"1px solid "+g.cor+"22",borderRadius:7,marginBottom:6,cursor:"pointer"}} onClick={()=>{const sv=servicos.find(s=>s.id===d.servicoId);if(sv&&abrirServico)abrirServico(sv);}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{d.descricao}</div>
+                    <div style={{fontSize:11,color:"#475569",marginTop:2}}>{d.clienteNome} · {d.orgao||""}</div>
+                    {d.prazo&&<div style={{fontSize:11,color:g.cor,fontWeight:700,marginTop:2}}>{d.prazo}</div>}
+                  </div>
+                  <button style={{...S.btnSm,fontSize:10,padding:"3px 8px",color:g.cor,borderColor:g.cor+"44",flexShrink:0}} onClick={e=>{e.stopPropagation();const sv=servicos.find(s=>s.id===d.servicoId);if(sv&&abrirServico)abrirServico(sv);}} className="bs">Abrir</button>
+                </div>
+              ))}
             </div>
           ))}
         </div>
+        {diligOk.length>0&&<div style={{marginTop:8,fontSize:11,color:"#475569",textAlign:"right"}}>✓ {diligOk.length} diligência(s) concluída(s)</div>}
       </div>
     </div>
   </div>;
@@ -686,14 +808,14 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
   };
   const dd2=(p)=>{if(!p)return 99;const t=new Date(p+"T12:00:00"),h=new Date(new Date().toDateString());return Math.ceil((t-h)/864e5);};
   const grupos2=[
-    {l:"Vencidas",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.prazo&&dd2(d.prazo)<0),c:"#ef4444"},
-    {l:"Hoje / Amanhã",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.prazo&&dd2(d.prazo)>=0&&dd2(d.prazo)<=1),c:"#f59e0b"},
+    {l:"🚨 Vencidas",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.prazo&&dd2(d.prazo)<0),c:"#ef4444"},
+    {l:"⚠ Hoje / Amanhã",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.prazo&&dd2(d.prazo)>=0&&dd2(d.prazo)<=1),c:"#f97316"},
     {l:"Próximas",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&(!d.prazo||dd2(d.prazo)>1)),c:"#3b82f6"},
     {l:"Concluídas",items:(servico.diligencias||[]).filter(d=>d.status==="Concluída"),c:"#22c55e"},
   ];
   return(<div style={S.tela}>
     <PageHeader title={<span style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}><button onClick={voltar} style={S.backBtn} className="back">← Serviços</button><span style={S.proto}>{servico.protocolo}</span><Tag label={servico.estagio} color={ECOR[servico.estagio]||"#64748b"}/></span>} sub={servico.tipo+" - "+cliente?.nome||"-"}><button style={{...S.btnSm,color:"#3b82f6",borderColor:"#3b82f644"}} onClick={()=>abrirModal&&abrirModal("servico",{...servico,tipoProcesso:servico.tipoProcesso||"extrajudicial",dadosJudiciais:servico.dadosJudiciais||{}})} className="bs">✏ Editar</button><button style={{...S.btnSm,color:"#f59e0b",borderColor:"#f59e0b44"}} onClick={()=>setPrintData(servico)} className="bs">🖨 Protocolo</button><button style={{...S.btnSm,color:"#f59e0b",borderColor:"#f59e0b44"}} onClick={()=>setPrintData({...servico,_via:true})} className="bs">🖨 Via Cliente</button></PageHeader>
-    <div style={{display:"flex",gap:4,padding:"8px 24px",background:"#090e1a",borderBottom:"1px solid #0f1f35"}}>{[{k:"visao",l:"📌 Visão Geral"},{k:"checklist",l:"📄 Documentos"},{k:"diligencias",l:"⊙ Diligências"},{k:"pagamentos",l:"◉ Pagamentos"}].map(a=><button key={a.k} onClick={()=>setAba(a.k)} style={{...S.abaBtn,...(aba===a.k?S.abaBtnActive:{})}} className="ab">{a.l}</button>)}</div>
+    <div style={{display:"flex",gap:4,padding:"8px 24px",background:"#090e1a",borderBottom:"1px solid #0f1f35"}}>{[{k:"visao",l:"📌 Visão Geral"},{k:"checklist",l:"📄 Documentos"},{k:"diligencias",l:"⊙ Diligências"},{k:"pagamentos",l:"◉ Pagamentos"},{k:"contratos",l:"📋 Contratos"}].map(a=><button key={a.k} onClick={()=>setAba(a.k)} style={{...S.abaBtn,...(aba===a.k?S.abaBtnActive:{})}} className="ab">{a.l}</button>)}</div>
     <div style={S.body}>
       {aba==="visao"&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><div style={S.card}><div style={S.cardTitle}>Dados do Cliente</div>{cliente&&<><InfoRow l="Nome" v={cliente.nome}/><InfoRow l={cliente.tipo==="pj"?"CNPJ":"CPF"} v={cliente.cpf||cliente.cnpj}/><InfoRow l="Telefone" v={cliente.telefone}/><InfoRow l="WhatsApp" v={cliente.whatsapp}/><InfoRow l="E-mail" v={cliente.email}/><InfoRow l="Endereço" v={cliente.endereco||""+", "+cliente.cidade||""+"/"+cliente.estado||""}/></>}</div><div style={S.card}><div style={{...S.cardTitle,display:"flex",justifyContent:"space-between"}}><span>Orcamento</span><button style={{...S.btnSm,color:"#f59e0b",borderColor:"#f59e0b33"}} onClick={()=>setModalOrc({valor:servico.orcamento?.valor||"",desconto:servico.orcamento?.desconto||"",obs:servico.orcamento?.obs||"",status:servico.orcamento?.status||"Orcamento"})} className="bs">Editar</button></div><InfoRow l="Valor total" v={"R$ "+fmt(servico.orcamento?.valor)}/><InfoRow l="Desconto" v={"R$ "+fmt(servico.orcamento?.desconto)}/><InfoRow l="Valor líquido" v={"R$ "+fmt(valorLiq)}/><InfoRow l="Total pago" v={"R$ "+fmt(totPago)}/><div style={{borderTop:"1px solid #0f1f35",marginTop:8,paddingTop:8}}><InfoRow l="Saldo restante" v={"R$ "+fmt(saldo)} hl={saldo>0}/></div><div style={{marginTop:10,display:"flex",gap:6,flexWrap:"wrap"}}>{["Orçamento","Fechado","Concluído"].map(st=><button key={st} style={{...S.btnSm,...(servico.orcamento?.status===st?{background:"#3b82f622",color:"#3b82f6",borderColor:"#3b82f644"}:{})}} onClick={()=>atualizar({orcamento:{...servico.orcamento,status:st}})} className="bs">{st}</button>)}</div><div style={{marginTop:10}}><FL l="Alterar estágio"/><select style={S.fi} value={servico.estagio||""} onChange={e=>atualizar({estagio:e.target.value,status:e.target.value==="Concluído"?"Concluído":"Aberto",dataConclusao:e.target.value==="Concluído"?(servico.dataConclusao||td()):""})}>{ESTAGIOS.map(o=><option key={o}>{o}</option>)}</select>{servico.estagio==="Concluído"&&<div style={{marginTop:10,background:"#22c55e0d",border:"1px solid #22c55e33",borderRadius:8,padding:"10px"}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><span style={{fontSize:11,color:"#22c55e",fontWeight:700}}>Concluído em:</span><input style={{...S.fi,width:"auto",flex:1}} type="date" value={servico.dataConclusao||td()} onChange={e=>atualizar({dataConclusao:e.target.value})}/></div><FL l="Observação de conclusão"/><textarea style={{...S.fi,minHeight:70,resize:"vertical"}} value={servico.obsConclusao||""} onChange={e=>atualizar({obsConclusao:e.target.value})} placeholder="Ex: Escritura entregue. Retirado por João Silva, CPF 000.000.000-00..."/></div>}</div></div></div>}
       {aba==="checklist"&&<div style={S.card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><div style={S.cardTitle}>Documentos Apresentados</div><button style={S.btnPrimary} onClick={()=>setPrintData({...servico,_via:true})} className="bp">🖨 Via do Cliente</button></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{CHECKLIST.map(item=><label key={item.key} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:7,background:"#060b14",border:"1px solid #0f1f35",cursor:"pointer"}} className="ci"><input type="checkbox" checked={!!(servico.checklist||{})[item.key]} onChange={()=>toggleCheck(item.key)} style={{accentColor:"#22c55e",width:15,height:15}}/><span style={{fontSize:13,color:(servico.checklist||{})[item.key]?"#e2e8f0":"#64748b"}}>{item.label}{item.pj&&<span style={{fontSize:10,color:"#8b5cf6"}}> [PJ]</span>}</span></label>)}</div><div style={{marginTop:14}}><FL l="Outros documentos"/><textarea style={{...S.fi,minHeight:60,resize:"vertical"}} value={servico.outrosDesc||""} onChange={e=>atualizar({outrosDesc:e.target.value})} placeholder="Descreva..."/></div></div>}
@@ -791,6 +913,7 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
                   {novaPag.parcelado&&<span style={{fontSize:11,color:"#22c55e"}}>= R$ {(Number(novaPag.valor||0)/Number(novaPag.totalParcelas||1)).toFixed(2)}/parc.</span>}
                 </div>
                 <button style={{...S.btnPrimary,marginTop:10}} onClick={addPag} className="bp">+ Registrar</button></div><div style={S.tableCard}><table style={S.table}><thead><tr>{["Data","Descrição","Forma","Valor",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead><tbody>{(servico.pagamentos||[]).map(p=><tr key={p.id} style={S.tr} className="tr"><td style={S.td}>{p.data}</td><td style={S.td}>{p.descricao}</td><td style={S.td}><Tag label={p.forma} color="#6366f1"/></td><td style={S.td}><span style={{fontWeight:700,color:"#22c55e"}}>R$ {fmt(p.valor)}</span></td><td style={S.td}><button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir este pagamento? Esta acao e permanente."))return;atualizar({pagamentos:(servico.pagamentos||[]).filter(x=>x.id!==p.id)})}} className="bs">✕</button><button style={S.btnSm} onClick={()=>setEditPag({...p})} className="bs">Ed</button><button style={{...S.btnSm,color:"#22c55e",borderColor:"#22c55e44"}} onClick={()=>gerarReciboServico(p,cliente,servico)} className="bs">Recibo</button></td></tr>)}</tbody></table></div></div>}
+      {aba==="contratos"&&<AbaContratos servico={servico} cliente={cliente} atualizar={atualizar} showToast={showToast}/>}
     </div>
       {modalOrc&&(
         <div style={S.overlay}>
@@ -843,6 +966,150 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
         </div>
       )}
   </div>);
+};
+
+
+// ── AbaContratos ──
+const fmtData=(s)=>{if(!s)return"";const d=new Date(s+"T12:00:00");return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"});};
+
+const gerarContratoJudicial=(servico,cliente)=>{
+  const eh=cliente||{};
+  const conj=eh.conjugeNome&&(eh.estadoCivil==="Casado(a)"||eh.estadoCivil==="União Estável");
+  const valorFmt=v=>Number(v||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const valor=Number(servico.orcamento?.valor||0);
+  const css="body{font-family:Arial,sans-serif;padding:28px;font-size:12px;line-height:1.7;color:#1e293b;}h1{text-align:center;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #1e293b;padding-bottom:10px;margin-bottom:20px;}p{margin-bottom:10px;text-align:justify;}strong{color:#0f172a;}.clause{margin-bottom:12px;text-align:justify;}.sigs{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px;}.sig{text-align:center;}.sig-line{border-top:1px solid #64748b;padding-top:6px;margin-top:40px;font-size:11px;}.sig-name{font-weight:800;font-size:12px;color:#0f172a;}@media print{button{display:none;}}";
+  const corpo=`<h1>Contrato de Prestação de Serviços e Honorários Advocatícios</h1>
+<p>Pelo presente instrumento particular de contrato <strong>CARLOS ALBERTO PACHECO DE JESUS JUNIOR</strong>, brasileiro, maior, solteiro, advogado, regularmente inscrito na <strong>OAB/BA sob o n. 77.882</strong>, endereço eletrônico: capacheco.adv@gmail.com, integrante do escritório <strong>CARLOS ALBERTO Advocacia e Assessoria Jurídica</strong>, com endereço profissional no rodapé desta, doravante denominado <strong>CONTRATADO</strong>, convenciona e contrata com <strong>${(eh.nome||"").toUpperCase()}</strong>, ${eh.tipo==="pj"?"pessoa jurídica":"brasileiro(a)"}, capaz, ${eh.estadoCivil||""}, ${eh.profissao||""}, ${eh.rg?"C.I.RG "+eh.rg+" - SSP/BA,":""} CPF/MF ${eh.cpf||""}, residente e domiciliado(a) na ${eh.endereco||""}, ${eh.cidade||""}, doravante denominado(a) <strong>CONTRATANTE</strong>, o seguinte:</p>
+<div class="clause"><strong>Cláusula 1ª.</strong> O Contratado compromete-se com o presente termo a prestar Assessoria Jurídica ao Contratante no tocante ao ajuizamento e acompanhamento da <strong>ação de ${servico.tipo||""} ${servico.descricao?("— "+servico.descricao):""}</strong>, até a última instância dos Órgãos do Poder Judiciário Estaduais, e o registro da respectiva sentença quando proferida.</div>
+<div class="clause"><strong>Cláusula 2ª.</strong> Em remuneração aos serviços profissionais ora pactuados, o Contratante pagará ao Contratado o valor de <strong>R$ ${valorFmt(valor)} (${valor===0?"valor a definir":"ver condições acordadas"})</strong>, conforme acordado entre as partes.<br/><strong>§ 2º.</strong> O valor de eventual honorário sucumbencial será destinado integralmente ao contratado, conforme disposto em lei.</div>
+<div class="clause"><strong>Cláusula 3ª.</strong> Nos honorários avençados não estão incluídas as despesas processuais de viagens, fotocópias, despesas para elaboração de conta de liquidação e outras, que deverão ser pagas à parte pela Contratante, caso necessárias ao bom andamento do processo.</div>
+<div class="clause"><strong>Cláusula 4ª.</strong> O valor total dos honorários poderá ser considerado automaticamente vencido e imediatamente exigível, sendo passível de execução, sem prévia notificação ou interpelação judicial, e resguardado o direito aos honorários de sucumbência, acrescido de multa contratual de 20% (vinte por cento), juros de mora de 1% ao mês e atualização monetária pelo índice INPC nos seguintes casos: quando não forem pagos os honorários nas datas estabelecidas; no caso do não prosseguimento da ação por qualquer circunstância; se for cassado o mandato sem culpa do Contratado.</div>
+<div class="clause"><strong>Cláusula 5ª.</strong> São OBRIGAÇÕES DO CONTRATANTE: Fornecer a documentação necessária à propositura e andamento da ação; pagar todas as despesas derivadas da causa, tais como custas processuais judiciais, despesas com xerox, certidões, averbações e outras.</div>
+<div class="clause"><strong>Cláusula 6ª.</strong> São OBRIGAÇÕES DO CONTRATADO: promover a defesa dos interesses do Contratante na ação já mencionada em qualquer instância dos Órgãos do Poder Judiciário Estaduais e Federais, com diligência e dedicação.</div>
+<div class="clause"><strong>Cláusula 7ª.</strong> A inobservância por parte da Contratante de qualquer cláusula deste instrumento acarretará a rescisão deste contrato, independente de notificações e avisos, ficando sujeito aos honorários pactuados, bem como multa contratual de 20% sobre os mesmos, mais juros de 1% ao mês e correção monetária pelo índice INPC.</div>
+<div class="clause"><strong>Cláusula 8ª.</strong> O presente contrato não tem caráter personalíssimo, podendo o Contratado ser representado por outro(s) advogado(s) em qualquer ato processual.</div>
+<div class="clause"><strong>Cláusula 9ª.</strong> Para dirimir qualquer questão oriunda do presente contrato, as partes elegem o foro de Feira de Santana/BA, com renúncia expressa de qualquer outro, por mais privilegiado que seja.</div>
+<p>Feira de Santana, ${fmtData(new Date().toISOString().slice(0,10))}.</p>
+<div class="sigs"><div class="sig"><div class="sig-line"><div class="sig-name">CARLOS ALBERTO PACHECO DE JESUS JUNIOR</div>Contratado — OAB/BA 77.882</div></div><div class="sig"><div class="sig-line"><div class="sig-name">${(eh.nome||"").toUpperCase()}</div>Contratante</div></div></div>`;
+  const w=window.open("","_blank");
+  w.document.write("<!DOCTYPE html><html><head><meta charset=UTF-8><title>Contrato</title><style>"+css+"</style></head><body>"+corpo+"<br><br><button onclick=window.print() style=background:#1e293b;color:#fff;border:none;padding:10px 22px;border-radius:6px;cursor:pointer;font-size:14px>🖨 Imprimir / Salvar PDF</button></body></html>");
+  w.document.close();
+};
+
+const gerarProcuracaoJudicial=(servico,cliente)=>{
+  const eh=cliente||{};
+  const conj=eh.conjugeNome&&(eh.estadoCivil==="Casado(a)"||eh.estadoCivil==="União Estável");
+  const css="body{font-family:Arial,sans-serif;padding:28px;font-size:12px;line-height:1.8;color:#1e293b;}h1{text-align:center;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #1e293b;padding-bottom:10px;margin-bottom:20px;}p{margin-bottom:8px;text-align:justify;}strong{color:#0f172a;}.sigs{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px;}.sig{text-align:center;}.sig-line{border-top:1px solid #64748b;padding-top:6px;margin-top:40px;font-size:11px;}.sig-name{font-weight:800;font-size:12px;color:#0f172a;}@media print{button{display:none;}}";
+  const casamentoInfo=conj?`, casados sob o regime da ${eh.regimeBens||"Comunhão Parcial de Bens"}${eh.dataCasamento?", casamento realizado em "+fmtData(eh.dataCasamento):""}${eh.cartorioCasamento?", conforme Certidão expedida pelo "+eh.cartorioCasamento:""}${eh.casamentoLivro?", sob "+eh.casamentoLivro:""}${eh.casamentoFolha?", "+eh.casamentoFolha:""}:`:"";
+  const outorgante1=`<strong>${(eh.nome||"").toUpperCase()}</strong>, brasileiro(a), capaz, ${eh.profissao||""}${eh.dataNascimento?", nascido(a) em "+fmtData(eh.dataNascimento):""}${eh.naturalidade?", natural de "+eh.naturalidade:""}${eh.filiacao?", filiação: "+eh.filiacao:""}${eh.cnh?", CNH "+eh.cnh+" – DETRAN/BA, em que consta a":""} C.I.RG ${eh.rg||""}${eh.rg?" - SSP/BA,":""} CPF/MF ${eh.cpf||""}`;
+  const outorgante2=conj?`; ela/ele, <strong>${(eh.conjugeNome||"").toUpperCase()}</strong>, brasileiro(a), capaz, ${eh.conjugeProfissao||""}${eh.conjugeNaturalidade?", natural de "+eh.conjugeNaturalidade:""}${eh.conjugeFiliacao?", filiação: "+eh.conjugeFiliacao:""}, C.I.RG ${eh.conjugeRg||""}${eh.conjugeRg?" - SSP/BA,":""} CPF/MF ${eh.conjugeCpf||""}`:  "";
+  const corpo=`<h1>Procuração</h1>
+<p>${outorgante1}${outorgante2}${casamentoInfo} residente(s) e domiciliado(s) na ${eh.endereco||""}, ${eh.cidade||""}/BA, vem pelo presente instrumento particular de procuração, nomear seu bastante procurador o <strong>Bel. Carlos Alberto Pacheco de Jesus Junior</strong>, brasileiro, maior, solteiro, advogado, regularmente inscrito na <strong>OAB/BA sob o n. 77.882</strong>, endereço eletrônico: capacheco.adv@gmail.com, integrante do escritório <strong>CARLOS ALBERTO Advocacia e Assessoria Jurídica</strong>, com endereço profissional no rodapé desta, para onde com esta se apresentar,</p>
+<p>Para o foro em geral e <em>"Ad Juditia"</em> em qualquer Juízo, Instância ou Tribunal, em conjunto ou separadamente independente de ordem de nomeação, concedendo-lhes para tanto, poderes os mais especiais que sejam, inclusive os da cláusula <em>"Ad Judicia Et Extra"</em>, para propor qualquer ação, contra quem de direito, contestar, reconvir. Podendo para tanto, transigir, desistir, representar, adjudicar e arrematar bens, nomear preposto, apresentar defesa, receber pagamento em dinheiro, receber guia de depósito judicial, receber alvará para liberação de pagamento, receber documentos, dar quitação; representá-la perante autoridade judiciária e, inclusive, o de Substabelecer no todo ou em parte, com ou sem reserva de poderes, requerer assistência judiciária gratuita, nos termos da lei n. 7.510-86, especialmente nos artigos 1º e 4º c/c arts. 99 e 100 do NCPC, e declarar sua pobreza. Enfim, praticar todos os atos necessários para o fiel cumprimento deste Mandato, dando tudo por bom, firme e valioso, no processo de <strong>${servico.tipo||""} ${servico.descricao||""}</strong>.</p>
+<p>Feira de Santana, ${fmtData(new Date().toISOString().slice(0,10))}.</p>
+<div class="sigs"><div class="sig"><div class="sig-line"><div class="sig-name">${(eh.nome||"").toUpperCase()}</div>Outorgante</div></div>${conj?`<div class="sig"><div class="sig-line"><div class="sig-name">${(eh.conjugeNome||"").toUpperCase()}</div>Outorgante</div></div>`:""}</div>`;
+  const w=window.open("","_blank");
+  w.document.write("<!DOCTYPE html><html><head><meta charset=UTF-8><title>Procuração</title><style>"+css+"</style></head><body>"+corpo+"<br><br><button onclick=window.print() style=background:#1e293b;color:#fff;border:none;padding:10px 22px;border-radius:6px;cursor:pointer;font-size:14px>🖨 Imprimir / Salvar PDF</button></body></html>");
+  w.document.close();
+};
+
+const gerarContratoExtrajudicial=(servico,cliente)=>{
+  const eh=cliente||{};
+  const valorFmt=v=>Number(v||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const valor=Number(servico.orcamento?.valor||0);
+  const css="body{font-family:Arial,sans-serif;padding:28px;font-size:12px;line-height:1.8;color:#1e293b;}h1{text-align:center;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;}h2{text-align:center;font-size:12px;font-weight:700;text-transform:uppercase;border-bottom:2px solid #1e293b;padding-bottom:8px;margin-bottom:18px;}p{margin-bottom:8px;text-align:justify;}strong{color:#0f172a;}.clause{margin-bottom:10px;text-align:justify;}.sigs{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:30px;}.sig{text-align:center;}.sig-line{border-top:1px solid #64748b;padding-top:5px;margin-top:36px;font-size:11px;}.sig-name{font-weight:800;font-size:11px;color:#0f172a;}.testemunhas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:20px;}@media print{button{display:none;}}";
+  const corpo=`<h1>Contrato de Honorários</h1><h2>"Despachante Imobiliário"</h2>
+<p>De um lado <strong>CONTRATADO: CARLOS ALBERTO PACHECO DE JESUS JUNIOR</strong>, brasileiro, maior, capaz, solteiro, despachante imobiliário, portador do CPF n. 025.596.265-78, endereço comercial ao rodapé, do outro lado, <strong>CONTRATANTE: ${(eh.nome||"").toUpperCase()}</strong>, ${eh.tipo==="pj"?"pessoa jurídica":"brasileiro(a)"}, capaz, ${eh.estadoCivil||""}, ${eh.profissao||""}${eh.rg?", portador(a) do C.I.RG "+eh.rg+" - SSP/BA":""}${eh.cpf?", CPF/MF "+eh.cpf:""}, residente e domiciliado(a) na ${eh.endereco||""}, ${eh.cidade||""}/BA.</p>
+<p>As partes acima identificadas têm, entre si, justas e acertadas o presente <strong>CONTRATO DE PRESTAÇÃO DE SERVIÇOS, DE DESPACHANTE DOCUMENTALISTA IMOBILIÁRIO</strong>, que se regerá pelas cláusulas e condições seguintes expressas no presente instrumento:</p>
+<div class="clause"><strong>DO OBJETO DO CONTRATO — Cláusula 1ª.</strong> São objetos do presente contrato, prestado ao(à) CONTRATANTE, os serviços de Despachante documentalista imobiliário, regido pela Lei n.10.406/02 a partir do Art. 593, Lei n.10.602/02, Lei nº 13.206/14 e Estatuto do Despachante Imobiliário. O(A) CONTRATANTE contrata os serviços do CONTRATADO para que promova: <strong>${servico.tipo||""} ${servico.descricao?"— "+servico.descricao:""}</strong>.</div>
+<div class="clause"><strong>DAS OBRIGAÇÕES DO CONTRATADO — Cláusula 2ª.</strong> São deveres do CONTRATADO: Compromete-se a utilizar todos os meios legais e possíveis para a conclusão do(s) serviço(s) relacionado(s) na Cláusula 1ª.</div>
+<div class="clause"><strong>DAS OBRIGAÇÕES DO(A) CONTRATANTE — Cláusula 3ª.</strong> São deveres da CONTRATANTE: Fornecer ao CONTRATADO a estrutura consistente em material, elementos e informações necessárias e verídicas à perfeita realização dos serviços, ter clareza em suas informações para que todo o processo tenha curso rápido e legal.<br/><strong>3.1</strong> — Ficando sob a responsabilidade do CONTRATANTE o pagamento de todos os IMPOSTOS, TAXAS E CONTRIBUIÇÕES emitidas pelos órgãos e repartições competentes.</div>
+<div class="clause"><strong>DO PAGAMENTO — Cláusula 4ª.</strong> Pelo efetivo desempenho das atividades, o CONTRATANTE obriga-se a pagar ao CONTRATADO a importância de <strong>R$ ${valorFmt(valor)}</strong>, através de PIX ou Transferência Bancária. BANCO BRADESCO – AGÊNCIA 3497 – C/C 31122-7, CARLOS ALBERTO PACHECO DE JESUS JUNIOR — PIX: 025.596.265-78.</div>
+<div class="clause"><strong>DA RESCISÃO DO CONTRATO — Cláusula 5ª.</strong> O presente contrato pode ser rescindido a qualquer momento pelas partes.<br/><strong>5.1</strong> — Deverá ser cobrado pelo CONTRATADO o valor referente ao serviço prestado até o momento do distrato, de forma proporcional.<br/><strong>5.2</strong> — Nos casos de distrato por interesse ou desistência não justificada, a parte requerente ficará penalizada ao pagamento de multa contratual de 10% sobre o valor total.</div>
+<div class="clause"><strong>DA DURAÇÃO DO CONTRATO — Cláusula 6ª.</strong> O presente instrumento possui prazo determinado, até a conclusão da prestação de serviço elencado na Cláusula 1ª.<br/><strong>6.1</strong> — Em situações em que por responsabilidade do CONTRATANTE o serviço não possa dar seguimento, os valores serão reajustados quando dado prosseguimento.</div>
+<div class="clause"><strong>DAS CONDIÇÕES GERAIS — Cláusula 7ª.</strong> As partes obrigam-se ao cumprimento do presente contrato, sob as penas da Lei e ao ressarcimento de prejuízos que causem entre si.</div>
+<div class="clause"><strong>DO FORO — Cláusula 8ª.</strong> Para dirimir quaisquer controvérsias oriundas do CONTRATO, as partes elegem o foro da comarca de Feira de Santana/BA.</div>
+<p>Por estarem assim justos e contratados, firmam o presente instrumento, em 2 (duas) vias de igual teor, juntamente com 2 (duas) testemunhas.</p>
+<p>Feira de Santana, ${fmtData(new Date().toISOString().slice(0,10))}.</p>
+<div class="sigs"><div class="sig"><div class="sig-line"><div class="sig-name">CARLOS ALBERTO PACHECO DE JESUS JUNIOR</div>Contratado — CPF: 025.596.265-78</div></div><div class="sig"><div class="sig-line"><div class="sig-name">${(eh.nome||"").toUpperCase()}</div>Contratante${eh.cpf?" — CPF: "+eh.cpf:""}</div></div></div>
+<p style="font-size:11px;color:#64748b;margin-top:16px;">TESTEMUNHAS:</p>
+<div class="testemunhas"><div class="sig"><div class="sig-line">1ª Testemunha</div></div><div class="sig"><div class="sig-line">2ª Testemunha</div></div></div>`;
+  const w=window.open("","_blank");
+  w.document.write("<!DOCTYPE html><html><head><meta charset=UTF-8><title>Contrato Extrajudicial</title><style>"+css+"</style></head><body>"+corpo+"<br><br><button onclick=window.print() style=background:#1e293b;color:#fff;border:none;padding:10px 22px;border-radius:6px;cursor:pointer;font-size:14px>🖨 Imprimir / Salvar PDF</button></body></html>");
+  w.document.close();
+};
+
+const gerarProcuracaoExtrajudicial=(servico,cliente)=>{
+  const eh=cliente||{};
+  const css="body{font-family:Arial,sans-serif;padding:28px;font-size:12px;line-height:1.8;color:#1e293b;}h1{text-align:center;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #1e293b;padding-bottom:10px;margin-bottom:20px;}p{margin-bottom:8px;text-align:justify;}strong{color:#0f172a;}.sigs{margin-top:40px;text-align:center;}.sig-line{border-top:1px solid #64748b;padding-top:6px;margin-top:40px;font-size:11px;max-width:300px;margin-left:auto;margin-right:auto;}.sig-name{font-weight:800;font-size:12px;color:#0f172a;}@media print{button{display:none;}}";
+  const corpo=`<h1>Procuração</h1>
+<p><strong>1) ${(eh.nome||"").toUpperCase()}</strong>, brasileiro(a), maior, capaz, ${eh.estadoCivil||""}, ${eh.profissao||""}, portador(a) do C.I.RG sob n. ${eh.rg||""} - SSP/BA e CPF/MF sob n. ${eh.cpf||""}, residente na cidade de ${eh.cidade||"Feira de Santana"}/BA, na ${eh.endereco||""}.</p>
+<p><strong>2)</strong> E que nomeio como Procuradores a Sra. <strong>Priscila Brasil de Jesus</strong>, brasileira, capaz, solteira, despachante imobiliária, portadora do CPF/MF 008.932.815-90, C.I.RG 1203080450-SSP-BA, (e/ou) <strong>Carlos Alberto Pacheco de Jesus Junior</strong>, brasileiro, capaz, advogado, inscrito na OAB/BA sob número 77.882, ambos com endereço eletrônico renov.assessoria@hotmail.com, e com endereço profissional na cidade de Feira de Santana/BA, Rua Barão do Cotegipe, n. 1.479, Edf. Ferbel, sala térreo - Centro;</p>
+<p><strong>3)</strong> Pelo presente instrumento, eu, <strong>${eh.nome||""}</strong>, outorgo poderes específicos ao(à) Priscila Brasil de Jesus e/ou Carlos Alberto Pacheco de Jesus Junior, para que, em meu nome e representação, possa atuar perante a Prefeitura Municipal de Feira de Santana, inclusive junto à Secretaria da Fazenda (SEFAZ), Secretaria de Desenvolvimento Urbano (SEDUR), Secretaria Municipal de Meio Ambiente (SEMMAN) e Procuradoria do Município, bem como perante a SEFAZ do Estado da Bahia (SEFAZ-BA), podendo, para tanto, efetuar pagamentos, negociar e parcelar débitos, solicitar e retirar declarações, certidões, alvarás, habite-se, certidão de demolição, segunda via de documentos, requerer avaliações, reiterar pedidos, apresentar e retirar documentações, assinar requerimentos, formulários, termos e declarações, acompanhar o trâmite de processos administrativos, realizar diligências que se fizerem necessárias, assinar ART, plantas, memoriais e requerimentos relacionados a projetos técnicos e urbanísticos, bem como praticar todos os atos administrativos indispensáveis ao fiel cumprimento do presente mandato. Outorgo, ainda, poderes para representar-me perante Tabelionatos de Notas e Registros de Imóveis, podendo assinar requerimentos, prestar declarações, protocolar e retirar documentos, acompanhar procedimentos registrais e praticar todos os atos necessários à regularização e formalização de atos imobiliários.</p>
+<p>O presente mandato é outorgado por prazo indeterminado, ou até a conclusão dos processos e procedimentos requeridos junto aos órgãos acima mencionados, referente a: <strong>${servico.tipo||""} ${servico.descricao?"— "+servico.descricao:""}</strong>.</p>
+<p>Feira de Santana, ${fmtData(new Date().toISOString().slice(0,10))}.</p>
+<div class="sigs"><div class="sig-line"><div class="sig-name">${(eh.nome||"").toUpperCase()}</div>Outorgante</div></div>`;
+  const w=window.open("","_blank");
+  w.document.write("<!DOCTYPE html><html><head><meta charset=UTF-8><title>Procuração Extrajudicial</title><style>"+css+"</style></head><body>"+corpo+"<br><br><button onclick=window.print() style=background:#1e293b;color:#fff;border:none;padding:10px 22px;border-radius:6px;cursor:pointer;font-size:14px>🖨 Imprimir / Salvar PDF</button></body></html>");
+  w.document.close();
+};
+
+const AbaContratos=({servico,cliente,atualizar,showToast})=>{
+  const eh=cliente||{};
+  const isJudicial=servico.tipoProcesso==="judicial";
+  const conj=eh.conjugeNome&&(eh.estadoCivil==="Casado(a)"||eh.estadoCivil==="União Estável");
+  const historico=servico.historicoContratos||[];
+  const registrar=(tipo)=>{
+    const novo={id:Date.now(),tipo,data:new Date().toISOString().slice(0,10),hora:new Date().toTimeString().slice(0,5)};
+    atualizar({historicoContratos:[...historico,novo]});
+    if(showToast)showToast(tipo+" gerado!");
+  };
+  const docs=isJudicial?[
+    {tipo:"Contrato de Honorários Advocatícios",icon:"📋",gerar:()=>{gerarContratoJudicial(servico,cliente);registrar("Contrato de Honorários Advocatícios");}},
+    {tipo:"Procuração Ad Judicia",icon:"📜",gerar:()=>{gerarProcuracaoJudicial(servico,cliente);registrar("Procuração Ad Judicia");}},
+  ]:[
+    {tipo:"Contrato de Despachante Imobiliário",icon:"📋",gerar:()=>{gerarContratoExtrajudicial(servico,cliente);registrar("Contrato de Despachante Imobiliário");}},
+    {tipo:"Procuração Ad Negotia",icon:"📜",gerar:()=>{gerarProcuracaoExtrajudicial(servico,cliente);registrar("Procuração Ad Negotia");}},
+  ];
+  return(
+    <div>
+      <div style={{background:isJudicial?"#ef444408":"#3b82f608",border:"1px solid "+(isJudicial?"#ef444422":"#3b82f622"),borderRadius:10,padding:"12px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
+        <span style={{fontSize:18}}>{isJudicial?"⚖️":"🏠"}</span>
+        <div>
+          <div style={{fontSize:13,fontWeight:700,color:isJudicial?"#ef4444":"#3b82f6"}}>Modelos {isJudicial?"Judiciais":"Extrajudiciais"} disponíveis</div>
+          <div style={{fontSize:11,color:"#475569",marginTop:2}}>Tipo detectado automaticamente pelo cadastro do serviço</div>
+        </div>
+      </div>
+      {!eh.profissao&&<div style={{background:"#f59e0b0d",border:"1px solid #f59e0b33",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12,color:"#f59e0b"}}>⚠ Campos complementares do cliente (profissão, naturalidade, filiação) não preenchidos. <span style={{color:"#e2e8f0"}}>Complete o cadastro para documentos mais completos.</span></div>}
+      {conj&&<div style={{background:"#3b82f60a",border:"1px solid #3b82f622",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12,color:"#3b82f6"}}>💍 Cônjuge identificado: <strong style={{color:"#e2e8f0"}}>{eh.conjugeNome}</strong> — constará nos documentos</div>}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+        {docs.map(d=>(
+          <div key={d.tipo} style={{...S.card,textAlign:"center",padding:20}}>
+            <div style={{fontSize:32,marginBottom:10}}>{d.icon}</div>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:6}}>{d.tipo}</div>
+            <div style={{fontSize:11,color:"#475569",marginBottom:14}}>Dados do cliente preenchidos automaticamente</div>
+            <button style={{...S.btnPrimary,width:"100%"}} onClick={d.gerar} className="bp">🖨 Gerar e Imprimir</button>
+          </div>
+        ))}
+      </div>
+      {historico.length>0&&(
+        <div style={S.card}>
+          <div style={S.cardTitle}>Histórico de Documentos Gerados</div>
+          {[...historico].reverse().map(h=>(
+            <div key={h.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid #0f1f35",fontSize:12}}>
+              <span style={{fontSize:16}}>{h.tipo.includes("Procuração")?"📜":"📋"}</span>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:600,color:"#e2e8f0"}}>{h.tipo}</div>
+                <div style={{fontSize:11,color:"#475569"}}>Gerado em {h.data} às {h.hora}</div>
+              </div>
+              <button style={{...S.btnSm,color:"#3b82f6",borderColor:"#3b82f644"}} onClick={()=>{const d=docs.find(x=>x.tipo===h.tipo);if(d)d.gerar();}} className="bs">🖨 Reimprimir</button>
+            </div>
+          ))}
+        </div>
+      )}
+      {historico.length===0&&<div style={S.empty}>Nenhum documento gerado ainda. Clique em Gerar e Imprimir para criar.</div>}
+    </div>
+  );
 };
 
 // Funções de impressão
@@ -2267,6 +2534,32 @@ const ModalCliente=({inicial,onSave,onClose,clientes=[]})=>{
       <div style={{gridColumn:"1/-1"}}><FI l="Endereço" v={form.endereco||""} set={v=>setForm({...form,endereco:v})}/></div>
       <FI l="Cidade" v={form.cidade||""} set={v=>setForm({...form,cidade:v})}/>
       <FI l="Estado (UF)" v={form.estado||""} set={v=>setForm({...form,estado:v})} ph="SP"/>
+      {form.tipo==="pf"&&<>
+        <div style={{gridColumn:"1/-1"}}><FL l="Estado Civil"/><select style={S.fi} value={form.estadoCivil||""} onChange={e=>setForm({...form,estadoCivil:e.target.value})}><option value="">Selecione...</option>{["Solteiro(a)","Casado(a)","Divorciado(a)","Viúvo(a)","União Estável"].map(o=><option key={o}>{o}</option>)}</select></div>
+        <FI l="Profissão" v={form.profissao||""} set={v=>setForm({...form,profissao:v})}/>
+        <FI l="Naturalidade" v={form.naturalidade||""} set={v=>setForm({...form,naturalidade:v})} ph="Ex: Feira de Santana/BA"/>
+        <div style={{gridColumn:"1/-1"}}><FI l="Filiação (pai e mãe)" v={form.filiacao||""} set={v=>setForm({...form,filiacao:v})} ph="Ex: Maria Silva e João Silva"/></div>
+        <FI l="Data de Nascimento" v={form.dataNascimento||""} set={v=>setForm({...form,dataNascimento:v})} type="date"/>
+        <FI l="CNH (opcional)" v={form.cnh||""} set={v=>setForm({...form,cnh:v})} ph="Número da CNH"/>
+        {(form.estadoCivil==="Casado(a)"||form.estadoCivil==="União Estável")&&(
+          <div style={{gridColumn:"1/-1",background:"#3b82f60a",border:"1px solid #3b82f622",borderRadius:10,padding:"14px"}}>
+            <div style={{fontSize:11,fontWeight:800,color:"#3b82f6",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:12}}>💍 Dados do Cônjuge</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <div style={{gridColumn:"1/-1"}}><FI l="Nome completo do cônjuge" v={form.conjugeNome||""} set={v=>setForm({...form,conjugeNome:v})}/></div>
+              <FI l="CPF do cônjuge" v={form.conjugeCpf||""} set={v=>setForm({...form,conjugeCpf:v})} ph="000.000.000-00"/>
+              <FI l="RG do cônjuge" v={form.conjugeRg||""} set={v=>setForm({...form,conjugeRg:v})}/>
+              <FI l="Profissão do cônjuge" v={form.conjugeProfissao||""} set={v=>setForm({...form,conjugeProfissao:v})}/>
+              <FI l="Naturalidade do cônjuge" v={form.conjugeNaturalidade||""} set={v=>setForm({...form,conjugeNaturalidade:v})} ph="Ex: Feira de Santana/BA"/>
+              <div style={{gridColumn:"1/-1"}}><FI l="Filiação do cônjuge" v={form.conjugeFiliacao||""} set={v=>setForm({...form,conjugeFiliacao:v})} ph="Ex: Maria Silva e João Silva"/></div>
+              <div style={{gridColumn:"1/-1"}}><FL l="Regime de Bens"/><select style={S.fi} value={form.regimeBens||""} onChange={e=>setForm({...form,regimeBens:e.target.value})}><option value="">Selecione...</option>{["Comunhão Parcial de Bens","Comunhão Universal de Bens","Separação Total de Bens","Participação Final nos Aquestos"].map(o=><option key={o}>{o}</option>)}</select></div>
+              <FI l="Data do Casamento" v={form.dataCasamento||""} set={v=>setForm({...form,dataCasamento:v})} type="date"/>
+              <FI l="Cartório do Casamento" v={form.cartorioCasamento||""} set={v=>setForm({...form,cartorioCasamento:v})} ph="Ex: RCPN Feira de Santana/BA"/>
+              <FI l="Livro" v={form.casamentoLivro||""} set={v=>setForm({...form,casamentoLivro:v})} ph="Ex: B-18"/>
+              <FI l="Folha / Termo" v={form.casamentoFolha||""} set={v=>setForm({...form,casamentoFolha:v})} ph="Ex: Folha 43v, Termo 135"/>
+            </div>
+          </div>
+        )}
+      </>}
       <div style={{gridColumn:"1/-1"}}><FL l="Observações"/><textarea style={{...S.fi,minHeight:50,resize:"vertical"}} value={form.obs||""} onChange={e=>setForm({...form,obs:e.target.value})}/></div>
     </div>
   </Modal>);
