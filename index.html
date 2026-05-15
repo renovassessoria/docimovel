@@ -34,9 +34,9 @@ const {useState,useEffect,useMemo} = React;
 const {createClient} = supabase;
 const sb = createClient("https://dnykryfwvylivzfetjko.supabase.co","sb_publishable_Ep1D6wtOw9z3GtEFc-4WiA_LhO_3aYn");
 const RENOV_LOGO = "";
-const NOME_EMPRESA = localStorage.getItem("docimov_empresa_nome")||"Seu Escritorio";
-const CNPJ_EMPRESA = localStorage.getItem("docimov_empresa_cnpj")||"";
-const END_EMPRESA  = localStorage.getItem("docimov_empresa_end")||"";
+const NOME_EMPRESA = (window._empresaDados&&window._empresaDados.nome)||"Seu Escritorio";
+const CNPJ_EMPRESA = (window._empresaDados&&window._empresaDados.cnpj)||"";
+const END_EMPRESA  = (window._empresaDados&&window._empresaDados.endereco)||"";
 
 const TIPOS=["Escritura de Compra e Venda","Inventário Extrajudicial","Usucapião","Regularização de Imóvel","Doação","Partilha","Divórcio com Imóvel","Financiamento","Distrato","Outro"];
 const ESTAGIOS=["Documentação","Prefeitura","Cartório","Judiciário","Secretaria da Fazenda","Receita Federal","DETRAN","Registro de Imóveis","Concluído"];
@@ -225,17 +225,14 @@ const AppContent=({session})=>{
       if(l.data)setLeads(l.data);
       // Carregar agenda do Supabase
       try{const{data:agData}=await sb.from("agenda").select("*").order("data",{ascending:true});if(agData)setAgenda(agData);}catch(e){}
+      // Carregar historicos do Supabase
+      try{const{data:hr}=await sb.from("configuracoes").select("dados").eq("id","historico_recibos").single();if(hr?.dados)window._histRec=hr.dados;}catch(e){}
+      try{const{data:hc}=await sb.from("configuracoes").select("dados").eq("id","historico_contracheques").single();if(hc?.dados)window._histCC=hc.dados;}catch(e){}
       // Carregar empresa do Supabase
       try{
         const{data:empData}=await sb.from("configuracoes").select("dados").eq("id","empresa").single();
         if(empData&&empData.dados&&empData.dados.nome){
-          localStorage.setItem("docimov_emp",JSON.stringify(empData.dados));
-          localStorage.setItem("docimov_empresa_nome",empData.dados.nome||"");
-          localStorage.setItem("docimov_empresa_cnpj",empData.dados.cnpj||"");
-          localStorage.setItem("docimov_empresa_end",empData.dados.endereco||"");
-        }else{
-          const empLocal=localStorage.getItem("docimov_emp");
-          if(empLocal){const e=JSON.parse(empLocal);await sb.from("configuracoes").upsert({id:"empresa",dados:e,updated_at:new Date().toISOString()});}
+          window._empresaDados=empData.dados;
         }
       }catch(e){}
       // Carregar custos do Supabase
@@ -245,14 +242,8 @@ const AppContent=({session})=>{
           setCustos(resCfg.data.dados);
         }else if(resCfg.data&&resCfg.data.dados&&resCfg.data.dados.funcs){
           setCustos(resCfg.data.dados);
-        }else{
-          const saved=localStorage.getItem("docimov_custos");
-          if(saved){const c=JSON.parse(saved);setCustos(c);await sb.from("configuracoes").upsert({id:"custos",dados:c,updated_at:new Date().toISOString()});}
         }
-      }catch(e){
-        const saved=localStorage.getItem("docimov_custos");
-        if(saved){try{setCustos(JSON.parse(saved));}catch(e2){}}
-      }
+      }catch(e){}
       setLoadingData(false);
     }
     load();
@@ -457,7 +448,7 @@ const AppContent=({session})=>{
         {tela==="andamento"&&processoAberto&&<TelaProcessoDetalhe servico={processoAberto} aba={abaProcesso} setAba={setAbaProcesso} atualizar={p=>atualizarServico(processoAberto.id,p)} voltar={()=>setProcessoAberto(null)} cn={cn}/>}
         {tela==="financeiro"&&<TelaFinanceiro aba={abaFin} setAba={setAbaFin} recebimentos={recebimentos} pagamentos={pagamentos} setRecebimentos={setRecebimentos} setPagamentos={setPagamentos} totRec={totRec} totPag={totPag} lucro={lucro} dadosMensais={dadosMensais} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} abrirModal={abrirModal} setReciboData={setReciboData} sb={sb}/>}
         {tela==="relatorios"&&<TelaRelatorios dadosMensais={dadosMensais} totRec={totRec} totPag={totPag} lucro={lucro} recAno={recAno} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} recebimentos={recebimentos} pagamentos={pagamentos}/>}
-        {tela==="custos"&&<TelaCustos showToast={showToast} custos={custos} setCustos={v=>{setCustos(v);try{localStorage.setItem("docimov_custos",JSON.stringify(v));}catch(e){}sb.from("configuracoes").upsert({id:"custos",dados:v,updated_at:new Date().toISOString()}).then(()=>{}).catch(()=>{}); }} sb={sb}/>}
+        {tela==="custos"&&<TelaCustos showToast={showToast} custos={custos} setCustos={v=>{setCustos(v);sb.from("configuracoes").upsert({id:"custos",dados:v,updated_at:new Date().toISOString()}).then(()=>{}).catch(()=>{});}} sb={sb}/>}
         {tela==="captacao"&&<TelaCaptacao leads={leads} setLeads={setLeads} atualizarLead={atualizarLead} showToast={showToast} sb={sb}/>}
         {tela==="usuarios"&&<TelaUsuarios usuarios={usuarios} setUsuarios={setUsuarios} abrirModal={abrirModal} session={session}/>}
       </main>
@@ -705,13 +696,11 @@ const TelaServicos=({servicos,search,setSearch,cn,abrirModal,abrirServico,setPri
   {servicos.length===0&&<div style={S.empty}>Nenhum serviço.</div>}</div></div></div>);
 };
 
-const _hrec_key="docimov_hrec";
-const getHistRec=()=>{try{return JSON.parse(localStorage.getItem(_hrec_key)||"[]");}catch{return[];}};
+const getHistRec=()=>window._histRec||[];
 const addHistRec=(item)=>{
   const h=getHistRec();
-  h.unshift({...item,id:Date.now()});
-  const novo=h.slice(0,100);
-  localStorage.setItem(_hrec_key,JSON.stringify(novo));
+  const novo=[{...item,id:Date.now()},...h].slice(0,100);
+  window._histRec=novo;
   try{window._sb&&window._sb.from("configuracoes").upsert({id:"historico_recibos",dados:novo,updated_at:new Date().toISOString()}).catch(()=>{});}catch(e){}
 };
 
@@ -1868,13 +1857,11 @@ const usePermissao=(perfil)=>({
   isAdmin: perfil==="admin",
 });
 
-const _hcc_key = "docimov_hcc";
-const getHistCC = () => { try { return JSON.parse(localStorage.getItem(_hcc_key)||"[]"); } catch { return []; } };
+const getHistCC = () => window._histCC||[];
 const addHistCC = (item) => {
   const h = getHistCC();
-  h.unshift({...item, id:Date.now()});
-  const novo = h.slice(0,50);
-  localStorage.setItem(_hcc_key, JSON.stringify(novo));
+  const novo = [{...item, id:Date.now()},...h].slice(0,50);
+  window._histCC = novo;
   try{ window._sb&&window._sb.from("configuracoes").upsert({id:"historico_contracheques",dados:novo,updated_at:new Date().toISOString()}).catch(()=>{}); }catch(e){}
 };
 
@@ -1945,14 +1932,14 @@ const imprimirCC = (func, empresa, cnpj, endereco, mes, ano, bonus) => {
 };
 
 const ModalContracheque = ({func, onClose, showToast}) => {
-  const [emp, setEmp] = useState(() => { try { return JSON.parse(localStorage.getItem("docimov_emp")||"{}"); } catch { return {}; } });
+  const [emp, setEmp] = useState(()=>window._empresaDados||{});
   const [mes, setMes] = useState(new Date().getMonth()+1);
   const [ano, setAno] = useState(new Date().getFullYear());
   const [bonus, setBonus] = useState("");
   const [aba, setAba] = useState("gerar");
   const [hist, setHist] = useState(getHistCC);
   if(!func) return null;
-  const upE = (p) => { const n={...emp,...p}; setEmp(n); localStorage.setItem("docimov_emp", JSON.stringify(n)); };
+  const upE = (p) => { const n={...emp,...p}; setEmp(n); window._empresaDados=n; window._sb&&window._sb.from("configuracoes").upsert({id:"empresa",dados:n,updated_at:new Date().toISOString()}).catch(()=>{}); };
   const pronto = emp.nome && emp.cnpj && emp.endereco;
   const s = Number(func.salario||0);
   const inss = (v) => { if(v<=1518) return v*0.075; if(v<=2666.68) return v*0.09; if(v<=4000.03) return v*0.12; if(v<=7786.02) return v*0.14; return 908.86; };
