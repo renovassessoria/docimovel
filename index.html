@@ -1481,42 +1481,60 @@ const fmtData=(s)=>{if(!s)return"";const d=new Date(s+"T12:00:00");return d.toLo
 
 const gerarContratoJudicial=(servico,cliente)=>{
   const eh=cliente||{};
-  const conj=eh.conjugeNome&&(eh.estadoCivil==="Casado(a)"||eh.estadoCivil==="União Estável");
   const valorFmt=v=>Number(v||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
   const valor=Number(servico.orcamento?.valor||0);
-  const css="body{font-family:Arial,sans-serif;padding:28px;font-size:12px;line-height:1.7;color:#1e293b;}h1{text-align:center;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #1e293b;padding-bottom:10px;margin-bottom:20px;}p{margin-bottom:10px;text-align:justify;}strong{color:#0f172a;}.clause{margin-bottom:12px;text-align:justify;}.sigs{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px;}.sig{text-align:center;}.sig-line{border-top:1px solid #64748b;padding-top:6px;margin-top:40px;font-size:11px;}.sig-name{font-weight:800;font-size:12px;color:#0f172a;}@media print{button{display:none;}}";
-  const corpo=`<h1>Contrato de Prestação de Serviços e Honorários Advocatícios</h1>
-<p>Pelo presente instrumento particular de contrato <strong>CARLOS ALBERTO PACHECO DE JESUS JUNIOR</strong>, brasileiro, maior, solteiro, advogado, regularmente inscrito na <strong>OAB/BA sob o n. 77.882</strong>, endereço eletrônico: capacheco.adv@gmail.com, integrante do escritório <strong>CARLOS ALBERTO Advocacia e Assessoria Jurídica</strong>, com endereço profissional no rodapé desta, doravante denominado <strong>CONTRATADO</strong>, convenciona e contrata com <strong>${(eh.nome||"").toUpperCase()}</strong>, ${eh.tipo==="pj"?"pessoa jurídica":"brasileiro(a)"}, capaz, ${eh.estadoCivil||""}, ${eh.profissao||""}, ${eh.rg?"C.I.RG "+eh.rg+" - SSP/BA,":""} CPF/MF ${eh.cpf||""}, residente e domiciliado(a) na ${eh.endereco||""}, ${eh.cidade||""}, doravante denominado(a) <strong>CONTRATANTE</strong>, o seguinte:</p>
-<div class="clause"><strong>Cláusula 1ª.</strong> O Contratado compromete-se com o presente termo a prestar Assessoria Jurídica ao Contratante no tocante ao ajuizamento e acompanhamento da <strong>ação de ${servico.tipo||""} ${servico.descricao?("— "+servico.descricao):""}</strong>, até a última instância dos Órgãos do Poder Judiciário Estaduais, e o registro da respectiva sentença quando proferida.</div>
-<div class="clause"><strong>Cláusula 2ª.</strong> Em remuneração aos serviços profissionais ora pactuados, o Contratante pagará ao Contratado o valor de <strong>R$ ${valorFmt(valor)} (${valor===0?"valor a definir":"ver condições acordadas"})</strong>, conforme acordado entre as partes.<br/><strong>§ 2º.</strong> O valor de eventual honorário sucumbencial será destinado integralmente ao contratado, conforme disposto em lei.</div>
-<div class="clause"><strong>Cláusula 3ª.</strong> Nos honorários avençados não estão incluídas as despesas processuais de viagens, fotocópias, despesas para elaboração de conta de liquidação e outras, que deverão ser pagas à parte pela Contratante, caso necessárias ao bom andamento do processo.</div>
-<div class="clause"><strong>Cláusula 4ª.</strong> O valor total dos honorários poderá ser considerado automaticamente vencido e imediatamente exigível, sendo passível de execução, sem prévia notificação ou interpelação judicial, e resguardado o direito aos honorários de sucumbência, acrescido de multa contratual de 20% (vinte por cento), juros de mora de 1% ao mês e atualização monetária pelo índice INPC nos seguintes casos: quando não forem pagos os honorários nas datas estabelecidas; no caso do não prosseguimento da ação por qualquer circunstância; se for cassado o mandato sem culpa do Contratado.</div>
-<div class="clause"><strong>Cláusula 5ª.</strong> São OBRIGAÇÕES DO CONTRATANTE: Fornecer a documentação necessária à propositura e andamento da ação; pagar todas as despesas derivadas da causa, tais como custas processuais judiciais, despesas com xerox, certidões, averbações e outras.</div>
-<div class="clause"><strong>Cláusula 6ª.</strong> São OBRIGAÇÕES DO CONTRATADO: promover a defesa dos interesses do Contratante na ação já mencionada em qualquer instância dos Órgãos do Poder Judiciário Estaduais e Federais, com diligência e dedicação.</div>
-<div class="clause"><strong>Cláusula 7ª.</strong> A inobservância por parte da Contratante de qualquer cláusula deste instrumento acarretará a rescisão deste contrato, independente de notificações e avisos, ficando sujeito aos honorários pactuados, bem como multa contratual de 20% sobre os mesmos, mais juros de 1% ao mês e correção monetária pelo índice INPC.</div>
-<div class="clause"><strong>Cláusula 8ª.</strong> O presente contrato não tem caráter personalíssimo, podendo o Contratado ser representado por outro(s) advogado(s) em qualquer ato processual.</div>
-<div class="clause"><strong>Cláusula 9ª.</strong> Para dirimir qualquer questão oriunda do presente contrato, as partes elegem o foro de Feira de Santana/BA, com renúncia expressa de qualquer outro, por mais privilegiado que seja.</div>
-<p>Feira de Santana, ${fmtData(new Date().toISOString().slice(0,10))}.</p>
-<div class="sigs"><div class="sig"><div class="sig-line"><div class="sig-name">CARLOS ALBERTO PACHECO DE JESUS JUNIOR</div>Contratado — OAB/BA 77.882</div></div><div class="sig"><div class="sig-line"><div class="sig-name">${(eh.nome||"").toUpperCase()}</div>Contratante</div></div></div>`;
+  const hoje=new Date();
+  const dataExtenso=hoje.toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"});
+  const qualificacao=`${eh.tipo==="pj"?"pessoa jurídica":"brasileiro(a)"}, capaz, ${eh.estadoCivil||""}${eh.profissao?", "+eh.profissao:""}${eh.dataNascimento?", nascido(a) em "+fmtData(eh.dataNascimento):""}${eh.naturalidade?", natural de "+eh.naturalidade:""}${eh.filiacao?", filiação: "+eh.filiacao:""}${eh.cnh?", CNH "+eh.cnh+" – DETRAN/BA, em que consta a":""}${eh.rg?", C.I.RG "+eh.rg+" – SSP/BA,":""} CPF/MF ${eh.cpf||""}${eh.endereco?", residente e domiciliado(a) na "+eh.endereco+", "+eh.cidade+"/BA":""}`;
+  const corpo=`<div class="pagina">
+<h1>Contrato de Prestação de Serviços e Honorários Advocatícios</h1>
+<p style="text-indent:2cm;">Pelo presente instrumento particular de contrato <strong>CARLOS ALBERTO PACHECO DE JESUS JUNIOR</strong>, brasileiro, maior, solteiro, advogado, regularmente inscrito na OAB/BA sob o n. 77.882, endereço eletrônico: capacheco.adv@gmail.com, integrante do escritório CARLOS ALBERTO Advocacia e Assessoria Jurídica, com endereço profissional no rodapé desta, doravante denominado <strong>CONTRATADO</strong>, convenciona e contrata com <strong>${(eh.nome||"").toUpperCase()}</strong>, ${qualificacao}, doravante denominado(a) <strong>CONTRATANTE</strong>, o seguinte:</p>
+<p style="text-indent:2cm;"><strong>Cláusula 1ª.</strong> O Contratado compromete-se com o presente termo a prestar Assessoria Jurídica a Contratante no tocante ao ajuizamento e acompanhamento da <u>${servico._objeto||("ação de "+(servico.dadosJudiciais?.tipoAcao||servico.tipo||""))}</u>.</p>
+<p style="text-indent:2cm;"><strong>Cláusula 2ª.</strong> Em remuneração aos serviços profissionais ora pactuados, o Contratante pagará ao Contratado ${servico._parcelas||("o valor de <strong>R$ "+valorFmt(valor)+"</strong>, conforme acordado entre as partes")}.<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>§ 2º.</strong> O valor de eventual honorário sucumbencial será destinado integralmente ao contratado, conforme disposto em lei.</p>
+<p style="text-indent:2cm;"><strong>Cláusula 3ª.</strong> Nos honorários avençados não estão incluídas as despesas processuais de viagens, fotocópias, despesas para elaboração de conta de liquidação e outras, que deverão ser pagas a parte pela Contratante, caso necessárias ao bom andamento do processo, das quais, todavia, serão prestadas contas pela Contratada à Contratante sempre que está desejar.</p>
+<p style="text-indent:2cm;"><strong>Cláusula 4ª.</strong> O valor total dos honorários poderá ser considerado automaticamente vencido e imediatamente exigível, sendo passível de execução, sem prévia notificação ou interpelação judicial, e resguardado o direito aos honorários de sucumbência, acrescido de multa contratual de 20% (vinte por cento), juros de mora de 1% ao mês a atualização monetária pelo índice INPC nos seguintes casos:<br/>
+– quando não forem pagos os honorários nas datas estabelecidas, sejam integrais, sejam parcelados;<br/>
+– no caso do não prosseguimento da ação por qualquer circunstância;<br/>
+– se for cassado o mandato sem culpa do Contratado.</p>
+<p style="text-indent:2cm;"><strong>Cláusula 5ª.</strong> São OBRIGAÇÕES DO CONTRATANTE: Fornecer a documentação necessária à propositura e andamento da ação; pagar todas as despesas derivadas da causa, tais como custas processuais judiciais, despesas com xerox, certidões, averbações e outras, como honorários advocatícios contratuais.</p>
+<p style="text-indent:2cm;"><strong>Cláusula 6ª.</strong> São OBRIGAÇÕES DO CONTRATADO: promover a defesa dos interesses do Contratante na ação já mencionada em qualquer instância dos Órgãos do Poder Judiciário Estaduais e Federais, com diligência e dedicação.</p>
+<p style="text-indent:2cm;"><strong>Cláusula 7ª.</strong> A inobservância por parte da Contratante, de qualquer cláusula deste instrumento acarretará a rescisão deste contrato, independente de notificações e avisos, ficando sujeito aos honorários pactuados, bem como multa contratual de 20% sobre os mesmos, mais juros de 1% ao mês e correção monetária pelo índice INPC.</p>
+<p style="text-indent:2cm;"><strong>Cláusula 8ª.</strong> O presente contrato não tem caráter personalíssimo, podendo o Contratado ser representado por outro(s) advogado(s) em qualquer ato processual.</p>
+<p style="text-indent:2cm;"><strong>Cláusula 9.</strong> Para dirimir qualquer questão oriunda do presente contrato, as partes elegem o foro de Feira de Santana/Ba, com renúncia expressa de qualquer outro, por mais privilegiado que seja.</p>
+<p class="local-data" style="text-align:center;">Feira de Santana, ${dataExtenso}.</p>
+<div class="sigs-dois">
+  <div class="sig"><div class="sig-linha">CARLOS ALBERTO PACHECO DE JESUS JUNIOR<br/>Contratado</div></div>
+  <div class="sig"><div class="sig-linha">${(eh.nome||"").toUpperCase()}<br/>Contratante</div></div>
+</div>
+</div>`;
+  const css_doc="body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.8;color:#000;margin:0;padding:0;}.pagina{margin:3cm 3cm 2cm 3cm;}h1{text-align:center;font-size:13pt;font-weight:bold;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:24pt;}p{margin-bottom:10pt;text-align:justify;}strong{font-weight:bold;}em{font-style:italic;}.sigs-dois{display:grid;grid-template-columns:1fr 1fr;gap:60pt;margin-top:50pt;}.sigs-um{text-align:center;margin-top:50pt;}.sig{text-align:center;}.sig-linha{border-top:1px solid #000;padding-top:6pt;margin-top:50pt;font-size:11pt;}.testemunhas{display:grid;grid-template-columns:1fr 1fr;gap:60pt;margin-top:40pt;}.rodape{position:fixed;bottom:1cm;left:3cm;right:3cm;font-size:9pt;text-align:center;border-top:1px solid #000;padding-top:4pt;color:#333;}@media print{button{display:none!important;}.rodape{position:fixed;bottom:0;}}.btn-print{margin-top:20pt;padding:8pt 20pt;background:#1e293b;color:#fff;border:none;border-radius:4pt;cursor:pointer;font-size:11pt;display:block;margin-left:auto;margin-right:auto;}";
+  const rodape_doc="<div class=\'rodape\'>CARLOS ALBERTO PACHECO DE JESUS JUNIOR — OAB/BA 77.882 — RENOV Assessoria Imobiliária<br/>Rua Barão do Cotegipe, n. 1.479, Edf. Ferbel, sala térreo — Centro — Feira de Santana/BA<br/>Tel: (75) 98813-9525 — E-mail: capacheco.adv@gmail.com / renov.assessoria@hotmail.com</div>";
+  const btn_doc="<button class=\'btn-print\' onclick=\'window.print()\'>Imprimir / Salvar PDF</button>";
   const w=window.open("","_blank");
-  w.document.write("<!DOCTYPE html><html><head><meta charset=UTF-8><title>Contrato</title><style>"+css+"</style></head><body>"+corpo+"<br><br><button onclick=window.print() style=background:#1e293b;color:#fff;border:none;padding:10px 22px;border-radius:6px;cursor:pointer;font-size:14px>🖨 Imprimir / Salvar PDF</button></body></html>");
+  w.document.write("<!DOCTYPE html><html><head><meta charset=UTF-8><title>Contrato de Honorarios</title><style>"+css_doc+"</style></head><body>"+corpo+rodape_doc+btn_doc+"</body></html>");
   w.document.close();
 };
 
 const gerarProcuracaoJudicial=(servico,cliente)=>{
   const eh=cliente||{};
   const conj=eh.conjugeNome&&(eh.estadoCivil==="Casado(a)"||eh.estadoCivil==="União Estável");
-  const css="body{font-family:Arial,sans-serif;padding:28px;font-size:12px;line-height:1.8;color:#1e293b;}h1{text-align:center;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #1e293b;padding-bottom:10px;margin-bottom:20px;}p{margin-bottom:8px;text-align:justify;}strong{color:#0f172a;}.sigs{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px;}.sig{text-align:center;}.sig-line{border-top:1px solid #64748b;padding-top:6px;margin-top:40px;font-size:11px;}.sig-name{font-weight:800;font-size:12px;color:#0f172a;}@media print{button{display:none;}}";
-  const casamentoInfo=conj?`, casados sob o regime da ${eh.regimeBens||"Comunhão Parcial de Bens"}${eh.dataCasamento?", casamento realizado em "+fmtData(eh.dataCasamento):""}${eh.cartorioCasamento?", conforme Certidão expedida pelo "+eh.cartorioCasamento:""}${eh.casamentoLivro?", sob "+eh.casamentoLivro:""}${eh.casamentoFolha?", "+eh.casamentoFolha:""}:`:"";
-  const outorgante1=`<strong>${(eh.nome||"").toUpperCase()}</strong>, brasileiro(a), capaz, ${eh.profissao||""}${eh.dataNascimento?", nascido(a) em "+fmtData(eh.dataNascimento):""}${eh.naturalidade?", natural de "+eh.naturalidade:""}${eh.filiacao?", filiação: "+eh.filiacao:""}${eh.cnh?", CNH "+eh.cnh+" – DETRAN/BA, em que consta a":""} C.I.RG ${eh.rg||""}${eh.rg?" - SSP/BA,":""} CPF/MF ${eh.cpf||""}`;
-  const outorgante2=conj?`; ela/ele, <strong>${(eh.conjugeNome||"").toUpperCase()}</strong>, brasileiro(a), capaz, ${eh.conjugeProfissao||""}${eh.conjugeNaturalidade?", natural de "+eh.conjugeNaturalidade:""}${eh.conjugeFiliacao?", filiação: "+eh.conjugeFiliacao:""}, C.I.RG ${eh.conjugeRg||""}${eh.conjugeRg?" - SSP/BA,":""} CPF/MF ${eh.conjugeCpf||""}`:  "";
-  const corpo=`<h1>Procuração</h1>
-<p>${outorgante1}${outorgante2}${casamentoInfo} residente(s) e domiciliado(s) na ${eh.endereco||""}, ${eh.cidade||""}/BA, vem pelo presente instrumento particular de procuração, nomear seu bastante procurador o <strong>Bel. Carlos Alberto Pacheco de Jesus Junior</strong>, brasileiro, maior, solteiro, advogado, regularmente inscrito na <strong>OAB/BA sob o n. 77.882</strong>, endereço eletrônico: capacheco.adv@gmail.com, integrante do escritório <strong>CARLOS ALBERTO Advocacia e Assessoria Jurídica</strong>, com endereço profissional no rodapé desta, para onde com esta se apresentar,</p>
-<p>Para o foro em geral e <em>"Ad Juditia"</em> em qualquer Juízo, Instância ou Tribunal, em conjunto ou separadamente independente de ordem de nomeação, concedendo-lhes para tanto, poderes os mais especiais que sejam, inclusive os da cláusula <em>"Ad Judicia Et Extra"</em>, para propor qualquer ação, contra quem de direito, contestar, reconvir. Podendo para tanto, transigir, desistir, representar, adjudicar e arrematar bens, nomear preposto, apresentar defesa, receber pagamento em dinheiro, receber guia de depósito judicial, receber alvará para liberação de pagamento, receber documentos, dar quitação; representá-la perante autoridade judiciária e, inclusive, o de Substabelecer no todo ou em parte, com ou sem reserva de poderes, requerer assistência judiciária gratuita, nos termos da lei n. 7.510-86, especialmente nos artigos 1º e 4º c/c arts. 99 e 100 do NCPC, e declarar sua pobreza. Enfim, praticar todos os atos necessários para o fiel cumprimento deste Mandato, dando tudo por bom, firme e valioso, no processo de <strong>${servico.tipo||""} ${servico.descricao||""}</strong>.</p>
-<p>Feira de Santana, ${fmtData(new Date().toISOString().slice(0,10))}.</p>
-<div class="sigs"><div class="sig"><div class="sig-line"><div class="sig-name">${(eh.nome||"").toUpperCase()}</div>Outorgante</div></div>${conj?`<div class="sig"><div class="sig-line"><div class="sig-name">${(eh.conjugeNome||"").toUpperCase()}</div>Outorgante</div></div>`:""}</div>`;
+  const hoje=new Date();
+  const dataExtenso=hoje.toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"});
+  const regimeBens=eh.regimeBens||"Comunhão de Bens";
+  const casamentoInfo=conj?(", casados sob o regime da "+regimeBens+(eh.dataCasamento?", casamento realizado em "+fmtData(eh.dataCasamento):"")+  (eh.cartorioCasamento?", conforme Certidão expedida pelo Cartório de "+eh.cartorioCasamento:"")+(eh.casamentoLivro?", sob Livro "+eh.casamentoLivro:"")+(eh.casamentoFolha?", Folha "+eh.casamentoFolha:"")):"";
+  const qualif1="ele, "+(eh.profissao||"")+(eh.dataNascimento?", nascido em "+fmtData(eh.dataNascimento):"")+(eh.naturalidade?", natural de "+eh.naturalidade:"")+(eh.filiacao?", filiação: "+eh.filiacao:"")+(eh.cnh?", CNH "+eh.cnh+" – DETRAN/BA, em que consta a":"")+(eh.rg?", C.I.RG "+eh.rg+" – SSP/BA,":"")+" CPF/MF "+(eh.cpf||"");
+  const qualif2=conj?("; ela, "+(eh.conjugeProfissao||"")+(eh.conjugeNaturalidade?", natural de "+eh.conjugeNaturalidade:"")+(eh.conjugeFiliacao?", filiação: "+eh.conjugeFiliacao:"")+(eh.conjugeRg?", C.I.RG "+eh.conjugeRg+" – SSP/BA,":"")+" CPF/MF "+(eh.conjugeCpf||"")):"";
+  const corpo=`<div class="pagina">
+<h1>Procuração</h1>
+<p style="text-indent:2cm;"><strong>${(eh.nome||"").toUpperCase()}</strong>${conj?" e sua esposa <strong>"+(eh.conjugeNome||"").toUpperCase()+"</strong>":""}${conj?", brasileiros":"brasileiro(a)"}${conj?", capazes":"capaz"}, ${casamentoInfo}; ${qualif1}${qualif2}, residente${conj?"s":""} e domiciliado${conj?"s":""} na ${eh.endereco||""}, ${eh.cidade||""}/BA, vem pelo presente instrumento particular de procuração, nomear seu bastante procurador o <strong>Bel. Carlos Alberto Pacheco de Jesus Junior</strong>, brasileiro, maior, solteiro, advogado, regularmente inscrito na OAB/BA sob o n. 77.882, endereço eletrônico: capacheco.adv@gmail.com, integrante do escritório CARLOS ALBERTO Advocacia e Assessoria Jurídica, com endereço profissional no rodapé desta, para onde com esta se apresentar, Para o foro em geral e <em>"Ad Juditia"</em> em qualquer Juízo, Instância ou Tribunal, em conjunto ou separadamente independente de ordem de nomeação, concedendo-lhes para tanto, poderes os mais especiais que sejam, inclusive os da cláusula <em>"Ad Judicia Et Extra"</em>, para propor qualquer ação, contra quem de direito, contestar, reconvir. Podendo para tanto, transigir, desistir, representar, adjudicar e arrematar bens, nomear preposto, apresentar defesa, receber pagamento em dinheiro, receber guia de depósito judicial, receber alvará para liberação de pagamento, receber documentos, dar quitação; representá-la perante autoridade judiciária e, inclusive, o de Substabelecer no todo ou em parte, com ou sem reserva de poderes, requerer assistência judiciária gratuita, nos termos da lei n. 7.510-86, especialmente nos artigos 1º e 4º c/c arts. 99 e 100 do NCPC, e declarar sua pobreza. Enfim, praticar todos os atos necessários para o fiel cumprimento deste Mandato, dando tudo por bom, firme e valioso, no processo de <u>${servico._objeto||servico.dadosJudiciais?.tipoAcao||servico.tipo||""}</u>.</p>
+<p style="text-align:center;margin-top:30pt;">Feira de Santana, ${dataExtenso}</p>
+<div class="sigs-dois">
+  <div class="sig"><div class="sig-linha">${(eh.nome||"").toUpperCase()}</div></div>
+  ${conj?`<div class="sig"><div class="sig-linha">${(eh.conjugeNome||"").toUpperCase()}</div></div>`:""}
+</div>
+</div>`;
   const w=window.open("","_blank");
-  w.document.write("<!DOCTYPE html><html><head><meta charset=UTF-8><title>Procuração</title><style>"+css+"</style></head><body>"+corpo+"<br><br><button onclick=window.print() style=background:#1e293b;color:#fff;border:none;padding:10px 22px;border-radius:6px;cursor:pointer;font-size:14px>🖨 Imprimir / Salvar PDF</button></body></html>");
+  w.document.write("<!DOCTYPE html><html><head><meta charset=UTF-8><title>Procuração</title><style>body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.8;color:#000;margin:0;padding:0;}.pagina{margin:3cm 3cm 2cm 3cm;}h1{text-align:center;font-size:13pt;font-weight:bold;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:24pt;}p{margin-bottom:10pt;text-align:justify;}strong{font-weight:bold;}em{font-style:italic;}.local-data{margin-top:30pt;margin-bottom:40pt;}.sigs-dois{display:grid;grid-template-columns:1fr 1fr;gap:60pt;margin-top:50pt;}.sigs-um{text-align:center;margin-top:50pt;}.sig{text-align:center;}.sig-linha{border-top:1px solid #000;padding-top:6pt;margin-top:50pt;font-size:11pt;}.testemunhas{display:grid;grid-template-columns:1fr 1fr;gap:60pt;margin-top:40pt;}.rodape{position:fixed;bottom:1cm;left:3cm;right:3cm;font-size:9pt;text-align:center;border-top:1px solid #000;padding-top:4pt;color:#333;}@media print{button{display:none!important;}.rodape{position:fixed;bottom:0;}}.btn-print{margin-top:20pt;padding:8pt 20pt;background:#1e293b;color:#fff;border:none;border-radius:4pt;cursor:pointer;font-size:11pt;display:block;margin-left:auto;margin-right:auto;}</style></head><body>"+corpo+""+RODAPE+BTN+"</body></html>");
   w.document.close();
 };
 
@@ -1524,40 +1542,61 @@ const gerarContratoExtrajudicial=(servico,cliente)=>{
   const eh=cliente||{};
   const valorFmt=v=>Number(v||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
   const valor=Number(servico.orcamento?.valor||0);
-  const css="body{font-family:Arial,sans-serif;padding:28px;font-size:12px;line-height:1.8;color:#1e293b;}h1{text-align:center;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;}h2{text-align:center;font-size:12px;font-weight:700;text-transform:uppercase;border-bottom:2px solid #1e293b;padding-bottom:8px;margin-bottom:18px;}p{margin-bottom:8px;text-align:justify;}strong{color:#0f172a;}.clause{margin-bottom:10px;text-align:justify;}.sigs{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:30px;}.sig{text-align:center;}.sig-line{border-top:1px solid #64748b;padding-top:5px;margin-top:36px;font-size:11px;}.sig-name{font-weight:800;font-size:11px;color:#0f172a;}.testemunhas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:20px;}@media print{button{display:none;}}";
-  const corpo=`<h1>Contrato de Honorários</h1><h2>"Despachante Imobiliário"</h2>
-<p>De um lado <strong>CONTRATADO: CARLOS ALBERTO PACHECO DE JESUS JUNIOR</strong>, brasileiro, maior, capaz, solteiro, despachante imobiliário, portador do CPF n. 025.596.265-78, endereço comercial ao rodapé, do outro lado, <strong>CONTRATANTE: ${(eh.nome||"").toUpperCase()}</strong>, ${eh.tipo==="pj"?"pessoa jurídica":"brasileiro(a)"}, capaz, ${eh.estadoCivil||""}, ${eh.profissao||""}${eh.rg?", portador(a) do C.I.RG "+eh.rg+" - SSP/BA":""}${eh.cpf?", CPF/MF "+eh.cpf:""}, residente e domiciliado(a) na ${eh.endereco||""}, ${eh.cidade||""}/BA.</p>
-<p>As partes acima identificadas têm, entre si, justas e acertadas o presente <strong>CONTRATO DE PRESTAÇÃO DE SERVIÇOS, DE DESPACHANTE DOCUMENTALISTA IMOBILIÁRIO</strong>, que se regerá pelas cláusulas e condições seguintes expressas no presente instrumento:</p>
-<div class="clause"><strong>DO OBJETO DO CONTRATO — Cláusula 1ª.</strong> São objetos do presente contrato, prestado ao(à) CONTRATANTE, os serviços de Despachante documentalista imobiliário, regido pela Lei n.10.406/02 a partir do Art. 593, Lei n.10.602/02, Lei nº 13.206/14 e Estatuto do Despachante Imobiliário. O(A) CONTRATANTE contrata os serviços do CONTRATADO para que promova: <strong>${servico.tipo||""} ${servico.descricao?"— "+servico.descricao:""}</strong>.</div>
-<div class="clause"><strong>DAS OBRIGAÇÕES DO CONTRATADO — Cláusula 2ª.</strong> São deveres do CONTRATADO: Compromete-se a utilizar todos os meios legais e possíveis para a conclusão do(s) serviço(s) relacionado(s) na Cláusula 1ª.</div>
-<div class="clause"><strong>DAS OBRIGAÇÕES DO(A) CONTRATANTE — Cláusula 3ª.</strong> São deveres da CONTRATANTE: Fornecer ao CONTRATADO a estrutura consistente em material, elementos e informações necessárias e verídicas à perfeita realização dos serviços, ter clareza em suas informações para que todo o processo tenha curso rápido e legal.<br/><strong>3.1</strong> — Ficando sob a responsabilidade do CONTRATANTE o pagamento de todos os IMPOSTOS, TAXAS E CONTRIBUIÇÕES emitidas pelos órgãos e repartições competentes.</div>
-<div class="clause"><strong>DO PAGAMENTO — Cláusula 4ª.</strong> Pelo efetivo desempenho das atividades, o CONTRATANTE obriga-se a pagar ao CONTRATADO a importância de <strong>R$ ${valorFmt(valor)}</strong>, através de PIX ou Transferência Bancária. BANCO BRADESCO – AGÊNCIA 3497 – C/C 31122-7, CARLOS ALBERTO PACHECO DE JESUS JUNIOR — PIX: 025.596.265-78.</div>
-<div class="clause"><strong>DA RESCISÃO DO CONTRATO — Cláusula 5ª.</strong> O presente contrato pode ser rescindido a qualquer momento pelas partes.<br/><strong>5.1</strong> — Deverá ser cobrado pelo CONTRATADO o valor referente ao serviço prestado até o momento do distrato, de forma proporcional.<br/><strong>5.2</strong> — Nos casos de distrato por interesse ou desistência não justificada, a parte requerente ficará penalizada ao pagamento de multa contratual de 10% sobre o valor total.</div>
-<div class="clause"><strong>DA DURAÇÃO DO CONTRATO — Cláusula 6ª.</strong> O presente instrumento possui prazo determinado, até a conclusão da prestação de serviço elencado na Cláusula 1ª.<br/><strong>6.1</strong> — Em situações em que por responsabilidade do CONTRATANTE o serviço não possa dar seguimento, os valores serão reajustados quando dado prosseguimento.</div>
-<div class="clause"><strong>DAS CONDIÇÕES GERAIS — Cláusula 7ª.</strong> As partes obrigam-se ao cumprimento do presente contrato, sob as penas da Lei e ao ressarcimento de prejuízos que causem entre si.</div>
-<div class="clause"><strong>DO FORO — Cláusula 8ª.</strong> Para dirimir quaisquer controvérsias oriundas do CONTRATO, as partes elegem o foro da comarca de Feira de Santana/BA.</div>
-<p>Por estarem assim justos e contratados, firmam o presente instrumento, em 2 (duas) vias de igual teor, juntamente com 2 (duas) testemunhas.</p>
-<p>Feira de Santana, ${fmtData(new Date().toISOString().slice(0,10))}.</p>
-<div class="sigs"><div class="sig"><div class="sig-line"><div class="sig-name">CARLOS ALBERTO PACHECO DE JESUS JUNIOR</div>Contratado — CPF: 025.596.265-78</div></div><div class="sig"><div class="sig-line"><div class="sig-name">${(eh.nome||"").toUpperCase()}</div>Contratante${eh.cpf?" — CPF: "+eh.cpf:""}</div></div></div>
-<p style="font-size:11px;color:#64748b;margin-top:16px;">TESTEMUNHAS:</p>
-<div class="testemunhas"><div class="sig"><div class="sig-line">1ª Testemunha</div></div><div class="sig"><div class="sig-line">2ª Testemunha</div></div></div>`;
+  const hoje=new Date();
+  const dataExtenso=hoje.toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+  const nat=eh.tipo==="pj"?"pessoa jurídica":"brasileiro(a)";
+  const qualificacao=`${nat}, capaz, ${eh.estadoCivil||""}${eh.profissao?", "+eh.profissao:""}${eh.rg?", portador(a) do RG n. "+eh.rg+" – SSP/BA":""}${eh.cpf?" e CPF/MF "+eh.cpf:""}${eh.endereco?", residente e domiciliado(a) na "+eh.endereco+", "+eh.cidade+"-BA":""}`;
+  const corpo=`<div class="pagina">
+<h1>Contrato de Honorários "Despachante Imobiliário"</h1>
+<p style="text-indent:0;">De um lado <strong>CONTRATADO: CARLOS ALBERTO PACHECO DE JESUS JUNIOR</strong>, brasileiro, maior, capaz, solteiro, despachante imobiliário, portador do CPF n. 025.596.265-78, endereço comercial ao rodapé, do outro lado, <strong>CONTRATANTE: ${(eh.nome||"").toUpperCase()}</strong>, ${qualificacao}.</p>
+<p style="text-indent:0;">As partes acima identificadas têm, entre si, justas e acertadas o presente: <strong>CONTRATO DE PRESTAÇÃO DE SERVIÇOS, DE DESPACHANTE DOCUMENTALISTA IMOBILIÁRIO</strong>, que se regerá pelas cláusulas e condições seguintes expressas no presente instrumento:</p>
+<p style="text-indent:0;"><strong>DO OBJETO DO CONTRATO: Cláusula 1ª.</strong> São objetos do presente contrato, prestado o(a) CONTRATANTE, os serviços de Despachante documentalista imobiliário, regido pela Lei n.10.406/02 a partir do Art. 593[...], Lei n.10.602/02, Lei nº 13.206/14 e Estatuto do Despachante Imobiliário. O(A) CONTRATANTE, contrata, por este instrumento, os serviços de despachante imobiliário do CONTRATADO, para que promova: ${servico._objDesc||servico.descricao||servico.tipo||"conforme acordado entre as partes"}.</p>
+<p style="text-indent:0;"><strong>DAS OBRIGAÇÕES DO CONTRATADO: Cláusula 2ª.</strong> São deveres do CONTRATADO: Compromete-se a utilizar todos os meios legais e possíveis para a conclusão do(s) serviço(s) relacionado na Cláusula 1ª.</p>
+<p style="text-indent:0;"><strong>DAS OBRIGAÇÕES DO(A) CONTRATANTE: Cláusula 3ª.</strong> São deveres da CONTRATANTE: Fornecer ao CONTRATADO a estrutura consistente em material, elementos e informações necessárias e verídicas à expansão e à perfeita realização dos serviços, ter clareza em suas informações, para que todo o processo tenha curso rápido e legal.</p>
+<p style="text-indent:0;"><strong>3.1</strong> - Ficando sob a responsabilidade do CONTRATANTE o pagamento de todos os IMPOSTOS, TAXAS E CONTRIBUIÇÕES, emitidas pelos órgãos e repartições competentes.</p>
+<p style="text-indent:0;"><strong>DO PAGAMENTO, Art. 597 do Código Civil Brasileiro. Cláusula 4ª.</strong> Pelo efetivo desempenho das atividades, o CONTRATANTE obriga-se a pagar ao CONTRATADO, ${servico._parcelas||("a importância de <strong>R$ "+valorFmt(valor)+"</strong>, conforme condições acordadas entre as partes")}, através de Pix ou Transferência Bancária ou Depósito, na conta abaixo: <strong>BANCO BRADESCO – AGÊNCIA 3497 – C/C 31122-7, TITULARIDADE CARLOS ALBERTO PACHECO DE JESUS JUNIOR — CPF: 025.596.265-78 E PIX n. 025.596.265-78</strong></p>
+<p style="text-indent:0;"><strong>DA RESCISÃO DO CONTRATO, Art. 607 do Código Civil Brasileiro. Cláusula 5ª.</strong> O presente contrato pode ser rescindido a qualquer momento pelas partes, com as seguintes diretrizes.</p>
+<p style="text-indent:0;"><strong>Cláusula 5.1</strong> - Pelo CONTRATANTE ou CONTRATADO, em ambos os casos, deverá ser cobrado pelo CONTRATADO o valor referente ao serviço prestado até o momento do distrato, ou seja, de forma proporcional às atividades executadas pelo CONTRATADO até o momento do distrato, devendo o CONTRATADO prestar conta de tudo que foi executado até o momento da solicitação do cancelamento.</p>
+<p style="text-indent:0;"><strong>Cláusula 5.2</strong> - Nos casos de distrato apenas por interesse ou desistência não justa e comprovada, a parte requerente ficará penalizada ao pagamento da multa contratual de 10% no valor total do serviço fixado na Cláusula 4ª, além dos pagamentos que trata a Cláusula 5.1, deste contrato.</p>
+<p style="text-indent:0;"><strong>Cláusula 5.3.</strong> Caso haja interesse na rescisão do contrato, a(s) parte interessada notificará a outra, para que tenha ciência.</p>
+<p style="text-indent:0;"><strong>DA DURAÇÃO DO CONTRATO, Art. 598, 604 e 607 do Código Civil Brasileiro. Cláusula 6ª.</strong> O presente instrumento possui prazo determinado, ou seja, até a conclusão da prestação de serviço elencado na cláusula 1ª, ou por solicitação de cancelamento da Cláusula 5ª.</p>
+<p style="text-indent:0;"><strong>Cláusula 6.1.</strong> Em situações em que por responsabilidade do CONTRATANTE o serviço não possa dar seguimento para sua conclusão, ou fique parado por morosidade do mesmo sem justa causa comprovada, pelo CONTRATADO será reajustado os valores em tempo que for dado prosseguimento para a conclusão do mesmo.</p>
+<p style="text-indent:0;"><strong>DAS CONDIÇÕES GERAIS: Cláusula 7ª.</strong> As partes obrigam-se ao cumprimento do presente contrato, sob as penas da Lei e ao ressarcimento de prejuízos que causem entre si.</p>
+<p style="text-indent:0;"><strong>DO FORO: Cláusula 8ª.</strong> Para dirimir quaisquer controvérsias oriundas do CONTRATO, as partes elegem o foro da comarca de Feira de Santana – BA.</p>
+<p style="text-indent:0;">Por estarem assim justos e contratados, firmam o presente instrumento, em 2 (duas) vias de igual teor, juntamente com 2 (duas) testemunhas.</p>
+<p style="text-align:center;margin-top:20pt;">Feira de Santana – Bahia, ${dataExtenso}</p>
+<div class="sigs-dois">
+  <div class="sig"><div class="sig-linha">CARLOS ALBERTO PACHECO DE JESUS JUNIOR<br/>Contratado — CPF: 025.596.265-78</div></div>
+  <div class="sig"><div class="sig-linha">${(eh.nome||"").toUpperCase()}<br/>Contratante${eh.cpf?" — CPF: "+eh.cpf:""}</div></div>
+</div>
+<p style="font-size:10pt;margin-top:20pt;"><strong>TESTEMUNHAS:</strong></p>
+<div class="testemunhas">
+  <div class="sig"><div class="sig-linha">1ª Testemunha</div></div>
+  <div class="sig"><div class="sig-linha">2ª Testemunha</div></div>
+</div>
+</div>`;
   const w=window.open("","_blank");
-  w.document.write("<!DOCTYPE html><html><head><meta charset=UTF-8><title>Contrato Extrajudicial</title><style>"+css+"</style></head><body>"+corpo+"<br><br><button onclick=window.print() style=background:#1e293b;color:#fff;border:none;padding:10px 22px;border-radius:6px;cursor:pointer;font-size:14px>🖨 Imprimir / Salvar PDF</button></body></html>");
+  w.document.write("<!DOCTYPE html><html><head><meta charset=UTF-8><title>Contrato Despachante</title><style>body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.8;color:#000;margin:0;padding:0;}.pagina{margin:3cm 3cm 2cm 3cm;}h1{text-align:center;font-size:13pt;font-weight:bold;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:24pt;}p{margin-bottom:10pt;text-align:justify;}strong{font-weight:bold;}em{font-style:italic;}.local-data{margin-top:30pt;margin-bottom:40pt;}.sigs-dois{display:grid;grid-template-columns:1fr 1fr;gap:60pt;margin-top:50pt;}.sigs-um{text-align:center;margin-top:50pt;}.sig{text-align:center;}.sig-linha{border-top:1px solid #000;padding-top:6pt;margin-top:50pt;font-size:11pt;}.testemunhas{display:grid;grid-template-columns:1fr 1fr;gap:60pt;margin-top:40pt;}.rodape{position:fixed;bottom:1cm;left:3cm;right:3cm;font-size:9pt;text-align:center;border-top:1px solid #000;padding-top:4pt;color:#333;}@media print{button{display:none!important;}.rodape{position:fixed;bottom:0;}}.btn-print{margin-top:20pt;padding:8pt 20pt;background:#1e293b;color:#fff;border:none;border-radius:4pt;cursor:pointer;font-size:11pt;display:block;margin-left:auto;margin-right:auto;}</style></head><body>"+corpo+""+RODAPE+BTN+"</body></html>");
   w.document.close();
 };
 
 const gerarProcuracaoExtrajudicial=(servico,cliente)=>{
   const eh=cliente||{};
-  const css="body{font-family:Arial,sans-serif;padding:28px;font-size:12px;line-height:1.8;color:#1e293b;}h1{text-align:center;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #1e293b;padding-bottom:10px;margin-bottom:20px;}p{margin-bottom:8px;text-align:justify;}strong{color:#0f172a;}.sigs{margin-top:40px;text-align:center;}.sig-line{border-top:1px solid #64748b;padding-top:6px;margin-top:40px;font-size:11px;max-width:300px;margin-left:auto;margin-right:auto;}.sig-name{font-weight:800;font-size:12px;color:#0f172a;}@media print{button{display:none;}}";
-  const corpo=`<h1>Procuração</h1>
-<p><strong>1) ${(eh.nome||"").toUpperCase()}</strong>, brasileiro(a), maior, capaz, ${eh.estadoCivil||""}, ${eh.profissao||""}, portador(a) do C.I.RG sob n. ${eh.rg||""} - SSP/BA e CPF/MF sob n. ${eh.cpf||""}, residente na cidade de ${eh.cidade||"Feira de Santana"}/BA, na ${eh.endereco||""}.</p>
-<p><strong>2)</strong> E que nomeio como Procuradores a Sra. <strong>Priscila Brasil de Jesus</strong>, brasileira, capaz, solteira, despachante imobiliária, portadora do CPF/MF 008.932.815-90, C.I.RG 1203080450-SSP-BA, (e/ou) <strong>Carlos Alberto Pacheco de Jesus Junior</strong>, brasileiro, capaz, advogado, inscrito na OAB/BA sob número 77.882, ambos com endereço eletrônico renov.assessoria@hotmail.com, e com endereço profissional na cidade de Feira de Santana/BA, Rua Barão do Cotegipe, n. 1.479, Edf. Ferbel, sala térreo - Centro;</p>
-<p><strong>3)</strong> Pelo presente instrumento, eu, <strong>${eh.nome||""}</strong>, outorgo poderes específicos ao(à) Priscila Brasil de Jesus e/ou Carlos Alberto Pacheco de Jesus Junior, para que, em meu nome e representação, possa atuar perante a Prefeitura Municipal de Feira de Santana, inclusive junto à Secretaria da Fazenda (SEFAZ), Secretaria de Desenvolvimento Urbano (SEDUR), Secretaria Municipal de Meio Ambiente (SEMMAN) e Procuradoria do Município, bem como perante a SEFAZ do Estado da Bahia (SEFAZ-BA), podendo, para tanto, efetuar pagamentos, negociar e parcelar débitos, solicitar e retirar declarações, certidões, alvarás, habite-se, certidão de demolição, segunda via de documentos, requerer avaliações, reiterar pedidos, apresentar e retirar documentações, assinar requerimentos, formulários, termos e declarações, acompanhar o trâmite de processos administrativos, realizar diligências que se fizerem necessárias, assinar ART, plantas, memoriais e requerimentos relacionados a projetos técnicos e urbanísticos, bem como praticar todos os atos administrativos indispensáveis ao fiel cumprimento do presente mandato. Outorgo, ainda, poderes para representar-me perante Tabelionatos de Notas e Registros de Imóveis, podendo assinar requerimentos, prestar declarações, protocolar e retirar documentos, acompanhar procedimentos registrais e praticar todos os atos necessários à regularização e formalização de atos imobiliários.</p>
-<p>O presente mandato é outorgado por prazo indeterminado, ou até a conclusão dos processos e procedimentos requeridos junto aos órgãos acima mencionados, referente a: <strong>${servico.tipo||""} ${servico.descricao?"— "+servico.descricao:""}</strong>.</p>
-<p>Feira de Santana, ${fmtData(new Date().toISOString().slice(0,10))}.</p>
-<div class="sigs"><div class="sig-line"><div class="sig-name">${(eh.nome||"").toUpperCase()}</div>Outorgante</div></div>`;
+  const hoje=new Date();
+  const dataExtenso=hoje.toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"});
+  const qualificacao=`${eh.tipo==="pj"?"pessoa jurídica":"brasileiro(a)"}, maior, capaz, ${eh.estadoCivil||""}${eh.profissao?", "+eh.profissao:""}${eh.rg?", portador(a) do C.I.RG sob n. "+eh.rg+" – SSP/BA":""}${eh.cpf?" e CPF/MF sob n. "+eh.cpf:""}${eh.endereco?", residente na cidade de "+(eh.cidade||"Feira de Santana")+"/BA, na "+eh.endereco:""}`;
+  const corpo=`<div class="pagina">
+<h1>Procuração</h1>
+<p style="text-indent:0;"><strong>1) ${(eh.nome||"").toUpperCase()}</strong>, ${qualificacao}.</p>
+<p style="text-indent:0;"><strong>2)</strong> E que nomeio como Procuradores a Sra. <strong>Priscila Brasil de Jesus</strong>, brasileira, capaz, solteira, despachante imobiliária, portadora do CPF/MF 008.932.815-90, C.I.RG 1203080450-SSP-BA, (e/ou) <strong>Carlos Alberto Pacheco de Jesus Junior</strong>, brasileiro, capaz, advogado, inscrito na OAB/BA sob número 77.882, ambos com endereço eletrônico renov.assessoria@hotmail.com, e com endereço profissional na cidade de Feira de Santana/BA, Rua Barão do Cotegipe, n. 1.479, Edf. Ferbel, sala térreo - Centro;</p>
+<p style="text-indent:0;"><strong>3)</strong> Pelo presente instrumento, eu, <strong>${eh.nome||""}</strong>, outorgo poderes específicos ao(à) Priscila Brasil de Jesus e/ou Carlos Alberto Pacheco de Jesus Junior, para que, em meu nome e representação, possa atuar perante a Prefeitura Municipal de Feira de Santana, inclusive junto à Secretaria da Fazenda (SEFAZ), Secretaria de Desenvolvimento Urbano (SEDUR), Secretaria Municipal de Meio Ambiente (SEMMAN) e Procuradoria do Município, bem como perante a SEFAZ do Estado da Bahia (SEFAZ-BA), podendo, para tanto, efetuar pagamentos, negociar e parcelar débitos, solicitar e retirar declarações, certidões, alvarás, habite-se, certidão de demolição, segunda via de documentos, requerer avaliações, reiterar pedidos, apresentar e retirar documentações, assinar requerimentos, formulários, termos e declarações, acompanhar o trâmite de processos administrativos, realizar diligências que se fizerem necessárias, assinar ART, plantas, memoriais e requerimentos relacionados a projetos técnicos e urbanísticos, bem como praticar todos os atos administrativos indispensáveis ao fiel cumprimento do presente mandato. Outorgo, ainda, poderes para representar-me perante Tabelionatos de Notas e Registros de Imóveis, podendo assinar requerimentos, prestar declarações, protocolar e retirar documentos, acompanhar procedimentos registrais e praticar todos os atos necessários à regularização e formalização de atos imobiliários. O presente mandato é outorgado por prazo indeterminado, ou até a conclusão dos processos e procedimentos requeridos junto aos órgãos acima mencionados, autorizando-se o(a) procurador(a) a praticar todos os atos que se fizerem necessários ao integral cumprimento deste mandato.</p>
+<p style="text-align:center;margin-top:30pt;">Feira de Santana – BA, ${dataExtenso}</p>
+<div class="sigs-um">
+  <div class="sig-linha" style="max-width:340pt;margin:50pt auto 0;">${(eh.nome||"").toUpperCase()}<br/>Outorgante</div>
+</div>
+</div>`;
   const w=window.open("","_blank");
-  w.document.write("<!DOCTYPE html><html><head><meta charset=UTF-8><title>Procuração Extrajudicial</title><style>"+css+"</style></head><body>"+corpo+"<br><br><button onclick=window.print() style=background:#1e293b;color:#fff;border:none;padding:10px 22px;border-radius:6px;cursor:pointer;font-size:14px>🖨 Imprimir / Salvar PDF</button></body></html>");
+  w.document.write("<!DOCTYPE html><html><head><meta charset=UTF-8><title>Procuração Extrajudicial</title><style>body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.8;color:#000;margin:0;padding:0;}.pagina{margin:3cm 3cm 2cm 3cm;}h1{text-align:center;font-size:13pt;font-weight:bold;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:24pt;}p{margin-bottom:10pt;text-align:justify;}strong{font-weight:bold;}em{font-style:italic;}.local-data{margin-top:30pt;margin-bottom:40pt;}.sigs-dois{display:grid;grid-template-columns:1fr 1fr;gap:60pt;margin-top:50pt;}.sigs-um{text-align:center;margin-top:50pt;}.sig{text-align:center;}.sig-linha{border-top:1px solid #000;padding-top:6pt;margin-top:50pt;font-size:11pt;}.testemunhas{display:grid;grid-template-columns:1fr 1fr;gap:60pt;margin-top:40pt;}.rodape{position:fixed;bottom:1cm;left:3cm;right:3cm;font-size:9pt;text-align:center;border-top:1px solid #000;padding-top:4pt;color:#333;}@media print{button{display:none!important;}.rodape{position:fixed;bottom:0;}}.btn-print{margin-top:20pt;padding:8pt 20pt;background:#1e293b;color:#fff;border:none;border-radius:4pt;cursor:pointer;font-size:11pt;display:block;margin-left:auto;margin-right:auto;}</style></head><body>"+corpo+""+RODAPE+BTN+"</body></html>");
   w.document.close();
 };
 
@@ -1566,58 +1605,127 @@ const AbaContratos=({servico,cliente,atualizar,showToast})=>{
   const isJudicial=servico.tipoProcesso==="judicial";
   const conj=eh.conjugeNome&&(eh.estadoCivil==="Casado(a)"||eh.estadoCivil==="União Estável");
   const historico=servico.historicoContratos||[];
+  const [modalDoc,setModalDoc]=useState(null);
+  const [campos,setCampos]=useState({objeto:"",parcelas:"",objDesc:""});
+
   const registrar=(tipo)=>{
     const novo={id:Date.now(),tipo,data:new Date().toISOString().slice(0,10),hora:new Date().toTimeString().slice(0,5)};
     atualizar({historicoContratos:[...historico,novo]});
     if(showToast)showToast(tipo+" gerado!");
   };
+
+  const abrirModal=(tipo)=>{
+    setCampos({objeto:"",parcelas:"",objDesc:""});
+    setModalDoc(tipo);
+  };
+
+  const gerarDoc=()=>{
+    const sv={...servico,_objeto:campos.objeto,_parcelas:campos.parcelas,_objDesc:campos.objDesc};
+    if(modalDoc==="contrato_judicial"){gerarContratoJudicial(sv,cliente);registrar("Contrato de Honorários Advocatícios");}
+    else if(modalDoc==="proc_judicial"){gerarProcuracaoJudicial(sv,cliente);registrar("Procuração Ad Judicia");}
+    else if(modalDoc==="contrato_extra"){gerarContratoExtrajudicial(sv,cliente);registrar("Contrato de Despachante Imobiliário");}
+    else if(modalDoc==="proc_extra"){gerarProcuracaoExtrajudicial(sv,cliente);registrar("Procuração Ad Negotia");}
+    setModalDoc(null);
+  };
+
   const docs=isJudicial?[
-    {tipo:"Contrato de Honorários Advocatícios",icon:"📋",gerar:()=>{gerarContratoJudicial(servico,cliente);registrar("Contrato de Honorários Advocatícios");}},
-    {tipo:"Procuração Ad Judicia",icon:"📜",gerar:()=>{gerarProcuracaoJudicial(servico,cliente);registrar("Procuração Ad Judicia");}},
+    {id:"contrato_judicial",tipo:"Contrato de Honorários Advocatícios",icon:"◈"},
+    {id:"proc_judicial",tipo:"Procuração Ad Judicia",icon:"◎"},
   ]:[
-    {tipo:"Contrato de Despachante Imobiliário",icon:"📋",gerar:()=>{gerarContratoExtrajudicial(servico,cliente);registrar("Contrato de Despachante Imobiliário");}},
-    {tipo:"Procuração Ad Negotia",icon:"📜",gerar:()=>{gerarProcuracaoExtrajudicial(servico,cliente);registrar("Procuração Ad Negotia");}},
+    {id:"contrato_extra",tipo:"Contrato de Despachante Imobiliário",icon:"◈"},
+    {id:"proc_extra",tipo:"Procuração Ad Negotia",icon:"◎"},
   ];
+
+  const precisaObjeto=modalDoc==="contrato_judicial"||modalDoc==="proc_judicial";
+  const precisaParcelas=modalDoc==="contrato_judicial"||modalDoc==="contrato_extra";
+  const precisaObjDesc=modalDoc==="contrato_extra"||modalDoc==="proc_extra";
+
   return(
     <div>
+      {/* Banner tipo */}
       <div style={{background:isJudicial?"#ef444408":"#3b82f608",border:"1px solid "+(isJudicial?"#ef444422":"#3b82f622"),borderRadius:10,padding:"12px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
-        <span style={{fontSize:18}}>{isJudicial?"⚖":"🏠"}</span>
+        <span style={{fontSize:16}}>{isJudicial?"⚖":"◈"}</span>
         <div>
           <div style={{fontSize:13,fontWeight:700,color:isJudicial?"#ef4444":"#3b82f6"}}>Modelos {isJudicial?"Judiciais":"Extrajudiciais"} disponíveis</div>
-          <div style={{fontSize:11,color:"#475569",marginTop:2}}>Tipo detectado automaticamente pelo cadastro do serviço</div>
+          <div style={{fontSize:11,color:"#475569",marginTop:2}}>Dados do cliente preenchidos automaticamente</div>
         </div>
       </div>
-      {!eh.profissao&&<div style={{background:"#f59e0b0d",border:"1px solid #f59e0b33",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12,color:"#f59e0b"}}>⚠ Campos complementares do cliente (profissão, naturalidade, filiação) não preenchidos. <span style={{color:"#e2e8f0"}}>Complete o cadastro para documentos mais completos.</span></div>}
-      {conj&&<div style={{background:"#3b82f60a",border:"1px solid #3b82f622",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12,color:"#3b82f6"}}>💍 Cônjuge identificado: <strong style={{color:"#e2e8f0"}}>{eh.conjugeNome}</strong> — constará nos documentos</div>}
+      {!eh.profissao&&<div style={{background:"#f59e0b0d",border:"1px solid #f59e0b33",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12,color:"#f59e0b"}}>⚠ Campos complementares do cliente (profissão, naturalidade, filiação) não preenchidos. Complete o cadastro para documentos mais completos.</div>}
+      {conj&&<div style={{background:"#3b82f60a",border:"1px solid #3b82f622",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12,color:"#3b82f6"}}>Cônjuge identificado: <strong style={{color:"#e2e8f0"}}>{eh.conjugeNome}</strong> — constará nos documentos</div>}
+
+      {/* Cards dos documentos */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
         {docs.map(d=>(
           <div key={d.tipo} style={{...S.card,textAlign:"center",padding:20}}>
-            <div style={{fontSize:32,marginBottom:10}}>{d.icon}</div>
+            <div style={{fontSize:28,marginBottom:10,color:"#3b82f6"}}>{d.icon}</div>
             <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:6}}>{d.tipo}</div>
-            <div style={{fontSize:11,color:"#475569",marginBottom:14}}>Dados do cliente preenchidos automaticamente</div>
-            <button style={{...S.btnPrimary,width:"100%"}} onClick={d.gerar} className="bp">🖨 Gerar e Imprimir</button>
+            <div style={{fontSize:11,color:"#475569",marginBottom:14}}>Clique para preencher e gerar</div>
+            <button style={{...S.btnPrimary,width:"100%"}} onClick={()=>abrirModal(d.id)} className="bp">Gerar documento</button>
           </div>
         ))}
       </div>
+
+      {/* Histórico */}
       {historico.length>0&&(
         <div style={S.card}>
-          <div style={S.cardTitle}>Histórico de Documentos Gerados</div>
-          {[...historico].reverse().map(h=>(
-            <div key={h.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid #0f1f35",fontSize:12}}>
-              <span style={{fontSize:16}}>{h.tipo.includes("Procuração")?"◎":"◈"}</span>
+          <div style={{...S.cardTitle,marginBottom:10}}>Documentos gerados</div>
+          {historico.slice().reverse().map(h=>(
+            <div key={h.id} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:"1px solid #0f1f35"}}>
+              <span style={{fontSize:14,color:"#3b82f6"}}>◎</span>
               <div style={{flex:1}}>
-                <div style={{fontWeight:600,color:"#e2e8f0"}}>{h.tipo}</div>
-                <div style={{fontSize:11,color:"#475569"}}>Gerado em {h.data} às {h.hora}</div>
+                <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{h.tipo}</div>
+                <div style={{fontSize:11,color:"#475569"}}>{fmtData(h.data)} às {h.hora}</div>
               </div>
-              <button style={{...S.btnSm,color:"#3b82f6",borderColor:"#3b82f644"}} onClick={()=>{const d=docs.find(x=>x.tipo===h.tipo);if(d)d.gerar();}} className="bs">🖨 Reimprimir</button>
             </div>
           ))}
         </div>
       )}
-      {historico.length===0&&<div style={S.empty}>Nenhum documento gerado ainda. Clique em Gerar e Imprimir para criar.</div>}
+
+      {/* Modal de preenchimento */}
+      {modalDoc&&(
+        <div style={S.overlay} onClick={()=>setModalDoc(null)}>
+          <div style={{...S.modal,maxWidth:520}} onClick={e=>e.stopPropagation()}>
+            <div style={{...S.modalHeader}}>
+              <div style={S.modalTitle}>Preencher antes de gerar</div>
+              <button style={S.modalClose} onClick={()=>setModalDoc(null)}>×</button>
+            </div>
+            <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
+              {precisaObjeto&&(
+                <div>
+                  <label style={{...S.label}}>Objeto do serviço (Cláusula 1ª) *</label>
+                  <textarea style={{...S.fi,minHeight:80,resize:"vertical"}} placeholder={"Ex: ação de Usucapião judicial da área de terra situado no lugar denominado antiga Fazenda Boca da Onça, até a última instância dos Órgãos do Poder Judiciário Estaduais, e o registro da respectiva sentença quando proferida."} value={campos.objeto} onChange={e=>setCampos({...campos,objeto:e.target.value})}/>
+                  <div style={{fontSize:10,color:"#475569",marginTop:4}}>Este texto ficará sublinhado na Cláusula 1ª — descreva o serviço completo.</div>
+                </div>
+              )}
+              {precisaObjDesc&&(
+                <div>
+                  <label style={{...S.label}}>Objeto do serviço (Cláusula 1ª) *</label>
+                  <textarea style={{...S.fi,minHeight:80,resize:"vertical"}} placeholder={"Ex: A transferência de titularidade do imóvel de matrícula n. 11.789, serviços: Cadastro junto a Prefeitura, acompanhamento da escritura e registro."} value={campos.objDesc} onChange={e=>setCampos({...campos,objDesc:e.target.value})}/>
+                </div>
+              )}
+              {precisaParcelas&&(
+                <div>
+                  <label style={{...S.label}}>Valor e forma de pagamento (Cláusula 2ª / 4ª) *</label>
+                  <textarea style={{...S.fi,minHeight:80,resize:"vertical"}} placeholder={"Ex: R$ 15.000,00 (quinze mil reais), sendo: R$ 5.000,00 em 07/04/2026, R$ 3.333,33 em 07/06/2026, R$ 3.333,33 em 07/09/2026 e R$ 3.333,33 em 07/12/2026."} value={campos.parcelas} onChange={e=>setCampos({...campos,parcelas:e.target.value})}/>
+                </div>
+              )}
+            </div>
+            <div style={{...S.modalFooter}}>
+              <button style={S.btnSec} onClick={()=>setModalDoc(null)} className="bs">Cancelar</button>
+              <button style={S.btnPrimary} onClick={gerarDoc} className="bp">Gerar e Imprimir</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
+
+
+
+
+
 
 // Funções de impressão
 const _t=(c,s,v)=>"<"+c+(s?" style='"+s+"'":"")+">"+v+"</"+c+">";
