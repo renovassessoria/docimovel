@@ -1292,7 +1292,7 @@ const AbaPublicacoes=({servico})=>{
       const movimentos=(hit._source?.movimentos||[]).sort((a,b)=>new Date(b.dataHora)-new Date(a.dataHora));
       setMovs(movimentos);
       setUltima(new Date().toLocaleString("pt-BR"));
-    }catch(e){setErro("Erro ao consultar DataJud. Tente novamente.");}
+    }catch(e){setErro("Não foi possível consultar o DataJud diretamente pelo browser (restrição CORS). Use o botão Abrir no PJe TJBA para consultar o processo.");}
     setLoading(false);
   };
 
@@ -1317,7 +1317,10 @@ const AbaPublicacoes=({servico})=>{
                 <div style={{fontSize:11,color:"#475569"}}>Consulta pública gratuita · TJBA · {numProc?("Processo: "+numProc):"Número não cadastrado"}</div>
                 {ultima&&<div style={{fontSize:11,color:"#22c55e",marginTop:2}}>Ultima consulta: {ultima}</div>}
               </div>
+              <div style={{display:"flex",gap:8}}>
               <button style={S.btnPrimary} onClick={buscar} className="bp" disabled={loading}>{loading?"Consultando...":"Consultar agora"}</button>
+              {numProc&&<button style={{...S.btnSm,color:"#3b82f6",borderColor:"#3b82f644"}} onClick={()=>window.open("https://pje.tjba.jus.br/pje/ConsultaPublica/listView.seam","_blank")} className="bs">Abrir no PJe TJBA</button>}
+            </div>
             </div>
           </div>
           {erro&&<div style={{background:"#ef444408",border:"1px solid #ef444433",borderRadius:9,padding:"12px 16px",marginBottom:14,fontSize:12,color:"#ef4444"}}>{erro}</div>}
