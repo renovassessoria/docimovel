@@ -29,6 +29,127 @@ input,select,textarea{font-family:'Outfit',sans-serif;}
 </head>
 <body>
 <div id="root"></div>
+<script>
+// Verificar rota portal ANTES do Babel carregar
+(function(){
+  var path = window.location.pathname;
+  var m = path.match(/\/processo\/([A-Za-z0-9]+)$/);
+  if(!m) return;
+  var token = m[1];
+  var SUPA_URL = "https://dnykryfwvylivzfetjko.supabase.co";
+  var SUPA_KEY = "sb_publishable_Ep1D6wtOw9z3GtEFc-4WiA_LhO_3aYn";
+  var root = document.getElementById("root");
+
+  var EJ = [
+    {k:"protocolado",l:"Protocolado"},
+    {k:"audiencia_conciliacao",l:"Audiência de Conciliação"},
+    {k:"tramitacao",l:"Em Tramitação"},
+    {k:"audiencia_instrucao",l:"Audiência de Instrução e Julgamento"},
+    {k:"sentenca",l:"Sentença"}
+  ];
+  var EA = [
+    {k:"iniciado",l:"Iniciado"},
+    {k:"diligencias",l:"Diligências Internas"},
+    {k:"cartorio_notas",l:"Cartório de Notas"},
+    {k:"cartorio_registro",l:"Cartório de Registro"},
+    {k:"concluso",l:"Concluso"}
+  ];
+
+  function fmtDt(d){if(!d)return"";var p=d.split("-");return p[2]+"/"+p[1]+"/"+p[0];}
+
+  root.innerHTML = '<div style="font-family:Outfit,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f1f5f9;color:#475569"><div style="text-align:center"><div style="font-size:28px;margin-bottom:12px">◎</div><div style="font-size:14px;font-weight:600">Carregando...</div></div></div>';
+
+  fetch(SUPA_URL+"/rest/v1/servicos?select=tipo,tipo_processo,portal,clientes(nome)&portal->>token=eq."+token, {
+    headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+  }).then(function(r){return r.json();}).then(function(data){
+    if(!data||data.length===0){
+      root.innerHTML='<div style="font-family:Outfit,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f1f5f9"><div style="text-align:center;background:white;padding:32px;border-radius:14px;max-width:320px"><div style="font-size:32px;margin-bottom:12px;color:#ef4444">◈</div><div style="font-size:14px;font-weight:700;color:#ef4444;margin-bottom:6px">Processo não encontrado</div><div style="font-size:12px;color:#94a3b8">Verifique o link ou entre em contato com o escritório.</div></div></div>';
+      return;
+    }
+    var d = data[0];
+    var isJ = d.tipo_processo === "judicial";
+    var estagios = isJ ? EJ : EA;
+    var portal = d.portal || {};
+    var eAtual = portal.estagio_atual || estagios[0].k;
+    var idx = estagios.findIndex ? estagios.findIndex(function(e){return e.k===eAtual;}) : 0;
+    for(var i=0;i<estagios.length;i++){if(estagios[i].k===eAtual){idx=i;break;}}
+    var cor = isJ ? "#dc2626" : "#2563eb";
+    var nome = (d.clientes && d.clientes.nome) || "";
+    var datas = portal.datas || {};
+
+    var tlHTML = estagios.map(function(e,i){
+      var done = i < idx;
+      var active = i === idx;
+      var pending = i > idx;
+      var bg = done?"#22c55e":active?cor:"white";
+      var border = done?"#22c55e":active?cor:"#e2e8f0";
+      var txtCor = done?"#15803d":active?cor:"#94a3b8";
+      var tagBg = done?"#f0fdf4":active?(isJ?"#fef2f2":"#eff6ff"):"#f8fafc";
+      var tagCor = done?"#16a34a":active?cor:"#94a3b8";
+      var tagTxt = done?(fmtDt(datas[e.k])||"Concluído"):active?"Em andamento":"Aguardando";
+      var lineColor = done?"#22c55e":"#e2e8f0";
+      return '<div style="display:flex;gap:14px">'
+        +'<div style="display:flex;flex-direction:column;align-items:center;width:28px;flex-shrink:0">'
+        +'<div style="width:28px;height:28px;border-radius:50%;background:'+bg+';border:2px solid '+border+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:'+(done||active?'white':'#cbd5e1')+';flex-shrink:0">'+(done?'✓':(i+1))+'</div>'
+        +(i<estagios.length-1?'<div style="width:2px;flex:1;min-height:24px;background:'+lineColor+'"></div>':'')
+        +'</div>'
+        +'<div style="padding:2px 0 20px;flex:1">'
+        +'<div style="font-size:13px;font-weight:700;color:'+txtCor+';margin-bottom:2px">'+e.l+'</div>'
+        +'<div style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;display:inline-block;background:'+tagBg+';color:'+tagCor+'">'+tagTxt+'</div>'
+        +'</div>'
+        +'</div>';
+    }).join("");
+
+    root.innerHTML =
+      '<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>'
+      +'<div style="font-family:Outfit,sans-serif;background:#f1f5f9;min-height:100vh">'
+      // Header
+      +'<div style="background:'+(isJ?'linear-gradient(135deg,#0f172a,#3b0a0a)':'linear-gradient(135deg,#0f172a,#1e3a5f)')+';padding:24px 20px 28px">'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">'
+      +'<div style="width:36px;height:36px;background:linear-gradient(135deg,#1e3a5f,#3b82f6);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:white">DI</div>'
+      +'<div><div style="font-size:13px;font-weight:800;color:white">DocImóvel PRO</div><div style="font-size:10px;color:#94a3b8">Acompanhamento de Processo</div></div>'
+      +'</div>'
+      +'<div style="font-size:20px;font-weight:800;color:white;margin-bottom:3px">'+nome+'</div>'
+      +'<div style="font-size:12px;color:#94a3b8">'+d.tipo+'</div>'
+      +'<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:4px;display:inline-block;margin-top:6px;background:'+cor+'22;color:'+cor+';border:1px solid '+cor+'33">'+(isJ?'Processo Judicial':'Processo Extrajudicial')+'</span>'
+      +'</div>'
+      // Body
+      +'<div style="max-width:480px;margin:0 auto;padding:20px 16px">'
+      // Status
+      +'<div style="background:white;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 2px 12px #00000010;border-left:4px solid '+cor+'">'
+      +'<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Situação atual</div>'
+      +'<div style="font-size:16px;font-weight:800;color:'+cor+';margin-bottom:2px">'+estagios[idx].l+'</div>'
+      +(datas[eAtual]?'<div style="font-size:11px;color:#94a3b8">Atualizado em '+fmtDt(datas[eAtual])+'</div>':'')
+      +'</div>'
+      // Timeline
+      +'<div style="background:white;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 2px 12px #00000010">'
+      +'<div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:16px">Andamento do processo</div>'
+      +tlHTML
+      +'</div>'
+      // Info
+      +'<div style="background:white;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 2px 12px #00000010">'
+      +'<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px">Informações</div>'
+      +'<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:13px"><span style="color:#94a3b8">Tipo</span><span style="font-weight:600;color:#1e293b">'+d.tipo+'</span></div>'
+      +'<div style="display:flex;justify-content:space-between;padding:7px 0;font-size:13px"><span style="color:#94a3b8">Protocolo criado em</span><span style="font-weight:600;color:#1e293b">'+fmtDt(datas[estagios[0].k]||'')+'</span></div>'
+      +'</div>'
+      // Contato
+      +'<div style="background:white;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 2px 12px #00000010;text-align:center">'
+      +'<div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:4px">Em caso de dúvidas, entre em contato.</div>'
+      +'<div style="font-size:11px;color:#94a3b8;line-height:1.6">* Algumas atualizações podem apresentar pequeno atraso em relação ao andamento real do processo.</div>'
+      +'</div>'
+      +'<div style="padding:16px;text-align:center;font-size:11px;color:#94a3b8">2026 · © Carlos Alberto Pacheco · Todos os direitos reservados</div>'
+      +'</div>'
+      +'</div>';
+
+    // Stop Babel from loading since we don't need it
+    document.querySelectorAll('script[type="text/babel"]').forEach(function(s){s.type='text/disabled';});
+  }).catch(function(){
+    root.innerHTML='<div style="font-family:Outfit,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f1f5f9"><div style="text-align:center;background:white;padding:32px;border-radius:14px"><div style="font-size:14px;font-weight:700;color:#ef4444">Erro ao carregar. Tente novamente.</div></div></div>';
+  });
+  // Prevent Babel from running the main app
+  window._isPortal = true;
+})();
+</script>
 <script type="text/babel">
 const {useState,useEffect,useMemo} = React;
 const {createClient} = supabase;
@@ -160,8 +281,132 @@ const fazerBackup = async (sb, showToast) => {
   }
 };
 
+// ── Portal do Cliente (acesso publico via link) ──
+const PortalClientePublico=({token})=>{
+  const [dados,setDados]=React.useState(null);
+  const [loading,setLoading]=React.useState(true);
+  const [erro,setErro]=React.useState("");
+  const SUPA_URL="https://dnykryfwvylivzfetjko.supabase.co";
+  const SUPA_KEY="sb_publishable_Ep1D6wtOw9z3GtEFc-4WiA_LhO_3aYn";
+
+  React.useEffect(()=>{
+    fetch(SUPA_URL+"/rest/v1/servicos?select=tipo,tipo_processo,portal,clientes(nome)&portal->>token=eq."+token,{
+      headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+    }).then(r=>r.json()).then(data=>{
+      if(!data||data.length===0){setErro("Processo nao encontrado.");setLoading(false);return;}
+      setDados(data[0]);setLoading(false);
+    }).catch(()=>{setErro("Erro ao carregar dados.");setLoading(false);});
+  },[token]);
+
+  const EJ=[
+    {k:"protocolado",l:"Protocolado",desc:"Processo protocolado junto ao Poder Judiciario e distribuido a vara competente."},
+    {k:"audiencia_conciliacao",l:"Audiencia de Conciliacao",desc:"Audiencia de conciliacao entre as partes designada pelo juizo."},
+    {k:"tramitacao",l:"Em Tramitacao",desc:"Processo em andamento perante o Judiciario."},
+    {k:"audiencia_instrucao",l:"Audiencia de Instrucao e Julgamento",desc:"Audiencia de instrucao e julgamento designada pelo juizo."},
+    {k:"sentenca",l:"Sentenca",desc:"Decisao final do juiz sobre o processo."},
+  ];
+  const EA=[
+    {k:"iniciado",l:"Iniciado",desc:"Processo iniciado e documentacao recebida."},
+    {k:"diligencias",l:"Diligencias Internas",desc:"Levantamento e organizacao da documentacao necessaria."},
+    {k:"cartorio_notas",l:"Cartorio de Notas",desc:"Processo em andamento no Cartorio de Notas."},
+    {k:"cartorio_registro",l:"Cartorio de Registro",desc:"Registro no Cartorio de Registro de Imoveis."},
+    {k:"concluso",l:"Concluso",desc:"Processo finalizado e documentacao entregue."},
+  ];
+
+  const fmtDt=(d)=>{if(!d)return"";try{const p=d.split("-");return p[2]+"/"+p[1]+"/"+p[0];}catch{return d;}};
+
+  if(loading)return React.createElement("div",{style:{fontFamily:"Outfit,sans-serif",display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#f1f5f9",color:"#475569"}},
+    React.createElement("div",{style:{textAlign:"center"}},
+      React.createElement("div",{style:{fontSize:32,marginBottom:12}},"◎"),
+      React.createElement("div",{style:{fontSize:14,fontWeight:600}},"Carregando...")
+    )
+  );
+
+  if(erro||!dados)return React.createElement("div",{style:{fontFamily:"Outfit,sans-serif",display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#f1f5f9"}},
+    React.createElement("div",{style:{textAlign:"center",background:"white",padding:32,borderRadius:14,maxWidth:320}},
+      React.createElement("div",{style:{fontSize:32,marginBottom:12,color:"#ef4444"}},"◈"),
+      React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#ef4444",marginBottom:6}}),
+      React.createElement("div",{style:{fontSize:12,color:"#94a3b8"}},"Verifique o link ou entre em contato com o escritorio.")
+    )
+  );
+
+  const isJ=dados.tipo_processo==="judicial";
+  const estagios=isJ?EJ:EA;
+  const portal=dados.portal||{};
+  const eAtual=portal.estagio_atual||estagios[0].k;
+  const idx=estagios.findIndex(e=>e.k===eAtual);
+  const cor=isJ?"#dc2626":"#2563eb";
+  const nomeCliente=dados.clientes?.nome||"";
+
+  return React.createElement("div",{style:{fontFamily:"Outfit,sans-serif",background:"#f1f5f9",minHeight:"100vh"}},
+    React.createElement("link",{href:"https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap",rel:"stylesheet"}),
+    // Header
+    React.createElement("div",{style:{background:isJ?"linear-gradient(135deg,#0f172a,#3b0a0a)":"linear-gradient(135deg,#0f172a,#1e3a5f)",padding:"24px 20px 28px"}},
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:18}},
+        React.createElement("div",{style:{width:36,height:36,background:"linear-gradient(135deg,#1e3a5f,#3b82f6)",borderRadius:9,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"white"}},"DI"),
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:13,fontWeight:800,color:"white"}},"DocImovel PRO"),
+          React.createElement("div",{style:{fontSize:10,color:"#94a3b8"}},"Acompanhamento de Processo")
+        )
+      ),
+      React.createElement("div",{style:{fontSize:20,fontWeight:800,color:"white",marginBottom:3}},nomeCliente),
+      React.createElement("div",{style:{fontSize:12,color:"#94a3b8"}},dados.tipo),
+      React.createElement("span",{style:{fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:4,display:"inline-block",marginTop:6,background:cor+"22",color:cor,border:"1px solid "+cor+"33"}},isJ?"Processo Judicial":"Processo Extrajudicial")
+    ),
+    // Body
+    React.createElement("div",{style:{maxWidth:480,margin:"0 auto",padding:"20px 16px"}},
+      // Status card
+      React.createElement("div",{style:{background:"white",borderRadius:14,padding:18,marginBottom:16,boxShadow:"0 2px 12px #00000010",borderLeft:"4px solid "+cor}},
+        React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".05em",marginBottom:4}},"Situacao atual"),
+        React.createElement("div",{style:{fontSize:16,fontWeight:800,color:cor,marginBottom:2}},estagios[idx]?.l||""),
+        portal.datas?.[eAtual]?React.createElement("div",{style:{fontSize:11,color:"#94a3b8"}},"Atualizado em "+fmtDt(portal.datas[eAtual])):null
+      ),
+      // Timeline
+      React.createElement("div",{style:{background:"white",borderRadius:14,padding:18,marginBottom:16,boxShadow:"0 2px 12px #00000010"}},
+        React.createElement("div",{style:{fontSize:12,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".04em",marginBottom:16}},"Andamento do processo"),
+        ...estagios.map((e,i)=>{
+          const done=i<idx;const active=i===idx;
+          return React.createElement("div",{key:e.k,style:{display:"flex",gap:14}},
+            React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",width:28,flexShrink:0}},
+              React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:done?"#22c55e":active?cor:"white",border:"2px solid "+(done?"#22c55e":active?cor:"#e2e8f0"),display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:done||active?"white":"#cbd5e1",flexShrink:0}},done?"✓":i+1),
+              i<estagios.length-1?React.createElement("div",{style:{width:2,flex:1,minHeight:24,background:done?"#22c55e":"#e2e8f0"}}):null
+            ),
+            React.createElement("div",{style:{padding:"2px 0 20px",flex:1}},
+              React.createElement("div",{style:{fontSize:13,fontWeight:700,color:done?"#15803d":active?cor:"#94a3b8",marginBottom:2}},e.l),
+              active?React.createElement("div",{style:{fontSize:11,color:"#64748b",lineHeight:1.5,marginBottom:4}},e.desc):null,
+              React.createElement("div",{style:{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:4,display:"inline-block",background:done?"#f0fdf4":active?(isJ?"#fef2f2":"#eff6ff"):"#f8fafc",color:done?"#16a34a":active?cor:"#94a3b8"}},done?(fmtDt(portal.datas?.[e.k])||"Concluido"):active?"Em andamento":"Aguardando")
+            )
+          );
+        })
+      ),
+      // Info
+      React.createElement("div",{style:{background:"white",borderRadius:14,padding:18,marginBottom:16,boxShadow:"0 2px 12px #00000010"}},
+        React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".04em",marginBottom:12}},"Informacoes"),
+        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #f1f5f9",fontSize:13}},
+          React.createElement("span",{style:{color:"#94a3b8"}},"Tipo"),React.createElement("span",{style:{fontWeight:600,color:"#1e293b"}},dados.tipo)
+        ),
+        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",padding:"7px 0",fontSize:13}},
+          React.createElement("span",{style:{color:"#94a3b8"}},"Protocolo criado em"),
+          React.createElement("span",{style:{fontWeight:600,color:"#1e293b"}},fmtDt(portal.datas?.[estagios[0].k]||""))
+        )
+      ),
+      // Contato
+      React.createElement("div",{style:{background:"white",borderRadius:14,padding:18,marginBottom:16,boxShadow:"0 2px 12px #00000010",textAlign:"center"}},
+        React.createElement("div",{style:{fontSize:12,fontWeight:600,color:"#64748b",marginBottom:4}},"Em caso de duvidas, entre em contato."),
+        React.createElement("div",{style:{fontSize:11,color:"#94a3b8",lineHeight:1.6}},"* Algumas atualizacoes podem apresentar pequeno atraso em relacao ao andamento real do processo.")
+      ),
+      React.createElement("div",{style:{padding:"16px",textAlign:"center",fontSize:11,color:"#94a3b8"}},"2026 · © Carlos Alberto Pacheco · Todos os direitos reservados")
+    )
+  );
+};
+
 const App=()=>{
   window._sb=sb;
+  // Verificar rota publica do portal ANTES de qualquer verificacao de sessao
+  const urlPath=window.location.pathname;
+  const portalMatch=urlPath.match(/\/processo\/([A-Z0-9]+)$/i);
+  if(portalMatch)return<PortalClientePublico token={portalMatch[1]}/>;
+
   const [session,setSession]=useState(null);
   const [loading,setLoading]=useState(true);
   useEffect(()=>{
@@ -173,6 +418,7 @@ const App=()=>{
   if(!session)return<TelaLogin/>;
   return<AppContent session={session}/>;
 };
+
 
 const AppContent=({session})=>{
   const [tela,setTela]=useState("dashboard");
@@ -430,6 +676,9 @@ const AppContent=({session})=>{
             ↓ Backup dos dados
           </button>
         </div>
+        <div style={{padding:"6px 14px",borderTop:"1px solid #0f1f35",textAlign:"center",fontSize:9,color:"#1e293b",lineHeight:1.6}}>
+          2026 · © Carlos Alberto Pacheco<br/>Todos os direitos reservados
+        </div>
         <div style={{padding:"10px 14px",borderTop:"1px solid #0f1f35",display:"flex",alignItems:"center",gap:8}}>
           <div style={{width:7,height:7,borderRadius:"50%",background:"#22c55e"}}/>
           <span style={{fontSize:11,color:"#475569",flex:1}}>Online</span>
@@ -449,7 +698,7 @@ const AppContent=({session})=>{
         {tela==="andamento"&&!processoAberto&&<TelaAndamento servicos={servicos} cn={cn} diligVenc={diligVenc} diligHoje={diligHoje} abrirProcesso={s=>{setProcessoAberto(s);setAbaProcesso("timeline");}}/>}
         {tela==="andamento"&&processoAberto&&<TelaProcessoDetalhe servico={processoAberto} aba={abaProcesso} setAba={setAbaProcesso} atualizar={p=>atualizarServico(processoAberto.id,p)} voltar={()=>setProcessoAberto(null)} cn={cn}/>}
         {tela==="financeiro"&&<TelaFinanceiro aba={abaFin} setAba={setAbaFin} recebimentos={recebimentos} pagamentos={pagamentos} setRecebimentos={setRecebimentos} setPagamentos={setPagamentos} totRec={totRec} totPag={totPag} lucro={lucro} dadosMensais={dadosMensais} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} abrirModal={abrirModal} setReciboData={setReciboData} sb={sb}/>}
-        {tela==="relatorios"&&<TelaRelatorios dadosMensais={dadosMensais} totRec={totRec} totPag={totPag} lucro={lucro} recAno={recAno} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} recebimentos={recebimentos} pagamentos={pagamentos}/>}
+        {tela==="relatorios"&&<TelaRelatorios dadosMensais={dadosMensais} totRec={totRec} totPag={totPag} lucro={lucro} recAno={recAno} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} recebimentos={recebimentos} pagamentos={pagamentos} servicos={servicos} cn={cn}/>}
         {tela==="custos"&&<TelaCustos showToast={showToast} custos={custos} setCustos={v=>{setCustos(v);sb.from("configuracoes").upsert({id:"custos",dados:v,updated_at:new Date().toISOString()}).then(()=>{}).catch(()=>{});}} sb={sb}/>}
         {tela==="captacao"&&<TelaCaptacao leads={leads} setLeads={setLeads} atualizarLead={atualizarLead} showToast={showToast} sb={sb}/>}
         {tela==="usuarios"&&<TelaUsuarios usuarios={usuarios} setUsuarios={setUsuarios} abrirModal={abrirModal} session={session}/>}
@@ -806,9 +1055,21 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
   ];
   return(<div style={S.tela}>
     <PageHeader title={<span style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}><button onClick={voltar} style={S.backBtn} className="back">← Serviços</button><span style={S.proto}>{servico.protocolo}</span><Tag label={servico.estagio} color={ECOR[servico.estagio]||"#64748b"}/></span>} sub={servico.tipo+" - "+cliente?.nome||"-"}><button style={{...S.btnSm,color:"#3b82f6",borderColor:"#3b82f644"}} onClick={()=>abrirModal&&abrirModal("servico",{...servico,tipoProcesso:servico.tipoProcesso||"extrajudicial",dadosJudiciais:servico.dadosJudiciais||{}})} className="bs">✏ Editar</button><button style={{...S.btnSm,color:"#f59e0b",borderColor:"#f59e0b44"}} onClick={()=>setPrintData(servico)} className="bs">🖨 Protocolo</button><button style={{...S.btnSm,color:"#f59e0b",borderColor:"#f59e0b44"}} onClick={()=>setPrintData({...servico,_via:true})} className="bs">🖨 Via Cliente</button></PageHeader>
-    <div style={{display:"flex",gap:4,padding:"8px 24px",background:"#090e1a",borderBottom:"1px solid #0f1f35"}}>{[{k:"visao",l:"📌 Visão Geral"},{k:"checklist",l:"📄 Documentos"},{k:"diligencias",l:"⊙ Diligências"},{k:"pagamentos",l:"◉ Pagamentos"},{k:"contratos",l:"📋 Contratos"}].map(a=><button key={a.k} onClick={()=>setAba(a.k)} style={{...S.abaBtn,...(aba===a.k?S.abaBtnActive:{})}} className="ab">{a.l}</button>)}</div>
+    <div style={{display:"flex",gap:4,padding:"8px 24px",background:"#090e1a",borderBottom:"1px solid #0f1f35"}}>{[{k:"visao",l:"📌 Visão Geral"},{k:"checklist",l:"📄 Documentos"},{k:"diligencias",l:"⊙ Diligências"},{k:"pagamentos",l:"◉ Pagamentos"},{k:"contratos",l:"📋 Contratos"},{k:"publicacoes",l:"◈ Publicações"},{k:"portal",l:"◎ Portal Cliente"}].map(a=><button key={a.k} onClick={()=>setAba(a.k)} style={{...S.abaBtn,...(aba===a.k?S.abaBtnActive:{})}} className="ab">{a.l}</button>)}</div>
     <div style={S.body}>
-      {aba==="visao"&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><div style={S.card}><div style={S.cardTitle}>Dados do Cliente</div>{cliente&&<><InfoRow l="Nome" v={cliente.nome}/><InfoRow l={cliente.tipo==="pj"?"CNPJ":"CPF"} v={cliente.cpf||cliente.cnpj}/><InfoRow l="Telefone" v={cliente.telefone}/><InfoRow l="WhatsApp" v={cliente.whatsapp}/><InfoRow l="E-mail" v={cliente.email}/><InfoRow l="Endereço" v={cliente.endereco||""+", "+cliente.cidade||""+"/"+cliente.estado||""}/></>}</div><div style={S.card}><div style={{...S.cardTitle,display:"flex",justifyContent:"space-between"}}><span>Orcamento</span><button style={{...S.btnSm,color:"#f59e0b",borderColor:"#f59e0b33"}} onClick={()=>setModalOrc({valor:servico.orcamento?.valor||"",desconto:servico.orcamento?.desconto||"",obs:servico.orcamento?.obs||"",status:servico.orcamento?.status||"Orcamento"})} className="bs">Editar</button></div><InfoRow l="Valor total" v={"R$ "+fmt(servico.orcamento?.valor)}/><InfoRow l="Desconto" v={"R$ "+fmt(servico.orcamento?.desconto)}/><InfoRow l="Valor líquido" v={"R$ "+fmt(valorLiq)}/><InfoRow l="Total pago" v={"R$ "+fmt(totPago)}/><div style={{borderTop:"1px solid #0f1f35",marginTop:8,paddingTop:8}}><InfoRow l="Saldo restante" v={"R$ "+fmt(saldo)} hl={saldo>0}/></div><div style={{marginTop:10,display:"flex",gap:6,flexWrap:"wrap"}}>{["Orçamento","Fechado","Concluído"].map(st=><button key={st} style={{...S.btnSm,...(servico.orcamento?.status===st?{background:"#3b82f622",color:"#3b82f6",borderColor:"#3b82f644"}:{})}} onClick={()=>atualizar({orcamento:{...servico.orcamento,status:st}})} className="bs">{st}</button>)}</div><div style={{marginTop:10}}><FL l="Alterar estágio"/><select style={S.fi} value={servico.estagio||""} onChange={e=>atualizar({estagio:e.target.value,status:e.target.value==="Concluído"?"Concluído":"Aberto",dataConclusao:e.target.value==="Concluído"?(servico.dataConclusao||td()):""})}>{ESTAGIOS.map(o=><option key={o}>{o}</option>)}</select>{servico.estagio==="Concluído"&&<div style={{marginTop:10,background:"#22c55e0d",border:"1px solid #22c55e33",borderRadius:8,padding:"10px"}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><span style={{fontSize:11,color:"#22c55e",fontWeight:700}}>Concluído em:</span><input style={{...S.fi,width:"auto",flex:1}} type="date" value={servico.dataConclusao||td()} onChange={e=>atualizar({dataConclusao:e.target.value})}/></div><FL l="Observação de conclusão"/><textarea style={{...S.fi,minHeight:70,resize:"vertical"}} value={servico.obsConclusao||""} onChange={e=>atualizar({obsConclusao:e.target.value})} placeholder="Ex: Escritura entregue. Retirado por João Silva, CPF 000.000.000-00..."/></div>}</div></div></div>}
+      {aba==="visao"&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><div style={S.card}><div style={S.cardTitle}>Dados do Cliente</div>{cliente&&<><InfoRow l="Nome" v={cliente.nome}/><InfoRow l={cliente.tipo==="pj"?"CNPJ":"CPF"} v={cliente.cpf||cliente.cnpj}/><InfoRow l="Telefone" v={cliente.telefone}/><InfoRow l="WhatsApp" v={cliente.whatsapp}/><InfoRow l="E-mail" v={cliente.email}/><InfoRow l="Endereço" v={cliente.endereco||""+", "+cliente.cidade||""+"/"+cliente.estado||""}/></>}</div><div style={S.card}><div style={{...S.cardTitle,display:"flex",justifyContent:"space-between"}}><span>Orcamento</span><button style={{...S.btnSm,color:"#f59e0b",borderColor:"#f59e0b33"}} onClick={()=>setModalOrc({valor:servico.orcamento?.valor||"",desconto:servico.orcamento?.desconto||"",obs:servico.orcamento?.obs||"",status:servico.orcamento?.status||"Orcamento"})} className="bs">Editar</button></div><InfoRow l="Valor total" v={"R$ "+fmt(servico.orcamento?.valor)}/><InfoRow l="Desconto" v={"R$ "+fmt(servico.orcamento?.desconto)}/><InfoRow l="Valor líquido" v={"R$ "+fmt(valorLiq)}/><InfoRow l="Total pago" v={"R$ "+fmt(totPago)}/><div style={{borderTop:"1px solid #0f1f35",marginTop:8,paddingTop:8}}><InfoRow l="Saldo restante" v={"R$ "+fmt(saldo)} hl={saldo>0}/></div><div style={{marginTop:10,display:"flex",gap:6,flexWrap:"wrap"}}>{["Orçamento","Fechado","Concluído"].map(st=><button key={st} style={{...S.btnSm,...(servico.orcamento?.status===st?{background:"#3b82f622",color:"#3b82f6",borderColor:"#3b82f644"}:{})}} onClick={()=>atualizar({orcamento:{...servico.orcamento,status:st}})} className="bs">{st}</button>)}</div><div style={{marginTop:10}}><FL l="Alterar estágio"/><select style={S.fi} value={servico.estagio||""} onChange={e=>{
+  const isConcluido=e.target.value==="Concluído";
+  const portal=servico.portal||{};
+  const estagioFinal=servico.tipoProcesso==="judicial"?"sentenca":"concluso";
+  const datas=portal.datas||{};
+  if(isConcluido&&!datas[estagioFinal])datas[estagioFinal]=td();
+  atualizar({
+    estagio:e.target.value,
+    status:isConcluido?"Concluído":"Aberto",
+    dataConclusao:isConcluido?(servico.dataConclusao||td()):"",
+    ...(isConcluido&&portal.token?{portal:{...portal,estagio_atual:estagioFinal,datas}}:{})
+  });
+}}>{ESTAGIOS.map(o=><option key={o}>{o}</option>)}</select>{servico.estagio==="Concluído"&&<div style={{marginTop:10,background:"#22c55e0d",border:"1px solid #22c55e33",borderRadius:8,padding:"10px"}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><span style={{fontSize:11,color:"#22c55e",fontWeight:700}}>Concluído em:</span><input style={{...S.fi,width:"auto",flex:1}} type="date" value={servico.dataConclusao||td()} onChange={e=>atualizar({dataConclusao:e.target.value})}/></div><FL l="Observação de conclusão"/><textarea style={{...S.fi,minHeight:70,resize:"vertical"}} value={servico.obsConclusao||""} onChange={e=>atualizar({obsConclusao:e.target.value})} placeholder="Ex: Escritura entregue. Retirado por João Silva, CPF 000.000.000-00..."/></div>}</div></div></div>}
       {aba==="checklist"&&<div style={S.card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><div style={S.cardTitle}>Documentos Apresentados</div><button style={S.btnPrimary} onClick={()=>setPrintData({...servico,_via:true})} className="bp">🖨 Via do Cliente</button></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{CHECKLIST.map(item=><label key={item.key} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:7,background:"#060b14",border:"1px solid #0f1f35",cursor:"pointer"}} className="ci"><input type="checkbox" checked={!!(servico.checklist||{})[item.key]} onChange={()=>toggleCheck(item.key)} style={{accentColor:"#22c55e",width:15,height:15}}/><span style={{fontSize:13,color:(servico.checklist||{})[item.key]?"#e2e8f0":"#64748b"}}>{item.label}{item.pj&&<span style={{fontSize:10,color:"#8b5cf6"}}> [PJ]</span>}</span></label>)}</div><div style={{marginTop:14}}><FL l="Outros documentos"/><textarea style={{...S.fi,minHeight:60,resize:"vertical"}} value={servico.outrosDesc||""} onChange={e=>atualizar({outrosDesc:e.target.value})} placeholder="Descreva..."/></div></div>}
       {aba==="diligencias"&&<div>
         <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
@@ -905,6 +1166,8 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
                 </div>
                 <button style={{...S.btnPrimary,marginTop:10}} onClick={addPag} className="bp">+ Registrar</button></div><div style={S.tableCard}><table style={S.table}><thead><tr>{["Data","Descrição","Forma","Valor",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead><tbody>{(servico.pagamentos||[]).map(p=><tr key={p.id} style={S.tr} className="tr"><td style={S.td}>{p.data}</td><td style={S.td}>{p.descricao}</td><td style={S.td}><Tag label={p.forma} color="#6366f1"/></td><td style={S.td}><span style={{fontWeight:700,color:"#22c55e"}}>R$ {fmt(p.valor)}</span></td><td style={S.td}><button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir este pagamento? Esta acao e permanente."))return;atualizar({pagamentos:(servico.pagamentos||[]).filter(x=>x.id!==p.id)})}} className="bs">✕</button><button style={S.btnSm} onClick={()=>setEditPag({...p})} className="bs">Ed</button><button style={{...S.btnSm,color:"#22c55e",borderColor:"#22c55e44"}} onClick={()=>gerarReciboServico(p,cliente,servico)} className="bs">Recibo</button></td></tr>)}</tbody></table></div></div>}
       {aba==="contratos"&&<AbaContratos servico={servico} cliente={cliente} atualizar={atualizar} showToast={showToast}/>}
+      {aba==="publicacoes"&&<AbaPublicacoes servico={servico}/>}
+      {aba==="portal"&&<AbaPortalCliente servico={servico} cliente={cliente} atualizar={atualizar} showToast={showToast}/>}
     </div>
       {modalOrc&&(
         <div style={S.overlay}>
@@ -959,6 +1222,208 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
   </div>);
 };
 
+
+
+// ── AbaPublicacoes (DataJud/CNJ) ──
+const AbaPublicacoes=({servico})=>{
+  const [movs,setMovs]=React.useState([]);
+  const [loading,setLoading]=React.useState(false);
+  const [erro,setErro]=React.useState("");
+  const [ultima,setUltima]=React.useState("");
+  const numProc=(servico.dadosJudiciais?.numeroProcesso||"").replace(/[^0-9]/g,"");
+  const isJudicial=servico.tipoProcesso==="judicial";
+
+  const TRIBUNAL_ENDPOINT="api_publica_tjba";
+  const API_KEY="APIKey cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw==";
+
+  const buscar=async()=>{
+    if(!numProc){setErro("Número do processo não cadastrado neste serviço. Edite o serviço e preencha o campo Número do Processo.");return;}
+    setLoading(true);setErro("");
+    try{
+      const r=await fetch("https://api-publica.datajud.cnj.jus.br/"+TRIBUNAL_ENDPOINT+"/_search",{
+        method:"POST",
+        headers:{"Authorization":API_KEY,"Content-Type":"application/json"},
+        body:JSON.stringify({query:{match:{"numeroProcesso.keyword":numProc}},size:1,_source:["movimentos","classe","orgaoJulgador","situacao","dataAjuizamento"]})
+      });
+      const d=await r.json();
+      const hit=d?.hits?.hits?.[0];
+      if(!hit){setErro("Processo não encontrado no DataJud/CNJ. Verifique o número cadastrado.");setLoading(false);return;}
+      const movimentos=(hit._source?.movimentos||[]).sort((a,b)=>new Date(b.dataHora)-new Date(a.dataHora));
+      setMovs(movimentos);
+      setUltima(new Date().toLocaleString("pt-BR"));
+    }catch(e){setErro("Erro ao consultar DataJud. Tente novamente.");}
+    setLoading(false);
+  };
+
+  const fmtDt=(dt)=>{if(!dt)return"—";try{return new Date(dt).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});}catch{return dt;}};
+  const getTipo=(cod)=>{const tipos={22:"Despacho",123:"Decisão",196:"Sentença",848:"Acórdão",132:"Intimação",11009:"Distribuição"};return tipos[cod]||"Movimentação";};
+  const getCor=(cod)=>({22:"#f59e0b",123:"#8b5cf6",196:"#3b82f6",848:"#6366f1",132:"#ef4444",11009:"#22c55e"}[cod]||"#64748b");
+
+  return(
+    <div>
+      {!isJudicial?(
+        <div style={{...S.card,textAlign:"center",padding:32}}>
+          <div style={{fontSize:32,marginBottom:10}}>◈</div>
+          <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:6}}>Disponível apenas para processos judiciais</div>
+          <div style={{fontSize:12,color:"#475569"}}>Este serviço está cadastrado como extrajudicial.</div>
+        </div>
+      ):(
+        <div>
+          <div style={{...S.card,marginBottom:14}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:3}}>Monitoramento via DataJud — CNJ</div>
+                <div style={{fontSize:11,color:"#475569"}}>Consulta pública gratuita · TJBA · {numProc?("Processo: "+servico.dadosJudiciais?.numeroProcesso):"Número não cadastrado"}</div>
+                {ultima&&<div style={{fontSize:11,color:"#22c55e",marginTop:2}}>Ultima consulta: {ultima}</div>}
+              </div>
+              <button style={S.btnPrimary} onClick={buscar} className="bp" disabled={loading}>{loading?"Consultando...":"Consultar agora"}</button>
+            </div>
+          </div>
+          {erro&&<div style={{background:"#ef444408",border:"1px solid #ef444433",borderRadius:9,padding:"12px 16px",marginBottom:14,fontSize:12,color:"#ef4444"}}>{erro}</div>}
+          {!numProc&&!erro&&<div style={{background:"#f59e0b08",border:"1px solid #f59e0b33",borderRadius:9,padding:"12px 16px",marginBottom:14,fontSize:12,color:"#f59e0b"}}>Cadastre o número do processo no serviço (aba Visão Geral → Editar) para consultar as movimentações.</div>}
+          {movs.length>0&&(
+            <div style={S.card}>
+              <div style={{...S.cardTitle,marginBottom:14}}>{movs.length} movimentações encontradas</div>
+              {movs.map((m,i)=>{
+                const cor=getCor(m.codigo);
+                const tipo=getTipo(m.codigo);
+                const isIntim=m.codigo===132;
+                return(
+                  <div key={i} style={{display:"flex",gap:12,paddingBottom:14,marginBottom:14,borderBottom:i<movs.length-1?"1px solid #0f1f35":"none"}}>
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:10,flexShrink:0,paddingTop:4}}>
+                      <div style={{width:10,height:10,borderRadius:"50%",background:cor,flexShrink:0}}></div>
+                      {i<movs.length-1&&<div style={{width:2,flex:1,background:"#0f1f35",marginTop:4,minHeight:20}}></div>}
+                    </div>
+                    <div style={{flex:1}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap"}}>
+                        <span style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{tipo}</span>
+                        <span style={{background:cor+"22",color:cor,border:"1px solid "+cor+"44",borderRadius:4,fontSize:10,fontWeight:700,padding:"1px 7px"}}>{tipo}</span>
+                        {i===0&&<span style={{background:"#3b82f622",color:"#3b82f6",border:"1px solid #3b82f633",borderRadius:4,fontSize:10,fontWeight:700,padding:"1px 7px"}}>Recente</span>}
+                      </div>
+                      {m.nome&&<div style={{fontSize:12,color:"#94a3b8",marginBottom:4,lineHeight:1.5}}>{m.nome}</div>}
+                      <div style={{fontSize:11,color:"#475569"}}>{fmtDt(m.dataHora)}</div>
+                      {isIntim&&<div style={{background:"#ef444408",border:"1px solid #ef444433",borderRadius:6,padding:"6px 10px",marginTop:8,fontSize:11,color:"#ef4444",fontWeight:600}}>Intimacao detectada — verifique o prazo e crie uma diligencia</div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {movs.length===0&&!loading&&!erro&&numProc&&<div style={S.empty}>Clique em Consultar agora para buscar as movimentações no DataJud/CNJ.</div>}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── AbaPortalCliente ──
+const ESTAGIOS_JUD=[
+  {k:"protocolado",l:"Protocolado",desc:"Processo protocolado junto ao Poder Judiciário e distribuído à vara competente."},
+  {k:"audiencia_conciliacao",l:"Audiência de Conciliação",desc:"Audiência de conciliação entre as partes designada pelo juízo."},
+  {k:"tramitacao",l:"Em Tramitação",desc:"Processo em andamento perante o Judiciário. Aguardando movimentações processuais."},
+  {k:"audiencia_instrucao",l:"Audiência de Instrução e Julgamento",desc:"Audiência de instrução e julgamento designada pelo juízo."},
+  {k:"sentenca",l:"Sentença",desc:"Decisão final do juiz sobre o processo."},
+];
+const ESTAGIOS_ADM=[
+  {k:"iniciado",l:"Iniciado",desc:"Processo iniciado e documentação recebida."},
+  {k:"diligencias",l:"Diligências Internas",desc:"Levantamento e organização da documentação necessária."},
+  {k:"cartorio_notas",l:"Cartório de Notas",desc:"Processo em andamento no Cartório de Notas."},
+  {k:"cartorio_registro",l:"Cartório de Registro",desc:"Registro no Cartório de Registro de Imóveis."},
+  {k:"concluso",l:"Concluso",desc:"Processo finalizado e documentação entregue ao cliente."},
+];
+
+const AbaPortalCliente=({servico,cliente,atualizar,showToast})=>{
+  const isJudicial=servico.tipoProcesso==="judicial";
+  const estagios=isJudicial?ESTAGIOS_JUD:ESTAGIOS_ADM;
+  const portal=servico.portal||{};
+  const estagio_atual=portal.estagio_atual||estagios[0].k;
+  const token=portal.token||(()=>{const t=Math.random().toString(36).slice(2,10).toUpperCase();return t;})();
+  const link=window.location.origin+"/processo/"+token;
+  const [copiado,setCopiado]=React.useState(false);
+
+  const salvarEstagio=(k)=>{
+    const datas=portal.datas||{};
+    if(!datas[k])datas[k]=new Date().toISOString().slice(0,10);
+    atualizar({portal:{...portal,estagio_atual:k,datas,token}});
+    if(showToast)showToast("Estágio atualizado!");
+  };
+
+  const copiarLink=()=>{
+    const fullLink="https://app.capacheco.adv.br/processo/"+token;
+    if(navigator.clipboard){navigator.clipboard.writeText(fullLink);}
+    setCopiado(true);setTimeout(()=>setCopiado(false),2500);
+    if(!portal.token)atualizar({portal:{...portal,token,estagio_atual}});
+  };
+
+  const idx_atual=estagios.findIndex(e=>e.k===estagio_atual);
+  const fmtDt=(d)=>{if(!d)return"";try{const p=d.split("-");return p[2]+"/"+p[1]+"/"+p[0];}catch{return d;}};
+
+  return(
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        {/* Painel de controle */}
+        <div style={S.card}>
+          <div style={{...S.cardTitle,marginBottom:14}}>Atualizar estágio do processo</div>
+          <div style={{fontSize:11,color:"#475569",marginBottom:10,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.5px"}}>Clique para avançar:</div>
+          <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:18}}>
+            {estagios.map((e,i)=>{
+              const done=i<idx_atual;
+              const active=i===idx_atual;
+              return(
+                <div key={e.k} onClick={()=>salvarEstagio(e.k)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,border:"1px solid "+(active?"#3b82f6":done?"#22c55e22":"#0f1f35"),background:active?"#071428":done?"#22c55e08":"#060b14",cursor:"pointer",transition:".15s"}}>
+                  <div style={{width:20,height:20,borderRadius:"50%",border:"2px solid "+(active?"#3b82f6":done?"#22c55e":"#0f1f35"),background:active?"#3b82f6":done?"#22c55e":"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"white",flexShrink:0}}>{done?"✓":active?"●":""}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:12,fontWeight:600,color:active?"#3b82f6":done?"#22c55e":"#475569"}}>{e.l}</div>
+                    {(active||done)&&portal.datas?.[e.k]&&<div style={{fontSize:10,color:"#475569",marginTop:1}}>{fmtDt(portal.datas[e.k])}</div>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <button style={{...S.btnPrimary,width:"100%",marginBottom:8}} onClick={copiarLink} className="bp">{copiado?"Link copiado!":"Copiar link para o cliente"}</button>
+          <div style={{fontSize:11,color:"#475569",textAlign:"center",wordBreak:"break-all"}}>app.capacheco.adv.br/processo/{token}</div>
+        </div>
+
+        {/* Preview do portal */}
+        <div style={{background:"white",borderRadius:12,overflow:"hidden",boxShadow:"0 4px 20px #00000044"}}>
+          <div style={{background:isJudicial?"linear-gradient(135deg,#0f172a,#3b0a0a)":"linear-gradient(135deg,#0f172a,#1e3a5f)",padding:"18px 20px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+              <div style={{width:28,height:28,background:"linear-gradient(135deg,#3b82f6,#6366f1)",borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:"white"}}>CA</div>
+              <div>
+                <div style={{fontSize:12,fontWeight:800,color:"white"}}>DocImóvel PRO</div>
+                <div style={{fontSize:10,color:"#94a3b8"}}>Acompanhamento de Processo</div>
+              </div>
+            </div>
+            <div style={{fontSize:15,fontWeight:800,color:"white",marginBottom:2}}>{cliente?.nome||"Cliente"}</div>
+            <div style={{fontSize:11,color:"#94a3b8"}}>{servico.tipo}</div>
+          </div>
+          <div style={{padding:"16px 18px"}}>
+            <div style={{fontSize:10,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".04em",marginBottom:12}}>Andamento do processo</div>
+            {estagios.map((e,i)=>{
+              const done=i<idx_atual;
+              const active=i===idx_atual;
+              const pending=i>idx_atual;
+              return(
+                <div key={e.k} style={{display:"flex",gap:10,marginBottom:0}}>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:24,flexShrink:0}}>
+                    <div style={{width:24,height:24,borderRadius:"50%",background:done?"#22c55e":active?(isJudicial?"#dc2626":"#2563eb"):"white",border:"2px solid "+(done?"#22c55e":active?(isJudicial?"#dc2626":"#2563eb"):"#e2e8f0"),display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:done||active?"white":"#cbd5e1",flexShrink:0,zIndex:1}}>{done?"✓":i+1}</div>
+                    {i<estagios.length-1&&<div style={{width:2,flex:1,minHeight:24,background:done?"#22c55e":active?(isJudicial?"linear-gradient(#dc2626,#e2e8f0)":"linear-gradient(#2563eb,#e2e8f0)"):"#e2e8f0"}}></div>}
+                  </div>
+                  <div style={{padding:"2px 0 20px",flex:1}}>
+                    <div style={{fontSize:12,fontWeight:700,color:done?"#15803d":active?(isJudicial?"#dc2626":"#1d4ed8"):"#94a3b8",marginBottom:2}}>{e.l}</div>
+                    {active&&<div style={{fontSize:10,color:"#64748b",lineHeight:1.4,marginBottom:4}}>{e.desc}</div>}
+                    <div style={{fontSize:10,fontWeight:600,padding:"1px 7px",borderRadius:3,display:"inline-block",background:done?"#f0fdf4":active?(isJudicial?"#fef2f2":"#eff6ff"):"#f8fafc",color:done?"#16a34a":active?(isJudicial?"#dc2626":"#2563eb"):"#94a3b8"}}>{done?(fmtDt(portal.datas?.[e.k])||"Concluído"):active?"Em andamento":"Aguardando"}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{padding:"10px 18px",borderTop:"1px solid #f1f5f9",background:"#f8fafc",fontSize:10,color:"#94a3b8",textAlign:"center"}}>(75) 99999-9999 · capacheco.adv@gmail.com</div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // ── AbaContratos ──
 const fmtData=(s)=>{if(!s)return"";const d=new Date(s+"T12:00:00");return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"});};
@@ -1197,8 +1662,13 @@ const TelaJudicial=({servicos,setServicos,clientes,cn,irPara,sb,showToast,abrirS
 
   const darBaixa=async(s)=>{
     if(!window.confirm("Dar baixa no processo de "+cn(s.clienteId||s.cliente_id)+"? Ele ficara como Concluido no sistema."))return;
-    await sb.from("servicos").update({status:"Concluído",estagio:"Concluído"}).eq("id",s.id);
-    setServicos(prev=>prev.map(x=>x.id===s.id?{...x,status:"Concluído",estagio:"Concluído"}:x));
+    const portalAtual=s.portal||{};
+    const estagioFinal=s.tipoProcesso==="judicial"?"sentenca":"concluso";
+    const datasPortal=portalAtual.datas||{};
+    if(!datasPortal[estagioFinal])datasPortal[estagioFinal]=new Date().toISOString().slice(0,10);
+    const portalAtualizado=portalAtual.token?{...portalAtual,estagio_atual:estagioFinal,datas:datasPortal}:portalAtual;
+    await sb.from("servicos").update({status:"Concluído",estagio:"Concluído",portal:portalAtualizado}).eq("id",s.id);
+    setServicos(prev=>prev.map(x=>x.id===s.id?{...x,status:"Concluído",estagio:"Concluído",portal:portalAtualizado}:x));
     showToast("Processo concluido!");
   };
 
@@ -1810,7 +2280,8 @@ const GraficoPizza=({pago,resultado,total})=>{
   );
 };
 
-const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,setAnoFin,recebimentos,pagamentos})=>{
+const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,setAnoFin,recebimentos,pagamentos,servicos,cn})=>{
+  const [abaRel,setAbaRel]=useState("financeiro");
   const [dtIni,setDtIni]=useState("");
   const [dtFim,setDtFim]=useState("");
   const recF=recebimentos.filter(r=>{
@@ -1831,6 +2302,73 @@ const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,
   const pior=dadosMensais.filter(m=>m.recebido>0).length?dadosMensais.filter(m=>m.recebido>0).reduce((a,b)=>b.recebido<a.recebido?b:a):null;
   const imprimir=()=>imprimirRelatorio(dadosMensais,totRec,totPag,lucro,tR,tP,luc,dtIni,dtFim,anoFin);
 
+  // Calculo honorarios
+  const mesAtual=new Date().getMonth()+1;
+  const anoAtual=new Date().getFullYear();
+  const recMes=recebimentos.filter(r=>(r.data||"").startsWith(anoAtual+"-"+String(mesAtual).padStart(2,"0")));
+  const recAnoH=recebimentos.filter(r=>(r.data||"").startsWith(String(anoFin)));
+  const totalMes=recMes.reduce((a,r)=>a+Number(r.valor),0);
+  const totalAnoH=recAnoH.reduce((a,r)=>a+Number(r.valor),0);
+
+  // Por tipo de servico
+  const porTipo={};
+  (servicos||[]).forEach(s=>{
+    const tipo=s.tipo||"Outros";
+    if(!porTipo[tipo])porTipo[tipo]={tipo,total:0,pago:0,aberto:0,qtd:0};
+    const valorTotal=Number(s.orcamento?.valor||0);
+    const pags=(s.pagamentos||[]).reduce((a,p)=>a+Number(p.valor||0),0);
+    porTipo[tipo].total+=valorTotal;
+    porTipo[tipo].pago+=pags;
+    porTipo[tipo].aberto+=(valorTotal-pags>0?valorTotal-pags:0);
+    porTipo[tipo].qtd+=1;
+  });
+  const tiposList=Object.values(porTipo).sort((a,b)=>b.total-a.total);
+
+  // Por cliente
+  const porCliente={};
+  (servicos||[]).forEach(s=>{
+    const cliId=s.clienteId||s.cliente_id;
+    const nome=cn?cn(cliId):"Cliente";
+    if(!porCliente[cliId])porCliente[cliId]={nome,total:0,pago:0,aberto:0,qtd:0};
+    const valorTotal=Number(s.orcamento?.valor||0);
+    const pags=(s.pagamentos||[]).reduce((a,p)=>a+Number(p.valor||0),0);
+    porCliente[cliId].total+=valorTotal;
+    porCliente[cliId].pago+=pags;
+    porCliente[cliId].aberto+=(valorTotal-pags>0?valorTotal-pags:0);
+    porCliente[cliId].qtd+=1;
+  });
+  const clientesList=Object.values(porCliente).sort((a,b)=>b.total-a.total).slice(0,15);
+
+  // Em aberto
+  const emAberto=(servicos||[]).filter(s=>s.status!=="Concluído"&&s.status!=="Concluido").map(s=>{
+    const valorTotal=Number(s.orcamento?.valor||0);
+    const pags=(s.pagamentos||[]).reduce((a,p)=>a+Number(p.valor||0),0);
+    const saldo=valorTotal-pags;
+    return{...s,saldo,valorTotal,pags,clienteNome:cn?cn(s.clienteId||s.cliente_id):"?"};
+  }).filter(s=>s.saldo>0).sort((a,b)=>b.saldo-a.saldo);
+  const totalAberto=emAberto.reduce((a,s)=>a+s.saldo,0);
+
+  const imprimirHonorarios=()=>{
+    const css="body{font-family:Arial,sans-serif;padding:28px;font-size:12px;color:#1e293b;}h1{font-size:16px;font-weight:800;margin-bottom:4px;}h2{font-size:13px;font-weight:700;margin:18px 0 8px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;}table{width:100%;border-collapse:collapse;margin-bottom:16px;}th{background:#f1f5f9;padding:7px;text-align:left;font-size:11px;}td{padding:7px;border-bottom:1px solid #f1f5f9;font-size:12px;}.total{font-weight:800;background:#f8fafc;}.verde{color:#16a34a;}.vermelho{color:#dc2626;}@media print{button{display:none;}}";
+    const corpo=`<h1>Relatório de Honorários — ${anoFin}</h1><p style="color:#64748b;font-size:11px;">Gerado em ${new Date().toLocaleDateString("pt-BR")}</p>
+    <h2>Resumo</h2>
+    <table><tr><th>Período</th><th>Total</th></tr>
+    <tr><td>Mês atual</td><td class="verde">R$ ${fmt(totalMes)}</td></tr>
+    <tr><td>Ano ${anoFin}</td><td class="verde">R$ ${fmt(totalAnoH)}</td></tr>
+    <tr class="total"><td>Em aberto</td><td class="vermelho">R$ ${fmt(totalAberto)}</td></tr></table>
+    <h2>Por Tipo de Serviço</h2>
+    <table><tr><th>Tipo</th><th>Qtd</th><th>Total</th><th>Recebido</th><th>Em aberto</th></tr>
+    ${tiposList.map(t=>`<tr><td>${t.tipo}</td><td>${t.qtd}</td><td>R$ ${fmt(t.total)}</td><td class="verde">R$ ${fmt(t.pago)}</td><td class="${t.aberto>0?"vermelho":""}">R$ ${fmt(t.aberto)}</td></tr>`).join("")}
+    </table>
+    <h2>Por Cliente (Top 15)</h2>
+    <table><tr><th>Cliente</th><th>Processos</th><th>Total</th><th>Recebido</th><th>Em aberto</th></tr>
+    ${clientesList.map(c=>`<tr><td>${c.nome}</td><td>${c.qtd}</td><td>R$ ${fmt(c.total)}</td><td class="verde">R$ ${fmt(c.pago)}</td><td class="${c.aberto>0?"vermelho":""}">R$ ${fmt(c.aberto)}</td></tr>`).join("")}
+    </table>`;
+    const w=window.open("","_blank");
+    w.document.write(`<!DOCTYPE html><html><head><meta charset=UTF-8><title>Honorários ${anoFin}</title><style>${css}</style></head><body>${corpo}<br><button onclick=window.print() style=background:#1e293b;color:#fff;border:none;padding:10px 22px;border-radius:6px;cursor:pointer;font-size:14px>Imprimir / Salvar PDF</button></body></html>`);
+    w.document.close();
+  };
+
   return(
     <div style={S.tela}>
       <PageHeader title="Relatorios" sub="Analise estrategica">
@@ -1841,9 +2379,98 @@ const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,
           <input style={{...S.search,width:130}} type="date" value={dtFim} onChange={e=>setDtFim(e.target.value)}/>
           {(dtIni||dtFim)&&<button style={{...S.btnSm,color:"#ef4444"}} onClick={()=>{setDtIni("");setDtFim("");}} className="bs">x</button>}
         </div>
-        <button style={S.btnPrimary} onClick={imprimir} className="bp">Imprimir Relatorio</button>
+        {abaRel==="honorarios"?<button style={S.btnPrimary} onClick={imprimirHonorarios} className="bp">Imprimir Honorarios</button>:<button style={S.btnPrimary} onClick={imprimir} className="bp">Imprimir Relatorio</button>}
       </PageHeader>
+
+      {/* Abas internas */}
+      <div style={{display:"flex",gap:0,padding:"0 24px",background:"#090e1a",borderBottom:"1px solid #0f1f35"}}>
+        {[{k:"financeiro",l:"◉ Financeiro"},{k:"honorarios",l:"▣ Honorários"}].map(a=>(
+          <button key={a.k} onClick={()=>setAbaRel(a.k)} style={{...S.abaBtn,...(abaRel===a.k?S.abaBtnActive:{})}} className="ab">{a.l}</button>
+        ))}
+      </div>
+
       <div style={S.body}>
+        {abaRel==="honorarios"&&(
+          <div>
+            {/* Cards resumo */}
+            <div style={S.sg4}>
+              <StatCard icon="+" label={"Mes de "+new Date().toLocaleDateString("pt-BR",{month:"long"})} value={"R$ "+fmt(totalMes)} color="#22c55e"/>
+              <StatCard icon="+" label={"Ano "+anoFin} value={"R$ "+fmt(totalAnoH)} color="#3b82f6"/>
+              <StatCard icon="!" label="Em aberto" value={"R$ "+fmt(totalAberto)} color="#f59e0b"/>
+              <StatCard icon="=" label="Processos c/ saldo" value={emAberto.length+" proc."} color="#8b5cf6"/>
+            </div>
+
+            {/* Por tipo de servico */}
+            <div style={{...S.card,marginTop:14}}>
+              <div style={S.cardTitle}>Por tipo de servico</div>
+              <table style={S.table}>
+                <thead><tr>{["Tipo","Qtd","Total","Recebido","Em aberto"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {tiposList.map((t,i)=>(
+                    <tr key={i} style={S.tr} className="tr">
+                      <td style={{...S.td,fontWeight:600,color:"#e2e8f0"}}>{t.tipo}</td>
+                      <td style={S.td}>{t.qtd}</td>
+                      <td style={{...S.td,fontWeight:700,color:"#e2e8f0"}}>R$ {fmt(t.total)}</td>
+                      <td style={{...S.td,fontWeight:700,color:"#22c55e"}}>R$ {fmt(t.pago)}</td>
+                      <td style={{...S.td,fontWeight:700,color:t.aberto>0?"#f59e0b":"#475569"}}>R$ {fmt(t.aberto)}</td>
+                    </tr>
+                  ))}
+                  <tr style={{background:"#0f1f35"}}>
+                    <td style={{...S.td,fontWeight:800,color:"#e2e8f0"}} colSpan={2}>TOTAL</td>
+                    <td style={{...S.td,fontWeight:800,color:"#e2e8f0"}}>R$ {fmt(tiposList.reduce((a,t)=>a+t.total,0))}</td>
+                    <td style={{...S.td,fontWeight:800,color:"#22c55e"}}>R$ {fmt(tiposList.reduce((a,t)=>a+t.pago,0))}</td>
+                    <td style={{...S.td,fontWeight:800,color:"#f59e0b"}}>R$ {fmt(totalAberto)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Por cliente */}
+            <div style={{...S.card,marginTop:14}}>
+              <div style={S.cardTitle}>Por cliente (Top 15)</div>
+              <table style={S.table}>
+                <thead><tr>{["Cliente","Processos","Total","Recebido","Em aberto"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {clientesList.map((c,i)=>(
+                    <tr key={i} style={S.tr} className="tr">
+                      <td style={{...S.td,fontWeight:600,color:"#e2e8f0"}}>{c.nome}</td>
+                      <td style={S.td}>{c.qtd}</td>
+                      <td style={{...S.td,fontWeight:700,color:"#e2e8f0"}}>R$ {fmt(c.total)}</td>
+                      <td style={{...S.td,fontWeight:700,color:"#22c55e"}}>R$ {fmt(c.pago)}</td>
+                      <td style={{...S.td,fontWeight:700,color:c.aberto>0?"#f59e0b":"#475569"}}>R$ {fmt(c.aberto)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Em aberto */}
+            {emAberto.length>0&&(
+              <div style={{...S.card,marginTop:14,borderTop:"3px solid #f59e0b"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+                  <div style={S.cardTitle}>Honorarios em aberto</div>
+                  <div style={{fontSize:13,fontWeight:800,color:"#f59e0b"}}>Total: R$ {fmt(totalAberto)}</div>
+                </div>
+                <table style={S.table}>
+                  <thead><tr>{["Cliente","Servico","Total","Recebido","Saldo"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                  <tbody>
+                    {emAberto.map((s,i)=>(
+                      <tr key={i} style={S.tr} className="tr">
+                        <td style={{...S.td,fontWeight:600,color:"#e2e8f0"}}>{s.clienteNome}</td>
+                        <td style={{...S.td,fontSize:11,color:"#94a3b8"}}>{s.tipo}</td>
+                        <td style={S.td}>R$ {fmt(s.valorTotal)}</td>
+                        <td style={{...S.td,color:"#22c55e",fontWeight:700}}>R$ {fmt(s.pags)}</td>
+                        <td style={{...S.td,color:"#f59e0b",fontWeight:800}}>R$ {fmt(s.saldo)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+        {abaRel==="financeiro"&&(
+        <div>
         <div style={S.sg4}>
           <StatCard icon="+" label="Recebido" value={"R$ "+fmt(tR)} color="#22c55e"/>
           <StatCard icon="-" label="Pago" value={"R$ "+fmt(tP)} color="#ef4444"/>
@@ -1877,6 +2504,8 @@ const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,
             </tbody>
           </table>
         </div>
+        </div>
+        )}
       </div>
     </div>
   );
@@ -2951,7 +3580,10 @@ const S={
   fi:{width:"100%",background:"#0f1f35",border:"1px solid #1e3a5f",borderRadius:8,padding:"8px 11px",color:"#e2e8f0",fontSize:13,outline:"none",boxSizing:"border-box"},
 };
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+// Só iniciar React se nao for portal (portal ja foi renderizado em JS puro)
+if(!window._isPortal){
+  ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+}
 </script>
 </body>
 </html>
