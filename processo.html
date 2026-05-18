@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Acompanhamento de Processo — DocImóvel PRO</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Outfit',sans-serif;background:#f1f5f9;min-height:100vh;}
+</style>
+</head>
+<body>
+<div id="root" style="font-family:Outfit,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f1f5f9;color:#475569">
+  <div style="text-align:center">
+    <div style="font-size:28px;margin-bottom:12px">◎</div>
+    <div style="font-size:14px;font-weight:600">Carregando...</div>
+  </div>
+</div>
+
+<script>
+var SUPA_URL = "https://dnykryfwvylivzfetjko.supabase.co";
+var SUPA_KEY = "sb_publishable_Ep1D6wtOw9z3GtEFc-4WiA_LhO_3aYn";
+var root = document.getElementById("root");
+
+var EJ = [
+  {k:"protocolado",l:"Protocolado",desc:"Processo protocolado junto ao Poder Judiciário e distribuído à vara competente."},
+  {k:"audiencia_conciliacao",l:"Audiência de Conciliação",desc:"Audiência de conciliação entre as partes designada pelo juízo."},
+  {k:"tramitacao",l:"Em Tramitação",desc:"Processo em andamento perante o Judiciário."},
+  {k:"audiencia_instrucao",l:"Audiência de Instrução e Julgamento",desc:"Audiência de instrução e julgamento designada pelo juízo."},
+  {k:"sentenca",l:"Sentença",desc:"Decisão final do juiz sobre o processo."}
+];
+var EA = [
+  {k:"iniciado",l:"Iniciado",desc:"Processo iniciado e documentação recebida."},
+  {k:"diligencias",l:"Diligências Internas",desc:"Levantamento e organização da documentação necessária."},
+  {k:"cartorio_notas",l:"Cartório de Notas",desc:"Processo em andamento no Cartório de Notas."},
+  {k:"cartorio_registro",l:"Cartório de Registro",desc:"Registro no Cartório de Registro de Imóveis."},
+  {k:"concluso",l:"Concluso",desc:"Processo finalizado e documentação entregue."}
+];
+
+function fmtDt(d){
+  if(!d)return"";
+  try{var p=d.split("-");return p[2]+"/"+p[1]+"/"+p[0];}catch(e){return d;}
+}
+
+function erro(msg){
+  root.innerHTML='<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f1f5f9"><div style="text-align:center;background:white;padding:32px;border-radius:14px;max-width:320px;box-shadow:0 2px 12px #00000010"><div style="font-size:32px;margin-bottom:12px;color:#ef4444">◈</div><div style="font-size:14px;font-weight:700;color:#ef4444;margin-bottom:6px">'+msg+'</div><div style="font-size:12px;color:#94a3b8">Verifique o link ou entre em contato com o escritório.</div></div></div>';
+}
+
+// Pegar token da URL
+var path = window.location.pathname;
+var m = path.match(/\/processo\/([A-Za-z0-9]+)$/);
+if(!m){erro("Link inválido.");} else {
+  var token = m[1];
+
+  fetch(SUPA_URL+"/rest/v1/servicos?select=tipo,tipo_processo,portal,clientes(nome)&portal->>token=eq."+token, {
+    headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+  })
+  .then(function(r){return r.json();})
+  .then(function(data){
+    if(!data||data.length===0){erro("Processo não encontrado.");return;}
+    var d = data[0];
+    var isJ = d.tipo_processo === "judicial";
+    var estagios = isJ ? EJ : EA;
+    var portal = d.portal || {};
+    var eAtual = portal.estagio_atual || estagios[0].k;
+    var idx = 0;
+    for(var i=0;i<estagios.length;i++){if(estagios[i].k===eAtual){idx=i;break;}}
+    var cor = isJ ? "#dc2626" : "#2563eb";
+    var nome = (d.clientes && d.clientes.nome) || "";
+    var datas = portal.datas || {};
+
+    var tlHTML = estagios.map(function(e,i){
+      var done = i < idx;
+      var active = i === idx;
+      var bg = done?"#22c55e":active?cor:"white";
+      var border = done?"#22c55e":active?cor:"#e2e8f0";
+      var txtCor = done?"#15803d":active?cor:"#94a3b8";
+      var tagBg = done?"#f0fdf4":active?(isJ?"#fef2f2":"#eff6ff"):"#f8fafc";
+      var tagCor = done?"#16a34a":active?cor:"#94a3b8";
+      var tagTxt = done?(fmtDt(datas[e.k])||"Concluído"):active?"Em andamento":"Aguardando";
+      return '<div style="display:flex;gap:14px">'
+        +'<div style="display:flex;flex-direction:column;align-items:center;width:28px;flex-shrink:0">'
+        +'<div style="width:28px;height:28px;border-radius:50%;background:'+bg+';border:2px solid '+border+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:'+(done||active?'white':'#cbd5e1')+'">'+(done?"✓":(i+1))+'</div>'
+        +(i<estagios.length-1?'<div style="width:2px;flex:1;min-height:28px;background:'+(done?"#22c55e":"#e2e8f0")+'"></div>':'')
+        +'</div>'
+        +'<div style="padding:2px 0 22px;flex:1">'
+        +'<div style="font-size:13px;font-weight:700;color:'+txtCor+';margin-bottom:4px">'+e.l+'</div>'
+        +(active?'<div style="font-size:11px;color:#64748b;line-height:1.5;margin-bottom:6px">'+e.desc+'</div>':'')
+        +'<div style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;display:inline-block;background:'+tagBg+';color:'+tagCor+'">'+tagTxt+'</div>'
+        +'</div>'
+        +'</div>';
+    }).join("");
+
+    root.innerHTML =
+      '<div style="min-height:100vh;background:#f1f5f9">'
+      // Header
+      +'<div style="background:'+(isJ?'linear-gradient(135deg,#0f172a,#3b0a0a)':'linear-gradient(135deg,#0f172a,#1e3a5f)')+';padding:24px 20px 28px">'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">'
+      +'<div style="width:36px;height:36px;background:linear-gradient(135deg,#1e3a5f,#3b82f6);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:white;flex-shrink:0">DI</div>'
+      +'<div><div style="font-size:13px;font-weight:800;color:white">DocImóvel PRO</div><div style="font-size:10px;color:#94a3b8">Acompanhamento de Processo</div></div>'
+      +'</div>'
+      +'<div style="font-size:20px;font-weight:800;color:white;margin-bottom:3px">'+nome+'</div>'
+      +'<div style="font-size:12px;color:#94a3b8;margin-bottom:8px">'+d.tipo+'</div>'
+      +'<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:4px;background:'+cor+'22;color:'+cor+';border:1px solid '+cor+'33">'+(isJ?'Processo Judicial':'Processo Extrajudicial')+'</span>'
+      +'</div>'
+      // Body
+      +'<div style="max-width:480px;margin:0 auto;padding:20px 16px">'
+      // Status atual
+      +'<div style="background:white;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 2px 12px #00000010;border-left:4px solid '+cor+'">'
+      +'<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Situação atual</div>'
+      +'<div style="font-size:16px;font-weight:800;color:'+cor+';margin-bottom:2px">'+estagios[idx].l+'</div>'
+      +(datas[eAtual]?'<div style="font-size:11px;color:#94a3b8">Atualizado em '+fmtDt(datas[eAtual])+'</div>':'')
+      +'</div>'
+      // Timeline
+      +'<div style="background:white;border-radius:14px;padding:20px;margin-bottom:16px;box-shadow:0 2px 12px #00000010">'
+      +'<div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:18px">Andamento do processo</div>'
+      +tlHTML
+      +'</div>'
+      // Info
+      +'<div style="background:white;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 2px 12px #00000010">'
+      +'<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px">Informações</div>'
+      +'<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:13px"><span style="color:#94a3b8">Tipo</span><span style="font-weight:600;color:#1e293b">'+d.tipo+'</span></div>'
+      +'<div style="display:flex;justify-content:space-between;padding:7px 0;font-size:13px"><span style="color:#94a3b8">Protocolo criado em</span><span style="font-weight:600;color:#1e293b">'+fmtDt(datas[estagios[0].k]||'')+'</span></div>'
+      +'</div>'
+      // Contato
+      +'<div style="background:white;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 2px 12px #00000010;text-align:center">'
+      +'<div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px">Em caso de dúvidas, entre em contato.</div>'
+      +'<div style="font-size:11px;color:#94a3b8;line-height:1.6">* Algumas atualizações podem apresentar pequeno atraso em relação ao andamento real do processo.</div>'
+      +'</div>'
+      +'<div style="padding:16px;text-align:center;font-size:11px;color:#94a3b8">2026 · © Carlos Alberto Pacheco · Todos os direitos reservados</div>'
+      +'</div>'
+      +'</div>';
+  })
+  .catch(function(){erro("Erro ao carregar. Tente novamente.");});
+}
+</script>
+</body>
+</html>
