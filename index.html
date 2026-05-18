@@ -764,9 +764,9 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
   })));
   const ddiff=(p)=>{
     if(!p)return 99;
-    const hoje_str=hoje.getFullYear()+"-"+String(hoje.getMonth()+1).padStart(2,"0")+"-"+String(hoje.getDate()).padStart(2,"0");
-    if(p===hoje_str)return 0;
-    return Math.ceil((new Date(p+"T12:00:00")-new Date(hoje.toDateString()))/(864e5));
+    const hj=new Date(hoje.getFullYear(),hoje.getMonth(),hoje.getDate());
+    const pr=new Date(p+"T12:00:00");
+    return Math.round((pr-hj)/(864e5));
   };
   const diligVencDash=todasDilig.filter(d=>d.status!=="Concluída"&&d.prazo&&ddiff(d.prazo)<0);
   const diligHojeDash=todasDilig.filter(d=>d.status!=="Concluída"&&d.prazo&&ddiff(d.prazo)===0);
@@ -1861,7 +1861,7 @@ const TelaDiligencias=({servicos,cn,abrirServico})=>{
   const [filtroStatus,setFiltroStatus]=useState("todos");
   const [filtroOrgao,setFiltroOrgao]=useState("");
   const hoje=new Date();
-  const ddiff=(p)=>{if(!p)return 99;const hs=hoje.getFullYear()+"-"+String(hoje.getMonth()+1).padStart(2,"0")+"-"+String(hoje.getDate()).padStart(2,"0");if(p===hs)return 0;return Math.ceil((new Date(p+"T12:00:00")-new Date(hoje.getFullYear()+"-"+String(hoje.getMonth()+1).padStart(2,"0")+"-"+String(hoje.getDate()).padStart(2,"0")+"T12:00:00"))/(864e5));};
+  const ddiff=(p)=>{if(!p)return 99;const hj=new Date(hoje.getFullYear(),hoje.getMonth(),hoje.getDate());const pr=new Date(p+"T12:00:00");return Math.round((pr-hj)/(864e5));};
   const getStatus=(d)=>{
     if(d.status==="Concluída")return"concluida";
     if(!d.prazo)return"proxima";
