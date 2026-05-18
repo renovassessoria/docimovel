@@ -1271,7 +1271,7 @@ const AbaPublicacoes=({servico})=>{
   const [loading,setLoading]=React.useState(false);
   const [erro,setErro]=React.useState("");
   const [ultima,setUltima]=React.useState("");
-  const numProc=(servico.dadosJudiciais?.numeroProcesso||"").trim();
+  const numProc=(servico.dadosJudiciais?.numero||servico.dadosJudiciais?.numeroProcesso||servico.dados_judiciais?.numero||servico.dados_judiciais?.numeroProcesso||"").trim();
   const isJudicial=servico.tipoProcesso==="judicial";
 
   const TRIBUNAL_ENDPOINT="api_publica_tjba";
@@ -1314,7 +1314,7 @@ const AbaPublicacoes=({servico})=>{
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
               <div>
                 <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:3}}>Monitoramento via DataJud — CNJ</div>
-                <div style={{fontSize:11,color:"#475569"}}>Consulta pública gratuita · TJBA · {numProc?("Processo: "+servico.dadosJudiciais?.numeroProcesso):"Número não cadastrado"}</div>
+                <div style={{fontSize:11,color:"#475569"}}>Consulta pública gratuita · TJBA · {numProc?("Processo: "+numProc):"Número não cadastrado"}</div>
                 {ultima&&<div style={{fontSize:11,color:"#22c55e",marginTop:2}}>Ultima consulta: {ultima}</div>}
               </div>
               <button style={S.btnPrimary} onClick={buscar} className="bp" disabled={loading}>{loading?"Consultando...":"Consultar agora"}</button>
