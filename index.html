@@ -691,7 +691,7 @@ const AppContent=({session})=>{
       <main style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
         {tela==="dashboard"&&<TelaDashboard clientes={clientes} servicos={servicos} abrirServico={(s)=>{setServicoAberto(s);setAbaServico("diligencias");setTela("servicos");}} abrirServicoVisao={(s)=>{setServicoAberto(s);setAbaServico("visao");setTela("servicos");}} irAgenda={()=>setTela("agenda")} agenda={agenda} diligVenc={[...diligVenc,...prazosVenc,...parcelasVenc]} diligHoje={[...diligHoje,...prazosHoje,...prazosProx,...parcelasHoje]} leadsN={leadsN} orcA={orcA} cn={cn} irPara={setTela}/>}
         {tela==="clientes"&&<TelaClientes clientes={filtC} servicos={servicos} search={searchC} setSearch={setSearchC} abrirModal={abrirModal} setClientes={setClientes}/>}
-        {tela==="servicos"&&!servicoAberto&&<TelaServicos servicos={filtS} search={searchS} setSearch={setSearchS} cn={cn} abrirModal={abrirModal} abrirServico={s=>{setServicoAberto(s);setAbaServico("visao");}} setPrintData={setPrintData} setServicos={setServicos} showToast={showToast}/>}
+        {tela==="servicos"&&!servicoAberto&&<TelaServicos servicos={filtS} search={searchS} setSearch={setSearchS} cn={cn} abrirModal={abrirModal} abrirServico={s=>{setServicoAberto(s);setAbaServico("visao");}} setPrintData={setPrintData} setServicos={setServicos} showToast={showToast} clientes={clientes}/>}
         {tela==="servicos"&&servicoAberto&&<TelaServicoDetalhe servico={servicoAberto} clientes={clientes} aba={abaServico} setAba={setAbaServico} atualizar={p=>atualizarServico(servicoAberto.id,p)} showToast={showToast} sb={sb} abrirModal={abrirModal} voltar={()=>setServicoAberto(null)} setPrintData={setPrintData}/>}
         {tela==="diligencias_all"&&<TelaDiligencias servicos={servicos} cn={cn} abrirServico={s=>{setServicoAberto(s);setAbaServico("diligencias");setTela("servicos");}}/>}
         {tela==="agenda"&&<TelaAgenda agenda={agenda} setAgenda={setAgenda} clientes={clientes} servicos={servicos} cn={cn} sb={sb} showToast={showToast}/>}
@@ -939,13 +939,53 @@ const TelaClientes=({clientes,servicos,search,setSearch,abrirModal,setClientes,s
   );
 };
 
-const TelaServicos=({servicos,search,setSearch,cn,abrirModal,abrirServico,setPrintData,setServicos,showToast})=>{
+const TelaServicos=({servicos,search,setSearch,cn,abrirModal,abrirServico,setPrintData,setServicos,showToast,clientes})=>{
+  const [filtroStatus,setFiltroStatus]=useState("todos");
+  const [filtroTipo,setFiltroTipo]=useState("");
+  const [filtroEstagio,setFiltroEstagio]=useState("");
+
   const orcA=servicos.filter(s=>s.orcamento?.status==="Orçamento");
-  return(<div style={S.tela}><PageHeader title="Serviços / Protocolos" sub={servicos.length+" serviço(s)"}><input style={S.search} placeholder="Buscar..." value={search} onChange={e=>setSearch(e.target.value)}/><button style={S.btnPrimary} onClick={()=>abrirModal("servico",{orcamento:{valor:"",desconto:0,obs:"",status:"Orçamento"},checklist:{},outrosDesc:""})} className="bp">+ Novo Serviço</button></PageHeader>
-  <div style={S.body}>{orcA.length>0&&<div style={{...S.alertBanner,marginBottom:14}}>⚠️ <strong>{orcA.length} orçamento(s) pendente(s)</strong> - entre em contato para fechar!</div>}
+
+  const filtrados=servicos.filter(s=>{
+    const q=(search||"").toLowerCase();
+    const nomeCliente=(cn(s.clienteId||s.cliente_id)||"").toLowerCase();
+    const cli=clientes?.find(c=>c.id===(s.clienteId||s.cliente_id));
+    const cpfCliente=(cli?.cpf||"").toLowerCase();
+    const matchBusca=!q||nomeCliente.includes(q)||cpfCliente.includes(q)||(s.protocolo||"").toLowerCase().includes(q)||(s.tipo||"").toLowerCase().includes(q);
+    const matchStatus=filtroStatus==="todos"||(filtroStatus==="concluido"&&(s.status==="Concluído"||s.status==="Concluido"))||(filtroStatus==="aberto"&&s.status!=="Concluído"&&s.status!=="Concluido");
+    const matchTipo=!filtroTipo||s.tipoProcesso===filtroTipo;
+    const matchEstagio=!filtroEstagio||s.estagio===filtroEstagio;
+    return matchBusca&&matchStatus&&matchTipo&&matchEstagio;
+  });
+
+  const estagiosUnicos=[...new Set(servicos.map(s=>s.estagio).filter(Boolean))].sort();
+
+  return(<div style={S.tela}><PageHeader title="Serviços / Protocolos" sub={filtrados.length+" de "+servicos.length+" serviço(s)"}>
+    <input style={S.search} placeholder="Buscar por nome, CPF, protocolo, tipo..." value={search} onChange={e=>setSearch(e.target.value)}/>
+    <button style={S.btnPrimary} onClick={()=>abrirModal("servico",{orcamento:{valor:"",desconto:0,obs:"",status:"Orçamento"},checklist:{},outrosDesc:""})} className="bp">+ Novo Serviço</button>
+  </PageHeader>
+  <div style={S.body}>
+    {/* Filtros */}
+    <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
+      <span style={{fontSize:11,color:"#475569",fontWeight:600}}>Filtrar:</span>
+      {[["todos","Todos"],["aberto","Em aberto"],["concluido","Concluídos"]].map(([k,l])=>(
+        <button key={k} onClick={()=>setFiltroStatus(k)} style={{padding:"5px 12px",borderRadius:7,border:"1px solid "+(filtroStatus===k?"#3b82f6":"#0f1f35"),background:filtroStatus===k?"#071428":"#07101e",color:filtroStatus===k?"#3b82f6":"#475569",fontSize:12,fontWeight:600,cursor:"pointer"}} className="bs">{l}</button>
+      ))}
+      <select style={{...S.selectSm,fontSize:12}} value={filtroTipo} onChange={e=>setFiltroTipo(e.target.value)}>
+        <option value="">Todos os tipos</option>
+        <option value="judicial">Judicial</option>
+        <option value="extrajudicial">Extrajudicial</option>
+      </select>
+      <select style={{...S.selectSm,fontSize:12}} value={filtroEstagio} onChange={e=>setFiltroEstagio(e.target.value)}>
+        <option value="">Todos os estágios</option>
+        {estagiosUnicos.map(e=><option key={e}>{e}</option>)}
+      </select>
+      {(filtroStatus!=="todos"||filtroTipo||filtroEstagio)&&<button style={{...S.btnSm,color:"#ef4444",borderColor:"#ef444433",fontSize:11}} onClick={()=>{setFiltroStatus("todos");setFiltroTipo("");setFiltroEstagio("");}} className="bs">Limpar filtros</button>}
+    </div>
+    {orcA.length>0&&<div style={{...S.alertBanner,marginBottom:14}}>⚠ <strong>{orcA.length} orçamento(s) pendente(s)</strong> - entre em contato para fechar!</div>}
   <div style={S.tableCard}><table style={S.table}><thead><tr>{["Protocolo","Cliente","Tipo","Estágio","Orçamento","Status","Ações"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
-  <tbody>{servicos.map(s=>(<tr key={s.id} style={S.tr} className="tr"><td style={S.td}><span style={S.proto}>{s.protocolo}</span></td><td style={S.td}><div style={{fontWeight:600,color:"#e2e8f0"}}>{cn(s.clienteId)}</div></td><td style={S.td}>{s.tipo}</td><td style={S.td}><Tag label={s.estagio} color={ECOR[s.estagio]||"#64748b"}/></td><td style={S.td}><div style={{fontWeight:700,color:"#e2e8f0",fontSize:13}}>R$ {fmt(s.orcamento?.valor)}</div><Tag label={s.orcamento?.status||"-"} color={s.orcamento?.status==="Fechado"?"#22c55e":s.orcamento?.status==="Concluído"?"#3b82f6":"#f59e0b"}/></td><td style={S.td}><Tag label={s.status} color={s.status==="Concluído"?"#22c55e":"#3b82f6"}/></td><td style={S.td}><button style={S.btnSm} onClick={()=>abrirServico(s)} className="bs">Abrir</button><button style={{...S.btnSm,color:"#3b82f6",borderColor:"#3b82f644"}} onClick={()=>abrirModal("servico",{...s,tipoProcesso:s.tipoProcesso||"extrajudicial",dadosJudiciais:s.dadosJudiciais||{}})} className="bs">Editar</button><button style={{...S.btnSm,color:"#f59e0b",borderColor:"#f59e0b44"}} onClick={()=>setPrintData(s)} className="bs">🖨</button><button style={{...S.btnSm,...S.btnDang}} onClick={async()=>{if(window.confirm("Excluir este servico? Esta acao e permanente e nao pode ser desfeita.")){await sb.from("servicos").delete().eq("id",s.id);setServicos(prev=>prev.filter(x=>x.id!==s.id));showToast("Excluído.");}}} className="bs">✕</button></td></tr>))}</tbody></table>
-  {servicos.length===0&&<div style={S.empty}>Nenhum serviço.</div>}</div></div></div>);
+  <tbody>{filtrados.map(s=>(<tr key={s.id} style={S.tr} className="tr"><td style={S.td}><span style={S.proto}>{s.protocolo}</span></td><td style={S.td}><div style={{fontWeight:600,color:"#e2e8f0"}}>{cn(s.clienteId)}</div></td><td style={S.td}>{s.tipo}</td><td style={S.td}><Tag label={s.estagio} color={ECOR[s.estagio]||"#64748b"}/></td><td style={S.td}><div style={{fontWeight:700,color:"#e2e8f0",fontSize:13}}>R$ {fmt(s.orcamento?.valor)}</div><Tag label={s.orcamento?.status||"-"} color={s.orcamento?.status==="Fechado"?"#22c55e":s.orcamento?.status==="Concluído"?"#3b82f6":"#f59e0b"}/></td><td style={S.td}><Tag label={s.status} color={s.status==="Concluído"?"#22c55e":"#3b82f6"}/></td><td style={S.td}><button style={S.btnSm} onClick={()=>abrirServico(s)} className="bs">Abrir</button><button style={{...S.btnSm,color:"#3b82f6",borderColor:"#3b82f644"}} onClick={()=>abrirModal("servico",{...s,tipoProcesso:s.tipoProcesso||"extrajudicial",dadosJudiciais:s.dadosJudiciais||{}})} className="bs">Editar</button><button style={{...S.btnSm,color:"#f59e0b",borderColor:"#f59e0b44"}} onClick={()=>setPrintData(s)} className="bs">🖨</button><button style={{...S.btnSm,...S.btnDang}} onClick={async()=>{if(window.confirm("Excluir este servico? Esta acao e permanente e nao pode ser desfeita.")){await sb.from("servicos").delete().eq("id",s.id);setServicos(prev=>prev.filter(x=>x.id!==s.id));showToast("Excluído.");}}} className="bs">✕</button></td></tr>))}</tbody></table>
+  {filtrados.length===0&&<div style={S.empty}>Nenhum serviço encontrado com os filtros selecionados.</div>}</div></div></div>);
 };
 
 const getHistRec=()=>window._histRec||[];
@@ -1231,7 +1271,7 @@ const AbaPublicacoes=({servico})=>{
   const [loading,setLoading]=React.useState(false);
   const [erro,setErro]=React.useState("");
   const [ultima,setUltima]=React.useState("");
-  const numProc=(servico.dadosJudiciais?.numeroProcesso||"").replace(/[^0-9]/g,"");
+  const numProc=(servico.dadosJudiciais?.numeroProcesso||"").trim();
   const isJudicial=servico.tipoProcesso==="judicial";
 
   const TRIBUNAL_ENDPOINT="api_publica_tjba";
