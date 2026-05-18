@@ -60,9 +60,8 @@ if(!m){erro("Link inválido.");} else {
     headers:{
       "apikey":SUPA_KEY,
       "Authorization":"Bearer "+SUPA_KEY,
-      "Content-Type":"application/json",
       "Accept":"application/json",
-      "Prefer":"return=representation"
+      "X-Client-Info":"docimovel-portal"
     }
   })
   .then(function(r){
@@ -150,10 +149,6 @@ if(!m){erro("Link inválido.");} else {
       +'<div style="font-size:11px;color:#94a3b8;line-height:1.6">* Algumas atualizações podem apresentar pequeno atraso em relação ao andamento real do processo.</div>'
       +'</div>'
       +'<div style="padding:16px;text-align:center;font-size:11px;color:#94a3b8">2026 · © Carlos Alberto Pacheco · Todos os direitos reservados</div>'
-      +'</div>'
-      +'</div>';
-  })
-  .catch(function(e){erro("Erro ao carregar: "+e.message);});
 }
 </script>
 </body>
