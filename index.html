@@ -506,6 +506,7 @@ const AppContent=({session})=>{
     if(patch.checklist)db.checklist=patch.checklist;
     if(patch.outrosDesc!==undefined)db.outros_desc=patch.outrosDesc;
     if(patch.orcamento)db.orcamento=patch.orcamento;
+    if(patch.portal!==undefined)db.portal=patch.portal;
     if(Object.keys(db).length)await sb.from("servicos").update(db).eq("id",id);
     if(patch.diligencias){
       const sv=servicos.find(s=>s.id===id);
@@ -1418,7 +1419,7 @@ const AbaPortalCliente=({servico,cliente,atualizar,showToast})=>{
               );
             })}
           </div>
-          <div style={{padding:"10px 18px",borderTop:"1px solid #f1f5f9",background:"#f8fafc",fontSize:10,color:"#94a3b8",textAlign:"center"}}>(75) 99999-9999 · capacheco.adv@gmail.com</div>
+          <div style={{padding:"10px 18px",borderTop:"1px solid #f1f5f9",background:"#f8fafc",fontSize:10,color:"#94a3b8",textAlign:"center"}}>2026 · © Carlos Alberto Pacheco · Todos os direitos reservados</div>
         </div>
       </div>
     </div>
