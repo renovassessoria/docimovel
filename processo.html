@@ -53,8 +53,8 @@ var m = path.match(/\/processo\/([A-Za-z0-9]+)$/);
 if(!m){erro("Link inválido.");} else {
   var token = m[1];
 
-  // Buscar servicos com portal preenchido e filtrar pelo token no JS
-  var url = SUPA_URL+"/rest/v1/servicos?select=tipo,tipo_processo,portal,clientes(nome)&portal=not.is.null&limit=500";
+  // Buscar direto pelo token usando filtro PostgREST para JSONB
+  var url = SUPA_URL+"/rest/v1/servicos?select=tipo,tipo_processo,portal,clientes(nome)&portal->>token=eq."+token+"&limit=1";
   
   fetch(url, {
     headers:{
@@ -70,16 +70,7 @@ if(!m){erro("Link inválido.");} else {
   })
   .then(function(data){
     if(!data||data.length===0){erro("Processo não encontrado.");return;}
-    // Filtrar pelo token no JavaScript
-    var found = null;
-    for(var i=0;i<data.length;i++){
-      if(data[i].portal && data[i].portal.token === token){
-        found = data[i];
-        break;
-      }
-    }
-    if(!found){erro("Processo não encontrado.");return;}
-    var d = found;
+    var d = data[0];
     var isJ = d.tipo_processo === "judicial";
     var estagios = isJ ? EJ : EA;
     var portal = d.portal || {};
