@@ -595,7 +595,10 @@ const AppContent=({session})=>{
 
   const todasDilig=servicos.flatMap(s=>(s.diligencias||[]).filter(d=>d.status!=="Concluída").map(d=>({...d,protocolo:s.protocolo,clienteNome:cn(s.clienteId),servicoId:s.id,tipo:"diligencia"})));
   const diligVenc=todasDilig.filter(d=>d.prazo&&dd(d.prazo)<0);
-  const diligHoje=todasDilig.filter(d=>d.prazo&&dd(d.prazo)>=0&&dd(d.prazo)<=1);
+  const _hjApp=new Date();
+  const _hjAppMs=new Date(_hjApp.getFullYear(),_hjApp.getMonth(),_hjApp.getDate()).getTime();
+  const _ddApp=(p)=>{if(!p)return 99;return Math.round((new Date(p+"T12:00:00").getTime()-_hjAppMs)/(864e5));};
+  const diligHoje=todasDilig.filter(d=>d.prazo&&_ddApp(d.prazo)===0);
   const hoje2=new Date(new Date().toDateString());
   const agendaHoje=agenda.filter(a=>{
     if(a.status==="cancelado")return false;
@@ -740,17 +743,18 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
   const orcamentos=servicos.filter(s=>s.orcamento?.status==="Orçamento"||s.orcamento?.status==="Orcamento");
 
   // Agenda: agendamentos dos próximos 3 dias + vencidos
+  const _hj=new Date(hoje.getFullYear(),hoje.getMonth(),hoje.getDate());
+  const _ddA=(data)=>{if(!data)return 99;return Math.round((new Date(data+"T12:00:00")-_hj)/(864e5));};
   const agendaCard=[
-    ...(agendaItens||[]).filter(a=>a.status!=="cancelado"&&a.status!=="realizado"&&a.data<hojeTD)
-      .map(a=>{const diff=Math.ceil((new Date(a.data+"T12:00:00")-new Date(hoje.toDateString()))/(864e5));return{...a,cor:"#ef4444",lbl:diff+"d",tipo:"agenda"};}),
-    ...(agendaItens||[]).filter(a=>a.status!=="cancelado"&&a.status!=="realizado"&&a.data===hojeTD)
+    ...(agendaItens||[]).filter(a=>a.status!=="cancelado"&&a.status!=="realizado"&&_ddA(a.data)<0)
+      .map(a=>{const d=_ddA(a.data);return{...a,cor:"#ef4444",lbl:d+"d",tipo:"agenda"};}),
+    ...(agendaItens||[]).filter(a=>a.status!=="cancelado"&&a.status!=="realizado"&&_ddA(a.data)===0)
       .map(a=>({...a,cor:"#f97316",lbl:"hoje",tipo:"agenda"})),
     ...(agendaItens||[]).filter(a=>{
       if(a.status==="cancelado"||a.status==="realizado")return false;
-      const diff=Math.ceil((new Date(a.data+"T12:00:00")-new Date(hoje.toDateString()))/(864e5));
-      return diff>0&&diff<=7;
-    }).map(a=>{const diff=Math.ceil((new Date(a.data+"T12:00:00")-new Date(hoje.toDateString()))/(864e5));return{...a,cor:"#3b82f6",lbl:"+"+diff+"d",tipo:"agenda"};}),
-    ...diligVenc.map(d=>{const diff=Math.ceil((new Date((d.prazo||d.data||"")+"T12:00:00")-new Date(hoje.toDateString()))/(864e5));return{...d,cor:"#ef4444",lbl:diff+"d"};}),
+      const d=_ddA(a.data);return d>0&&d<=7;
+    }).map(a=>{const d=_ddA(a.data);return{...a,cor:"#3b82f6",lbl:"+"+d+"d",tipo:"agenda"};}),
+    ...diligVenc.map(d=>{const df=_ddA(d.prazo||d.data||"");return{...d,cor:"#ef4444",lbl:df+"d"};}),
     ...diligHoje.map(d=>({...d,cor:"#f59e0b",lbl:"hoje"})),
   ];
 
