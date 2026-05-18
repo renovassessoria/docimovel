@@ -735,7 +735,7 @@ const AppContent=({session})=>{
 // ── TELAS ──
 const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPara,abrirServico,abrirServicoVisao,irAgenda,agenda:agendaItens})=>{
   const hoje=new Date();
-  const hojeTD=hoje.toISOString().slice(0,10);
+  const hojeTD=hoje.getFullYear()+"-"+String(hoje.getMonth()+1).padStart(2,"0")+"-"+String(hoje.getDate()).padStart(2,"0");
   const ativos=servicos.filter(s=>s.status!=="Concluido"&&s.status!=="Concluído");
   const orcamentos=servicos.filter(s=>s.orcamento?.status==="Orçamento"||s.orcamento?.status==="Orcamento");
 
@@ -764,7 +764,7 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
   })));
   const ddiff=(p)=>{
     if(!p)return 99;
-    const hoje_str=hoje.toISOString().slice(0,10);
+    const hoje_str=hoje.getFullYear()+"-"+String(hoje.getMonth()+1).padStart(2,"0")+"-"+String(hoje.getDate()).padStart(2,"0");
     if(p===hoje_str)return 0;
     return Math.ceil((new Date(p+"T12:00:00")-new Date(hoje.toDateString()))/(864e5));
   };
@@ -1861,7 +1861,7 @@ const TelaDiligencias=({servicos,cn,abrirServico})=>{
   const [filtroStatus,setFiltroStatus]=useState("todos");
   const [filtroOrgao,setFiltroOrgao]=useState("");
   const hoje=new Date();
-  const ddiff=(p)=>{if(!p)return 99;const hs=hoje.toISOString().slice(0,10);if(p===hs)return 0;return Math.ceil((new Date(p+"T12:00:00")-new Date(hoje.toDateString()))/(864e5));};
+  const ddiff=(p)=>{if(!p)return 99;const hs=hoje.getFullYear()+"-"+String(hoje.getMonth()+1).padStart(2,"0")+"-"+String(hoje.getDate()).padStart(2,"0");if(p===hs)return 0;return Math.ceil((new Date(p+"T12:00:00")-new Date(hoje.getFullYear()+"-"+String(hoje.getMonth()+1).padStart(2,"0")+"-"+String(hoje.getDate()).padStart(2,"0")+"T12:00:00"))/(864e5));};
   const getStatus=(d)=>{
     if(d.status==="Concluída")return"concluida";
     if(!d.prazo)return"proxima";
