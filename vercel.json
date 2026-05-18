@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/processo/:token", "destination": "/index.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
