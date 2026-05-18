@@ -762,7 +762,12 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
     protocolo:s.protocolo,
     servicoTipo:s.tipo,
   })));
-  const ddiff=(p)=>{if(!p)return 99;return Math.ceil((new Date(p+"T12:00:00")-new Date(hoje.toDateString()))/(864e5));};
+  const ddiff=(p)=>{
+    if(!p)return 99;
+    const hoje_str=hoje.toISOString().slice(0,10);
+    if(p===hoje_str)return 0;
+    return Math.ceil((new Date(p+"T12:00:00")-new Date(hoje.toDateString()))/(864e5));
+  };
   const diligVencDash=todasDilig.filter(d=>d.status!=="Concluída"&&d.prazo&&ddiff(d.prazo)<0);
   const diligHojeDash=todasDilig.filter(d=>d.status!=="Concluída"&&d.prazo&&ddiff(d.prazo)===0);
   const diligAmanha=todasDilig.filter(d=>d.status!=="Concluída"&&d.prazo&&ddiff(d.prazo)===1);
@@ -859,10 +864,10 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
         {todasDilig.filter(d=>d.status!=="Concluída").length===0&&<div style={S.empty}>Nenhuma diligência pendente.</div>}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
           {[
-            {grupo:"🚨 Vencidas",items:diligVencDash,cor:"#ef4444"},
-            {grupo:"🔥 Hoje",items:diligHojeDash,cor:"#f97316"},
-            {grupo:"⏰ Amanhã",items:diligAmanha,cor:"#eab308"},
-            {grupo:"📅 Próximos 7 dias",items:diligProx,cor:"#3b82f6"},
+            {grupo:"Vencidas",items:diligVencDash,cor:"#ef4444"},
+            {grupo:"Hoje",items:diligHojeDash,cor:"#f97316"},
+            {grupo:"Amanhã",items:diligAmanha,cor:"#eab308"},
+            {grupo:"Próximos 7 dias",items:diligProx,cor:"#3b82f6"},
           ].filter(g=>g.items.length>0).map(g=>(
             <div key={g.grupo}>
               <div style={{fontSize:11,fontWeight:800,color:g.cor,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6,paddingLeft:8,borderLeft:"3px solid "+g.cor}}>{g.grupo} ({g.items.length})</div>
@@ -1089,8 +1094,8 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
   };
   const dd2=(p)=>{if(!p)return 99;const t=new Date(p+"T12:00:00"),h=new Date(new Date().toDateString());return Math.ceil((t-h)/864e5);};
   const grupos2=[
-    {l:"🚨 Vencidas",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.prazo&&dd2(d.prazo)<0),c:"#ef4444"},
-    {l:"⚠ Hoje / Amanhã",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.prazo&&dd2(d.prazo)>=0&&dd2(d.prazo)<=1),c:"#f97316"},
+    {l:"Vencidas",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.prazo&&dd2(d.prazo)<0),c:"#ef4444"},
+    {l:"Hoje / Amanhã",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.prazo&&dd2(d.prazo)>=0&&dd2(d.prazo)<=1),c:"#f97316"},
     {l:"Próximas",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&(!d.prazo||dd2(d.prazo)>1)),c:"#3b82f6"},
     {l:"Concluídas",items:(servico.diligencias||[]).filter(d=>d.status==="Concluída"),c:"#22c55e"},
   ];
@@ -1573,7 +1578,7 @@ const AbaContratos=({servico,cliente,atualizar,showToast})=>{
   return(
     <div>
       <div style={{background:isJudicial?"#ef444408":"#3b82f608",border:"1px solid "+(isJudicial?"#ef444422":"#3b82f622"),borderRadius:10,padding:"12px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
-        <span style={{fontSize:18}}>{isJudicial?"⚖️":"🏠"}</span>
+        <span style={{fontSize:18}}>{isJudicial?"⚖":"🏠"}</span>
         <div>
           <div style={{fontSize:13,fontWeight:700,color:isJudicial?"#ef4444":"#3b82f6"}}>Modelos {isJudicial?"Judiciais":"Extrajudiciais"} disponíveis</div>
           <div style={{fontSize:11,color:"#475569",marginTop:2}}>Tipo detectado automaticamente pelo cadastro do serviço</div>
@@ -1596,7 +1601,7 @@ const AbaContratos=({servico,cliente,atualizar,showToast})=>{
           <div style={S.cardTitle}>Histórico de Documentos Gerados</div>
           {[...historico].reverse().map(h=>(
             <div key={h.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid #0f1f35",fontSize:12}}>
-              <span style={{fontSize:16}}>{h.tipo.includes("Procuração")?"📜":"📋"}</span>
+              <span style={{fontSize:16}}>{h.tipo.includes("Procuração")?"◎":"◈"}</span>
               <div style={{flex:1}}>
                 <div style={{fontWeight:600,color:"#e2e8f0"}}>{h.tipo}</div>
                 <div style={{fontSize:11,color:"#475569"}}>Gerado em {h.data} às {h.hora}</div>
@@ -1832,7 +1837,7 @@ const TelaAndamento=({servicos,cn,diligVenc,diligHoje,abrirProcesso})=>{
 const TelaProcessoDetalhe=({servico,aba,setAba,atualizar,voltar,cn})=>{
   const [modalDilig,setModalDilig]=useState(null);
   const salvarDilig=(form)=>{const diligencias=form.id&&(servico.diligencias||[]).find(d=>d.id===form.id)?((servico.diligencias||[]).map(d=>d.id===form.id?form:d)):[...(servico.diligencias||[]),{...form,id:Date.now()}];atualizar({diligencias});setModalDilig(null);};
-  const grupos=[{l:"🚨 Vencidos",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.prazo&&dd(d.prazo)<0),c:"#ef4444"},{l:"⏰ Hoje/Amanhã",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.prazo&&dd(d.prazo)>=0&&dd(d.prazo)<=1),c:"#f59e0b"},{l:"📅 Próximas",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&(!d.prazo||dd(d.prazo)>1)),c:"#3b82f6"},{l:"✅ Concluídas",items:(servico.diligencias||[]).filter(d=>d.status==="Concluída"),c:"#22c55e"}];
+  const grupos=[{l:"Vencidos",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.prazo&&dd(d.prazo)<0),c:"#ef4444"},{l:"⏰ Hoje/Amanhã",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.prazo&&dd(d.prazo)>=0&&dd(d.prazo)<=1),c:"#f59e0b"},{l:"📅 Próximas",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&(!d.prazo||dd(d.prazo)>1)),c:"#3b82f6"},{l:"✅ Concluídas",items:(servico.diligencias||[]).filter(d=>d.status==="Concluída"),c:"#22c55e"}];
   return(<div style={S.tela}>
     <PageHeader title={<span style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}><button onClick={voltar} style={S.backBtn} className="back">← Andamento</button><span style={S.proto}>{servico.protocolo}</span><Tag label={servico.estagio} color={ECOR[servico.estagio]||"#64748b"}/></span>} sub={servico.tipo+" - "+cn(servico.clienteId)}/>
     <div style={{display:"flex",gap:4,padding:"8px 24px",background:"#090e1a",borderBottom:"1px solid #0f1f35"}}>{[{k:"timeline",l:"📍 Timeline"},{k:"diligencias",l:"🗂 Diligências"}].map(a=><button key={a.k} onClick={()=>setAba(a.k)} style={{...S.abaBtn,...(aba===a.k?S.abaBtnActive:{})}} className="ab">{a.l}</button>)}</div>
@@ -1857,7 +1862,7 @@ const TelaDiligencias=({servicos,cn,abrirServico})=>{
   const [filtroStatus,setFiltroStatus]=useState("todos");
   const [filtroOrgao,setFiltroOrgao]=useState("");
   const hoje=new Date();
-  const ddiff=(p)=>{if(!p)return 99;return Math.ceil((new Date(p+"T12:00:00")-new Date(hoje.toDateString()))/(864e5));};
+  const ddiff=(p)=>{if(!p)return 99;const hs=hoje.toISOString().slice(0,10);if(p===hs)return 0;return Math.ceil((new Date(p+"T12:00:00")-new Date(hoje.toDateString()))/(864e5));};
   const getStatus=(d)=>{
     if(d.status==="Concluída")return"concluida";
     if(!d.prazo)return"proxima";
