@@ -742,16 +742,16 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
   // Agenda: agendamentos dos próximos 3 dias + vencidos
   const agendaCard=[
     ...(agendaItens||[]).filter(a=>a.status!=="cancelado"&&a.status!=="realizado"&&a.data<hojeTD)
-      .map(a=>({...a,cor:"#ef4444",lbl:"VENCIDO",tipo:"agenda"})),
+      .map(a=>{const diff=Math.ceil((new Date(a.data+"T12:00:00")-new Date(hoje.toDateString()))/(864e5));return{...a,cor:"#ef4444",lbl:diff+"d",tipo:"agenda"};}),
     ...(agendaItens||[]).filter(a=>a.status!=="cancelado"&&a.status!=="realizado"&&a.data===hojeTD)
-      .map(a=>({...a,cor:"#f97316",lbl:"HOJE",tipo:"agenda"})),
+      .map(a=>({...a,cor:"#f97316",lbl:"hoje",tipo:"agenda"})),
     ...(agendaItens||[]).filter(a=>{
       if(a.status==="cancelado"||a.status==="realizado")return false;
-      const diff=Math.ceil((new Date(a.data)-new Date(hoje.toDateString()))/(864e5));
+      const diff=Math.ceil((new Date(a.data+"T12:00:00")-new Date(hoje.toDateString()))/(864e5));
       return diff>0&&diff<=7;
-    }).map(a=>({...a,cor:"#3b82f6",lbl:"+"+Math.ceil((new Date(a.data)-new Date(hoje.toDateString()))/(864e5))+"d",tipo:"agenda"})),
-    ...diligVenc.map(d=>({...d,cor:"#ef4444",lbl:"VENCIDO"})),
-    ...diligHoje.map(d=>({...d,cor:"#f59e0b",lbl:"HOJE"})),
+    }).map(a=>{const diff=Math.ceil((new Date(a.data+"T12:00:00")-new Date(hoje.toDateString()))/(864e5));return{...a,cor:"#3b82f6",lbl:"+"+diff+"d",tipo:"agenda"};}),
+    ...diligVenc.map(d=>{const diff=Math.ceil((new Date((d.prazo||d.data||"")+"T12:00:00")-new Date(hoje.toDateString()))/(864e5));return{...d,cor:"#ef4444",lbl:diff+"d"};}),
+    ...diligHoje.map(d=>({...d,cor:"#f59e0b",lbl:"hoje"})),
   ];
 
   // Diligências: todas dos serviços agrupadas por urgência
@@ -866,8 +866,7 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
           {[
             {grupo:"Vencidas",items:diligVencDash,cor:"#ef4444"},
             {grupo:"Hoje",items:diligHojeDash,cor:"#f97316"},
-            {grupo:"Amanhã",items:diligAmanha,cor:"#eab308"},
-            {grupo:"Próximos 7 dias",items:diligProx,cor:"#3b82f6"},
+            {grupo:"Próximos 7 dias",items:[...diligAmanha,...diligProx],cor:"#3b82f6"},
           ].filter(g=>g.items.length>0).map(g=>(
             <div key={g.grupo}>
               <div style={{fontSize:11,fontWeight:800,color:g.cor,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6,paddingLeft:8,borderLeft:"3px solid "+g.cor}}>{g.grupo} ({g.items.length})</div>
@@ -876,7 +875,7 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
                   <div style={{flex:1}}>
                     <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{d.descricao}</div>
                     <div style={{fontSize:11,color:"#475569",marginTop:2}}>{d.clienteNome} · {d.orgao||""}</div>
-                    {d.prazo&&<div style={{fontSize:11,color:g.cor,fontWeight:700,marginTop:2}}>{d.prazo}</div>}
+                    {d.prazo&&<div style={{fontSize:11,color:g.cor,fontWeight:700,marginTop:2}}>{d.prazo} {(()=>{const dif=ddiff(d.prazo);return dif===0?"· hoje":dif<0?"· "+dif+"d":"· +"+dif+"d";})()}</div>}
                   </div>
                   <button style={{...S.btnSm,fontSize:10,padding:"3px 8px",color:g.cor,borderColor:g.cor+"44",flexShrink:0}} onClick={e=>{e.stopPropagation();const sv=servicos.find(s=>s.id===d.servicoId);if(sv&&abrirServico)abrirServico(sv);}} className="bs">Abrir</button>
                 </div>
@@ -1956,7 +1955,7 @@ const TelaDiligencias=({servicos,cn,abrirServico})=>{
                       {d.prazo?(
                         <div>
                           <div style={{fontSize:12,fontWeight:700,color:si.c}}>{d.prazo}</div>
-                          <div style={{fontSize:11,color:si.c}}>{diff===null?"":diff<0?Math.abs(diff)+"d atraso":diff===0?"hoje":diff===1?"amanhã":"+"+diff+"d"}</div>
+                          <div style={{fontSize:11,color:si.c}}>{diff===null?"":diff<0?diff+"d":diff===0?"hoje":"+"+diff+"d"}</div>
                         </div>
                       ):<span style={{color:"#475569",fontSize:12}}>—</span>}
                     </td>
