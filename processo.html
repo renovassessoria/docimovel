@@ -54,7 +54,7 @@ if(!m){erro("Link inválido.");} else {
   var token = m[1];
 
   // Buscar direto pelo token usando filtro PostgREST para JSONB
-  var url = SUPA_URL+"/rest/v1/servicos?select=tipo,tipo_processo,portal,clientes(nome)&portal->>token=eq."+token+"&limit=1";
+  var url = SUPA_URL+"/rest/v1/servicos?select=tipo,tipo_processo,portal,protocolo,cliente_id,clientes(nome)&portal->>token=eq."+token+"&limit=1";
   
   fetch(url, {
     headers:{
@@ -79,6 +79,7 @@ if(!m){erro("Link inválido.");} else {
     for(var i=0;i<estagios.length;i++){if(estagios[i].k===eAtual){idx=i;break;}}
     var cor = isJ ? "#dc2626" : "#2563eb";
     var nome = (d.clientes && d.clientes.nome) || "";
+    var protocolo = d.protocolo || "";
     var datas = portal.datas || {};
 
     var tlHTML = estagios.map(function(e,i){
@@ -112,6 +113,7 @@ if(!m){erro("Link inválido.");} else {
       +'<div><div style="font-size:13px;font-weight:800;color:white">DocImóvel PRO</div><div style="font-size:10px;color:#94a3b8">Acompanhamento de Processo</div></div>'
       +'</div>'
       +'<div style="font-size:20px;font-weight:800;color:white;margin-bottom:3px">'+nome+'</div>'
+      +(protocolo?'<div style="font-size:11px;color:#94a3b8;margin-bottom:4px">Protocolo: '+protocolo+'</div>':'')
       +'<div style="font-size:12px;color:#94a3b8;margin-bottom:8px">'+d.tipo+'</div>'
       +'<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:4px;background:'+cor+'22;color:'+cor+';border:1px solid '+cor+'33">'+(isJ?'Processo Judicial':'Processo Extrajudicial')+'</span>'
       +'</div>'
@@ -131,7 +133,9 @@ if(!m){erro("Link inválido.");} else {
       // Info
       +'<div style="background:white;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 2px 12px #00000010">'
       +'<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px">Informações</div>'
+      +'<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:13px"><span style="color:#94a3b8">Cliente</span><span style="font-weight:600;color:#1e293b">'+nome+'</span></div>'
       +'<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:13px"><span style="color:#94a3b8">Tipo</span><span style="font-weight:600;color:#1e293b">'+d.tipo+'</span></div>'
+      +(protocolo?'<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:13px"><span style="color:#94a3b8">Protocolo</span><span style="font-weight:600;color:#1e293b">'+protocolo+'</span></div>':'')
       +'<div style="display:flex;justify-content:space-between;padding:7px 0;font-size:13px"><span style="color:#94a3b8">Protocolo criado em</span><span style="font-weight:600;color:#1e293b">'+fmtDt(datas[estagios[0].k]||'')+'</span></div>'
       +'</div>'
       // Contato
