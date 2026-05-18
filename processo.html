@@ -54,7 +54,7 @@ if(!m){erro("Link inválido.");} else {
   var token = m[1];
 
   // Buscar direto pelo token usando filtro PostgREST para JSONB
-  var url = SUPA_URL+"/rest/v1/servicos?select=tipo,tipo_processo,portal,protocolo,cliente_id,clientes(nome)&portal->>token=eq."+token+"&limit=1";
+  var url = SUPA_URL+"/rest/v1/servicos?select=tipo,tipo_processo,portal,protocolo,cliente_id&portal->>token=eq."+token+"&limit=1";
   
   fetch(url, {
     headers:{
@@ -71,6 +71,23 @@ if(!m){erro("Link inválido.");} else {
   .then(function(data){
     if(!data||data.length===0){erro("Processo não encontrado.");return;}
     var d = data[0];
+    var clienteId = d.cliente_id;
+    // Buscar nome do cliente separadamente
+    if(clienteId){
+      fetch(SUPA_URL+"/rest/v1/clientes?select=nome&id=eq."+clienteId+"&limit=1",{
+        headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Accept":"application/json"}
+      }).then(function(r){return r.json();}).then(function(cData){
+        var nomeCliente = (cData&&cData[0]&&cData[0].nome)||"";
+        renderPortal(d, nomeCliente);
+      }).catch(function(){renderPortal(d,"");});
+    } else {
+      renderPortal(d,"");
+    }
+  })
+  .catch(function(e){erro("Erro ao carregar: "+e.message);});
+}
+
+function renderPortal(d, nome){
     var isJ = d.tipo_processo === "judicial";
     var estagios = isJ ? EJ : EA;
     var portal = d.portal || {};
@@ -78,7 +95,6 @@ if(!m){erro("Link inválido.");} else {
     var idx = 0;
     for(var i=0;i<estagios.length;i++){if(estagios[i].k===eAtual){idx=i;break;}}
     var cor = isJ ? "#dc2626" : "#2563eb";
-    var nome = (d.clientes && d.clientes.nome) || "";
     var protocolo = d.protocolo || "";
     var datas = portal.datas || {};
 
@@ -147,7 +163,7 @@ if(!m){erro("Link inválido.");} else {
       +'</div>'
       +'</div>';
   })
-  .catch(function(e){erro("Erro ao carregar: "+e.message);});
+
 }
 </script>
 </body>
