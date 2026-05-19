@@ -692,7 +692,7 @@ const AppContent=({session})=>{
 
       {/* MAIN */}
       <main style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-        {tela==="dashboard"&&<TelaDashboard clientes={clientes} servicos={servicos} abrirServico={(s)=>{setServicoAberto(s);setAbaServico("diligencias");setTela("servicos");}} abrirServicoVisao={(s)=>{setServicoAberto(s);setAbaServico("visao");setTela("servicos");}} irAgenda={()=>setTela("agenda")} agenda={agenda} diligVenc={[...diligVenc,...prazosVenc,...parcelasVenc]} diligHoje={[...diligHoje,...prazosHoje,...prazosProx,...parcelasHoje]} leadsN={leadsN} orcA={orcA} cn={cn} irPara={setTela}/>}
+        {tela==="dashboard"&&<TelaDashboard clientes={clientes} servicos={servicos} abrirServico={(s)=>{setServicoAberto(s);setAbaServico("diligencias");setTela("servicos");}} abrirServicoVisao={(s)=>{setServicoAberto(s);setAbaServico(s._abaInicial||"visao");setTela("servicos");}} irAgenda={()=>setTela("agenda")} agenda={agenda} diligVenc={[...diligVenc,...prazosVenc,...parcelasVenc]} diligHoje={[...diligHoje,...prazosHoje,...prazosProx,...parcelasHoje]} leadsN={leadsN} orcA={orcA} cn={cn} irPara={setTela}/>}
         {tela==="clientes"&&<TelaClientes clientes={filtC} servicos={servicos} search={searchC} setSearch={setSearchC} abrirModal={abrirModal} setClientes={setClientes}/>}
         {tela==="servicos"&&!servicoAberto&&<TelaServicos servicos={filtS} search={searchS} setSearch={setSearchS} cn={cn} abrirModal={abrirModal} abrirServico={s=>{setServicoAberto(s);setAbaServico("visao");}} setPrintData={setPrintData} setServicos={setServicos} showToast={showToast} clientes={clientes}/>}
         {tela==="servicos"&&servicoAberto&&<TelaServicoDetalhe servico={servicoAberto} clientes={clientes} aba={abaServico} setAba={setAbaServico} atualizar={p=>atualizarServico(servicoAberto.id,p)} showToast={showToast} sb={sb} abrirModal={abrirModal} voltar={()=>setServicoAberto(null)} setPrintData={setPrintData}/>}
@@ -855,52 +855,9 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
         </div>
       </div>
 
-      {/* Linha 2b: Parcelas pendentes — próximos 7 dias */}
-      {(()=>{
-        const _hj=new Date().toISOString().slice(0,10);
-        const _d7=new Date();_d7.setDate(_d7.getDate()+7);
-        const _d7s=_d7.toISOString().slice(0,10);
-        const parcelasCard=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>{
-          if(p.status==="pago")return false;
-          if(!p.data)return false;
-          return p.data<=_d7s;
-        }).map(p=>({...p,clienteNome:cn(s.clienteId||s.cliente_id),servicoObj:s,protocolo:s.protocolo})))
-        .sort((a,b)=>(a.data||"").localeCompare(b.data||""));
-        if(parcelasCard.length===0)return null;
-        const totalCard=parcelasCard.reduce((a,p)=>a+Number(p.valor||0),0);
-        return(
-          <div style={{...S.card,marginTop:14,borderTop:"3px solid #8b5cf6"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-              <div style={S.cardTitle}>Parcelas pendentes / próximos 7 dias</div>
-              <div style={{fontSize:13,fontWeight:800,color:"#8b5cf6"}}>R$ {fmt(totalCard)}</div>
-            </div>
-            <div style={{maxHeight:260,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
-              {parcelasCard.map((p,i)=>{
-                const diff=Math.ceil((new Date(p.data+"T12:00:00")-new Date(_hj+"T12:00:00"))/(864e5));
-                const venc=diff<0;const ehHoje=diff===0;
-                const cor=venc?"#ef4444":ehHoje?"#f97316":diff<=3?"#f59e0b":"#8b5cf6";
-                const lbl=venc?diff+"d":ehHoje?"hoje":"+"+diff+"d";
-                return(
-                  <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",background:cor+"0d",border:"1px solid "+cor+"22",borderRadius:7}}>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{p.descricao}</div>
-                      <div style={{fontSize:11,color:"#475569"}}>{p.clienteNome} · {p.data}</div>
-                    </div>
-                    <div style={{textAlign:"right",flexShrink:0}}>
-                      <div style={{fontSize:12,fontWeight:800,color:cor}}>R$ {fmt(p.valor)}</div>
-                      <div style={{fontSize:10,fontWeight:700,color:cor}}>{lbl}</div>
-                    </div>
-                    <button style={{...S.btnSm,fontSize:10,padding:"3px 8px",color:"#3b82f6",borderColor:"#3b82f644",flexShrink:0}} onClick={()=>{if(abrirServico&&p.servicoObj)abrirServico(p.servicoObj);}} className="bs">Abrir</button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Linha 3: Diligências completas */}
-      <div style={{...S.card,marginTop:14,borderTop:"3px solid #ef4444"}}>
+      {/* Linha 3: Diligências + Parcelas lado a lado */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginTop:14}}>
+      <div style={{...S.card,borderTop:"3px solid #ef4444"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
           <div style={S.cardTitle}>Diligências — Todos os Serviços</div>
           <div style={{display:"flex",gap:6}}>
@@ -932,6 +889,51 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
           ))}
         </div>
         {diligOk.length>0&&<div style={{marginTop:8,fontSize:11,color:"#475569",textAlign:"right"}}>✓ {diligOk.length} diligência(s) concluída(s)</div>}
+      </div>
+      {/* col direita: Parcelas próximos 7 dias */}
+      {(()=>{
+        const _hj=new Date().toISOString().slice(0,10);
+        const _d7=new Date();_d7.setDate(_d7.getDate()+7);const _d7s=_d7.toISOString().slice(0,10);
+        const parcelasCard=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>{
+          if(p.status==="pago")return false;
+          if(!p.data)return false;
+          return p.data<=_d7s;
+        }).map(p=>({...p,clienteNome:cn(s.clienteId||s.cliente_id),servicoObj:s,protocolo:s.protocolo})))
+        .sort((a,b)=>(a.data||"").localeCompare(b.data||""));
+        const totalCard=parcelasCard.reduce((a,p)=>a+Number(p.valor||0),0);
+        return(
+          <div style={{...S.card}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+              <div style={S.cardTitle}>Parcelas — próx. 7 dias</div>
+              {parcelasCard.length>0&&<span style={{fontSize:11,fontWeight:700,color:"#8b5cf6"}}>R$ {fmt(totalCard)}</span>}
+            </div>
+            {parcelasCard.length===0&&<div style={{fontSize:12,color:"#22c55e",padding:"6px 0"}}>Nenhuma parcela pendente.</div>}
+            <div style={{display:"flex",flexDirection:"column",gap:5,maxHeight:280,overflowY:"auto"}}>
+              {parcelasCard.map((p,i)=>{
+                const diff=Math.ceil((new Date(p.data+"T12:00:00")-new Date(_hj+"T12:00:00"))/(864e5));
+                const venc=diff<0;const ehHoje=diff===0;
+                const cor=venc?"#ef4444":ehHoje?"#f97316":diff<=3?"#f59e0b":"#64748b";
+                const lbl=venc?diff+"d":ehHoje?"hoje":"+"+diff+"d";
+                return(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",borderRadius:6,background:"#060b14",border:"1px solid #0f1f35"}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:11,fontWeight:600,color:"#e2e8f0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.descricao}</div>
+                      <div style={{fontSize:10,color:"#475569"}}>{p.clienteNome} · {p.data}</div>
+                    </div>
+                    <div style={{flexShrink:0,textAlign:"right"}}>
+                      <div style={{fontSize:11,fontWeight:700,color:cor}}>{lbl}</div>
+                      <div style={{fontSize:10,color:"#64748b"}}>R$ {fmt(p.valor)}</div>
+                    </div>
+                    <button style={{...S.btnSm,fontSize:10,padding:"2px 7px",color:"#8b5cf6",borderColor:"#8b5cf644",flexShrink:0}}
+                      onClick={()=>{if(abrirServicoVisao)abrirServicoVisao({...p.servicoObj,_abaInicial:"pagamentos"});}}
+                      className="bs">→</button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
       </div>
     </div>
   </div>;
