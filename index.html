@@ -869,9 +869,9 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
         {todasDilig.filter(d=>d.status!=="Concluída").length===0&&<div style={S.empty}>Nenhuma diligência pendente.</div>}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
           {[
-            {grupo:"Vencidas",items:diligVencDash,cor:"#ef4444"},
-            {grupo:"Hoje",items:diligHojeDash,cor:"#f97316"},
-            {grupo:"Próximos 7 dias",items:[...diligAmanha,...diligProx],cor:"#3b82f6"},
+            {grupo:"Vencidas",items:[...diligVencDash].sort((a,b)=>(a.prazo||"").localeCompare(b.prazo||"")),cor:"#ef4444"},
+            {grupo:"Hoje",items:[...diligHojeDash].sort((a,b)=>(a.prazo||"").localeCompare(b.prazo||"")),cor:"#f97316"},
+            {grupo:"Próximos 7 dias",items:[...diligAmanha,...diligProx].sort((a,b)=>(a.prazo||"").localeCompare(b.prazo||"")),cor:"#3b82f6"},
           ].filter(g=>g.items.length>0).map(g=>(
             <div key={g.grupo}>
               <div style={{fontSize:11,fontWeight:800,color:g.cor,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6,paddingLeft:8,borderLeft:"3px solid "+g.cor}}>{g.grupo} ({g.items.length})</div>
@@ -890,7 +890,6 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
         </div>
         {diligOk.length>0&&<div style={{marginTop:8,fontSize:11,color:"#475569",textAlign:"right"}}>✓ {diligOk.length} diligência(s) concluída(s)</div>}
       </div>
-      {/* col direita: Parcelas próximos 7 dias */}
       {(()=>{
         const _hj=new Date().toISOString().slice(0,10);
         const _d7=new Date();_d7.setDate(_d7.getDate()+7);const _d7s=_d7.toISOString().slice(0,10);
