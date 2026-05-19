@@ -2087,7 +2087,7 @@ const TelaDiligencias=({servicos,cn,abrirServico})=>{
 };
 
 const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
-  const [form,setForm]=useState({titulo:"",tipo:"atendimento",data:td(),hora:"",cliente_id:"",servico_id:"",obs:""});
+  const [form,setForm]=useState({titulo:"",tipo:"atendimento",data:td(),hora:"",cliente_id:"",servico_id:"",obs:"",recorrencia:"nao_repete",recorrencia_fim:""});
   const [editando,setEditando]=useState(null);
   const [filtro,setFiltro]=useState("pendente");
   const [busca,setBusca]=useState("");
@@ -2102,9 +2102,36 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
 
   const corTipo=(t)=>tipos.find(x=>x.k===t)?.c||"#64748b";
 
+  const gerarDatas=(dataInicio,recorrencia,dataFim)=>{
+    const datas=[];
+    const d=new Date(dataInicio+"T12:00:00");
+    const fim=dataFim?new Date(dataFim+"T12:00:00"):null;
+    const max=fim?null:52;
+    let count=0;
+    while(true){
+      const ds=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+      if(fim&&d>fim)break;
+      if(max&&count>=max)break;
+      datas.push(ds);
+      count++;
+      if(recorrencia==="diario")d.setDate(d.getDate()+1);
+      else if(recorrencia==="semanal")d.setDate(d.getDate()+7);
+      else if(recorrencia==="quinzenal")d.setDate(d.getDate()+14);
+      else if(recorrencia==="mensal")d.setMonth(d.getMonth()+1);
+      else if(recorrencia==="anual")d.setFullYear(d.getFullYear()+1);
+      else break;
+    }
+    return datas;
+  };
+
+  // Modal editar recorrente
+  const [modalRecorr,setModalRecorr]=useState(null); // {tipo:"edit"|"delete", evento}
+  const [opcaoRecorr,setOpcaoRecorr]=useState("este"); // "este" | "este_seguintes" | "todos"
+
   const salvar=async()=>{
     if(!form.titulo.trim()){showToast("Informe o titulo.","erro");return;}
     if(!form.data){showToast("Informe a data.","erro");return;}
+    const recId=form.recorrencia&&form.recorrencia!=="nao_repete"?(Date.now().toString(36)+Math.random().toString(36).slice(2)):null;
     const payload={
       titulo:form.titulo,
       tipo:form.tipo||"atendimento",
@@ -2113,23 +2140,70 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
       cliente_id:form.cliente_id||null,
       servico_id:form.servico_id||null,
       obs:form.obs||null,
-      status:"pendente"
+      status:"pendente",
+      recorrencia:form.recorrencia||"nao_repete",
+      recorrencia_id:null
     };
     try{
       if(editando){
+        const ev=agenda.find(a=>a.id===editando);
+        const temSerie=ev&&ev.recorrencia_id;
+        if(temSerie){
+          setModalRecorr({tipo:"edit",evento:ev,payload});
+          return;
+        }
         const{error}=await sb.from("agenda").update(payload).eq("id",editando);
         if(error){showToast("Erro: "+error.message,"erro");return;}
         setAgenda(prev=>prev.map(a=>a.id===editando?{...a,...payload}:a));
         showToast("Agendamento atualizado!");
+      }else if(form.recorrencia&&form.recorrencia!=="nao_repete"){
+        const datas=gerarDatas(form.data,form.recorrencia,form.recorrencia_fim);
+        const payloads=datas.map((dt,idx)=>({...payload,data:dt,recorrencia_id:recId,recorrencia_ordem:idx}));
+        const{data,error}=await sb.from("agenda").insert(payloads).select();
+        if(error){showToast("Erro: "+error.message,"erro");return;}
+        if(data)setAgenda(prev=>[...prev,...data]);
+        showToast(datas.length+" agendamentos criados!");
       }else{
         const{data,error}=await sb.from("agenda").insert(payload).select().single();
         if(error){showToast("Erro: "+error.message,"erro");return;}
         if(data)setAgenda(prev=>[...prev,data]);
         showToast("Agendamento criado!");
       }
-      setForm({titulo:"",tipo:"atendimento",data:td(),hora:"",cliente_id:"",servico_id:"",obs:"",_buscaCli:""});
+      setForm({titulo:"",tipo:"atendimento",data:td(),hora:"",cliente_id:"",servico_id:"",obs:"",recorrencia:"nao_repete",recorrencia_fim:"",_buscaCli:""});
       setEditando(null);
     }catch(e){showToast("Erro ao salvar: "+e.message,"erro");}
+  };
+
+  const confirmarEdicaoRecorr=async()=>{
+    const{evento,payload}=modalRecorr;
+    const rid=evento.recorrencia_id;
+    const rOrdem=evento.recorrencia_ordem||0;
+    try{
+      if(opcaoRecorr==="este"){
+        await sb.from("agenda").update({...payload,recorrencia_id:rid}).eq("id",evento.id);
+        setAgenda(prev=>prev.map(a=>a.id===evento.id?{...a,...payload}:a));
+        showToast("Este evento atualizado!");
+      }else if(opcaoRecorr==="este_seguintes"){
+        // Atualizar este e todos com ordem >= atual
+        const ids=agenda.filter(a=>a.recorrencia_id===rid&&(a.recorrencia_ordem||0)>=rOrdem).map(a=>a.id);
+        for(const id of ids){
+          await sb.from("agenda").update({...payload,recorrencia_id:rid}).eq("id",id);
+        }
+        setAgenda(prev=>prev.map(a=>ids.includes(a.id)?{...a,...payload}:a));
+        showToast(ids.length+" eventos atualizados!");
+      }else{
+        // Todos
+        const ids=agenda.filter(a=>a.recorrencia_id===rid).map(a=>a.id);
+        for(const id of ids){
+          await sb.from("agenda").update({...payload,recorrencia_id:rid}).eq("id",id);
+        }
+        setAgenda(prev=>prev.map(a=>ids.includes(a.id)?{...a,...payload}:a));
+        showToast(ids.length+" eventos atualizados!");
+      }
+    }catch(e){showToast("Erro: "+e.message,"erro");}
+    setModalRecorr(null);
+    setForm({titulo:"",tipo:"atendimento",data:td(),hora:"",cliente_id:"",servico_id:"",obs:"",recorrencia:"nao_repete",recorrencia_fim:"",_buscaCli:""});
+    setEditando(null);
   };
 
   const marcarRealizado=async(id)=>{
@@ -2139,10 +2213,39 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
   };
 
   const excluir=async(id)=>{
+    const ev=agenda.find(a=>a.id===id);
+    if(ev&&ev.recorrencia_id){
+      setModalRecorr({tipo:"delete",evento:ev});
+      return;
+    }
     if(!window.confirm("Excluir este agendamento?"))return;
     await sb.from("agenda").delete().eq("id",id);
     setAgenda(prev=>prev.filter(a=>a.id!==id));
     showToast("Agendamento excluído.");
+  };
+
+  const confirmarExclusaoRecorr=async()=>{
+    const{evento}=modalRecorr;
+    const rid=evento.recorrencia_id;
+    const rOrdem=evento.recorrencia_ordem||0;
+    try{
+      if(opcaoRecorr==="este"){
+        await sb.from("agenda").delete().eq("id",evento.id);
+        setAgenda(prev=>prev.filter(a=>a.id!==evento.id));
+        showToast("Evento excluído.");
+      }else if(opcaoRecorr==="este_seguintes"){
+        const ids=agenda.filter(a=>a.recorrencia_id===rid&&(a.recorrencia_ordem||0)>=rOrdem).map(a=>a.id);
+        for(const id of ids) await sb.from("agenda").delete().eq("id",id);
+        setAgenda(prev=>prev.filter(a=>!ids.includes(a.id)));
+        showToast(ids.length+" eventos excluídos.");
+      }else{
+        const ids=agenda.filter(a=>a.recorrencia_id===rid).map(a=>a.id);
+        for(const id of ids) await sb.from("agenda").delete().eq("id",id);
+        setAgenda(prev=>prev.filter(a=>!ids.includes(a.id)));
+        showToast(ids.length+" eventos excluídos.");
+      }
+    }catch(e){showToast("Erro: "+e.message,"erro");}
+    setModalRecorr(null);
   };
 
   const filtrados=agenda.filter(a=>{
@@ -2230,8 +2333,36 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
               <div><FL l="Observações"/>
                 <textarea style={{...S.fi,minHeight:60,resize:"vertical"}} value={form.obs||""} onChange={e=>setForm(f=>({...f,obs:e.target.value}))} placeholder="Detalhes do agendamento..."/>
               </div>
+              {!editando&&(
+                <div>
+                  <FL l="Repetir"/>
+                  <select style={S.fi} value={form.recorrencia||"nao_repete"} onChange={e=>setForm(f=>({...f,recorrencia:e.target.value,recorrencia_fim:""}))}>
+                    <option value="nao_repete">Não se repete</option>
+                    <option value="diario">Todos os dias</option>
+                    <option value="semanal">Toda semana</option>
+                    <option value="quinzenal">A cada 2 semanas</option>
+                    <option value="mensal">Todo mês</option>
+                    <option value="anual">Todo ano</option>
+                  </select>
+                  {form.recorrencia&&form.recorrencia!=="nao_repete"&&(
+                    <div style={{marginTop:8}}>
+                      <FL l="Repetir até (opcional — deixe em branco para 52 ocorrências)"/>
+                      <input style={S.fi} type="date" value={form.recorrencia_fim||""} onChange={e=>setForm(f=>({...f,recorrencia_fim:e.target.value}))}/>
+                    </div>
+                  )}
+                  {form.recorrencia&&form.recorrencia!=="nao_repete"&&(
+                    <div style={{fontSize:11,color:"#3b82f6",marginTop:6,background:"#3b82f60d",border:"1px solid #3b82f622",borderRadius:6,padding:"6px 10px"}}>
+                      {(()=>{
+                        const labels={diario:"Todos os dias",semanal:"Toda semana",quinzenal:"A cada 2 semanas",mensal:"Todo mês",anual:"Todo ano"};
+                        const max=form.recorrencia_fim?"até "+fmtData(form.recorrencia_fim):"por 52 ocorrências";
+                        return labels[form.recorrencia]+" · "+max;
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
               <div style={{display:"flex",gap:8}}>
-                {editando&&<button style={S.btnSec} onClick={()=>{setEditando(null);setForm({titulo:"",tipo:"atendimento",data:td(),hora:"",cliente_id:"",servico_id:"",obs:""});}} className="bs">Cancelar</button>}
+                {editando&&<button style={S.btnSec} onClick={()=>{setEditando(null);setForm({titulo:"",tipo:"atendimento",data:td(),hora:"",cliente_id:"",servico_id:"",obs:"",recorrencia:"nao_repete",recorrencia_fim:""});}} className="bs">Cancelar</button>}
                 <button style={{...S.btnPrimary,flex:1}} onClick={salvar} className="bp">{editando?"Salvar Alteração":"+ Agendar"}</button>
               </div>
             </div>
@@ -2435,6 +2566,34 @@ const GraficoPizza=({pago,resultado,total})=>{
           ))}
         </div>
       </div>
+
+      {/* Modal recorrência */}
+      {modalRecorr&&(
+        <div style={S.overlay}>
+          <div style={{...S.modal,maxWidth:400}} onClick={e=>e.stopPropagation()}>
+            <div style={S.modalHeader}>
+              <div style={S.modalTitle}>{modalRecorr.tipo==="edit"?"Editar evento recorrente":"Excluir evento recorrente"}</div>
+              <button style={S.modalClose} onClick={()=>setModalRecorr(null)}>×</button>
+            </div>
+            <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
+              <div style={{fontSize:13,color:"#94a3b8",marginBottom:4}}>Este evento faz parte de uma série. O que deseja {modalRecorr.tipo==="edit"?"editar":"excluir"}?</div>
+              {[{k:"este",l:"Este evento",desc:"Apenas esta ocorrência"},{k:"este_seguintes",l:"Este e os seguintes",desc:"Esta e todas as próximas da série"},{k:"todos",l:"Todos os eventos",desc:"Todas as ocorrências desta série"}].map(op=>(
+                <div key={op.k} onClick={()=>setOpcaoRecorr(op.k)} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 12px",borderRadius:8,border:"1px solid "+(opcaoRecorr===op.k?"#3b82f6":"#0f1f35"),background:opcaoRecorr===op.k?"#071428":"#060b14",cursor:"pointer"}}>
+                  <div style={{width:16,height:16,borderRadius:"50%",border:"2px solid "+(opcaoRecorr===op.k?"#3b82f6":"#475569"),background:opcaoRecorr===op.k?"#3b82f6":"transparent",flexShrink:0,marginTop:2}}/>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:600,color:opcaoRecorr===op.k?"#3b82f6":"#e2e8f0"}}>{op.l}</div>
+                    <div style={{fontSize:11,color:"#475569"}}>{op.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={S.modalFooter}>
+              <button style={S.btnSec} onClick={()=>setModalRecorr(null)} className="bs">Cancelar</button>
+              <button style={{...S.btnPrimary,background:modalRecorr.tipo==="delete"?"#ef4444":undefined}} onClick={modalRecorr.tipo==="edit"?confirmarEdicaoRecorr:confirmarExclusaoRecorr} className="bp">{modalRecorr.tipo==="edit"?"Salvar":"Excluir"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
