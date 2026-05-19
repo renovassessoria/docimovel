@@ -532,6 +532,8 @@ const AppContent=({session})=>{
             const{data:recData}=await sb.from("recebimentos").insert(recPay).select().single();
             if(recData){p.recebimento_id=recData.id;setRecebimentos(prev=>[recData,...prev]);}
           }
+        } else {
+          await sb.from("pagamentos_processo").update({descricao:p.descricao,valor:Number(p.valor),forma:p.forma,data:p.data,parcelado:p.parcelado||false,status:p.status||"pendente",data_pagamento:p.dataPagamento||null}).eq("id",p.id);
         }
       }
       const novosIds=patch.pagamentos.map(p=>p.id).filter(Boolean);
