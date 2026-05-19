@@ -855,40 +855,36 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
         </div>
       </div>
 
-      {/* Linha 2b: Parcelas a Vencer — próximos 7 dias */}
+      {/* Linha 2b: Parcelas pendentes — próximos 7 dias */}
       {(()=>{
-        const hj=hoje2?hoje2.toISOString().slice(0,10):td();
-        const parcelas7=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>{
+        const _hj=new Date().toISOString().slice(0,10);
+        const _d7=new Date();_d7.setDate(_d7.getDate()+7);
+        const _d7s=_d7.toISOString().slice(0,10);
+        const parcelasCard=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>{
           if(p.status==="pago")return false;
           if(!p.data)return false;
-          const diff=Math.ceil((new Date(p.data+"T12:00:00")-new Date(hj+"T12:00:00"))/(864e5));
-          return diff>=0&&diff<=7;
-        }).map(p=>({...p,clienteNome:cn(s.clienteId||s.cliente_id),servicoObj:s,protocolo:s.protocolo})));
-        const parcelasVenc7=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>{
-          if(p.status==="pago")return false;
-          if(!p.data)return false;
-          return p.data<hj;
-        }).map(p=>({...p,clienteNome:cn(s.clienteId||s.cliente_id),servicoObj:s,protocolo:s.protocolo})));
-        const todasPend=[...parcelasVenc7,...parcelas7].sort((a,b)=>(a.data||"").localeCompare(b.data||""));
-        if(todasPend.length===0)return null;
-        const totalPend=todasPend.reduce((a,p)=>a+Number(p.valor||0),0);
+          return p.data<=_d7s;
+        }).map(p=>({...p,clienteNome:cn(s.clienteId||s.cliente_id),servicoObj:s,protocolo:s.protocolo})))
+        .sort((a,b)=>(a.data||"").localeCompare(b.data||""));
+        if(parcelasCard.length===0)return null;
+        const totalCard=parcelasCard.reduce((a,p)=>a+Number(p.valor||0),0);
         return(
           <div style={{...S.card,marginTop:14,borderTop:"3px solid #8b5cf6"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
               <div style={S.cardTitle}>Parcelas pendentes / próximos 7 dias</div>
-              <div style={{fontSize:13,fontWeight:800,color:"#8b5cf6"}}>R$ {fmt(totalPend)}</div>
+              <div style={{fontSize:13,fontWeight:800,color:"#8b5cf6"}}>R$ {fmt(totalCard)}</div>
             </div>
-            <div style={{maxHeight:260,overflowY:"auto"}}>
-              {todasPend.map((p,i)=>{
-                const diff=Math.ceil((new Date(p.data+"T12:00:00")-new Date(hj+"T12:00:00"))/(864e5));
-                const venc=diff<0;const hoje_=diff===0;
-                const cor=venc?"#ef4444":hoje_?"#f97316":diff<=3?"#f59e0b":"#8b5cf6";
-                const lbl=venc?diff+"d":hoje_?"hoje":"+"+diff+"d";
+            <div style={{maxHeight:260,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
+              {parcelasCard.map((p,i)=>{
+                const diff=Math.ceil((new Date(p.data+"T12:00:00")-new Date(_hj+"T12:00:00"))/(864e5));
+                const venc=diff<0;const ehHoje=diff===0;
+                const cor=venc?"#ef4444":ehHoje?"#f97316":diff<=3?"#f59e0b":"#8b5cf6";
+                const lbl=venc?diff+"d":ehHoje?"hoje":"+"+diff+"d";
                 return(
-                  <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",background:cor+"0d",border:"1px solid "+cor+"22",borderRadius:7,marginBottom:6}}>
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",background:cor+"0d",border:"1px solid "+cor+"22",borderRadius:7}}>
                     <div style={{flex:1}}>
                       <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{p.descricao}</div>
-                      <div style={{fontSize:11,color:"#475569"}}>{p.clienteNome} · {p.protocolo}</div>
+                      <div style={{fontSize:11,color:"#475569"}}>{p.clienteNome} · {p.data}</div>
                     </div>
                     <div style={{textAlign:"right",flexShrink:0}}>
                       <div style={{fontSize:12,fontWeight:800,color:cor}}>R$ {fmt(p.valor)}</div>
@@ -1264,7 +1260,7 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
                   </select>}
                   {novaPag.parcelado&&<span style={{fontSize:11,color:"#22c55e"}}>= R$ {(Number(novaPag.valor||0)/Number(novaPag.totalParcelas||1)).toFixed(2)}/parc.</span>}
                 </div>
-                <button style={{...S.btnPrimary,marginTop:10}} onClick={addPag} className="bp">+ Registrar</button></div><div style={S.tableCard}><table style={S.table}><thead><tr>{["Data","Descrição","Forma","Valor","Situação",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead><tbody>{(servico.pagamentos||[]).map(p=><tr key={p.id} style={S.tr} className="tr"><td style={S.td}>{p.data}</td><td style={S.td}>{p.descricao}</td><td style={S.td}><Tag label={p.forma} color="#6366f1"/></td><td style={S.td}><span style={{fontWeight:700,color:"#22c55e"}}>R$ {fmt(p.valor)}</span></td><td style={S.td}>{(()=>{const hj=td();if(p.status==="pago")return<Tag label="Pago" color="#22c55e"/>;if((!p.status||p.status==="pendente")&&p.data<=hj)return<Tag label="Vencida" color="#f97316"/>;const diff=Math.ceil((new Date(p.data+"T12:00:00")-new Date(hj+"T12:00:00"))/(864e5));return<Tag label={"Vence +"+diff+"d"} color={diff<=3?"#ef4444":"#f59e0b"}/>;})()}</td><td style={S.td}>{p.status!=="pago"&&<button style={{...S.btnSm,color:"#22c55e",borderColor:"#22c55e44",fontWeight:700}} onClick={()=>{if(!window.confirm("Confirmar pagamento desta parcela?"))return;const dataPagamento=td();atualizar({pagamentos:(servico.pagamentos||[]).map(x=>x.id===p.id?{...x,status:"pago",dataPagamento}:x)});}} className="bs">✓ Pago</button>}<button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir este pagamento? Esta acao e permanente."))return;atualizar({pagamentos:(servico.pagamentos||[]).filter(x=>x.id!==p.id)})}} className="bs">✕</button><button style={S.btnSm} onClick={()=>setEditPag({...p})} className="bs">Ed</button><button style={{...S.btnSm,color:"#22c55e",borderColor:"#22c55e44"}} onClick={()=>gerarReciboServico(p,cliente,servico)} className="bs">Recibo</button></td></tr>)}</tbody></table></div></div>}
+                <button style={{...S.btnPrimary,marginTop:10}} onClick={addPag} className="bp">+ Registrar</button></div><div style={S.tableCard}><table style={S.table}><thead><tr>{["Data","Descrição","Forma","Valor","Situação",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead><tbody>{(servico.pagamentos||[]).map(p=><tr key={p.id} style={S.tr} className="tr"><td style={S.td}>{p.data}</td><td style={S.td}>{p.descricao}</td><td style={S.td}><Tag label={p.forma} color="#6366f1"/></td><td style={S.td}><span style={{fontWeight:700,color:"#22c55e"}}>R$ {fmt(p.valor)}</span></td><td style={S.td}>{(()=>{const hj=td();if(p.status==="pago")return<Tag label="Pago" color="#22c55e"/>;if((!p.status||p.status==="pendente")&&p.data<=hj)return<Tag label="Vencida" color="#f97316"/>;const diff=Math.ceil((new Date(p.data+"T12:00:00")-new Date(hj+"T12:00:00"))/(864e5));return<Tag label={"Vence +"+diff+"d"} color={diff<=3?"#ef4444":"#f59e0b"}/>;})()}</td><td style={S.td}>{p.status!=="pago"&&<button style={{...S.btnSm,color:"#22c55e",borderColor:"#22c55e44",fontWeight:700}} onClick={()=>{if(!window.confirm("Confirmar recebimento desta parcela?"))return;atualizar({pagamentos:(servico.pagamentos||[]).map(x=>x.id===p.id?{...x,status:"pago",dataPagamento:td()}:x)});}} className="bs">✓ Pago</button>}<button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir este pagamento? Esta acao e permanente."))return;atualizar({pagamentos:(servico.pagamentos||[]).filter(x=>x.id!==p.id)})}} className="bs">✕</button><button style={S.btnSm} onClick={()=>setEditPag({...p})} className="bs">Ed</button><button style={{...S.btnSm,color:"#22c55e",borderColor:"#22c55e44"}} onClick={()=>gerarReciboServico(p,cliente,servico)} className="bs">Recibo</button></td></tr>)}</tbody></table></div></div>}
       {aba==="contratos"&&<AbaContratos servico={servico} cliente={cliente} atualizar={atualizar} showToast={showToast}/>}
 {aba==="portal"&&<AbaPortalCliente servico={servico} cliente={cliente} atualizar={atualizar} showToast={showToast}/>}
     </div>
