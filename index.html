@@ -193,8 +193,8 @@ const Tag=({label,color})=><span style={{background:color+"14",color,border:"1px
 const FL=({l})=><label style={{display:"block",fontSize:9,fontWeight:600,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:5}}>{l}</label>;
 const FI=({l,v,set,type="text",ph=""})=><div style={{marginBottom:10}}><FL l={l}/><input style={S.fi} type={type} value={v||""} onChange={e=>set(e.target.value)} placeholder={ph}/></div>;
 const InfoRow=({l,v,hl})=><div style={{display:"flex",gap:8,fontSize:12,marginBottom:5}}><span style={{color:"#4a4d56",minWidth:90}}>{l}:</span><span style={{color:hl?"#b46464":"#d6d3cc",fontWeight:hl?700:400}}>{v||"-"}</span></div>;
-const StatCard=({icon,label,value,color})=><div style={{...S.card,borderLeft:"2px solid "+color+"77"}}><div style={{fontSize:9,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"1px",marginBottom:8,fontWeight:500}}>{label}</div><div style={{fontSize:20,fontWeight:400,color,opacity:.82,letterSpacing:"-0.3px"}}>{value}</div></div>;
-const MiniStat=({l,v,c})=><div style={{...S.card,flex:1,textAlign:"center",borderBottom:"1px solid "+c+"55"}}><div style={{fontSize:9,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"1px",marginBottom:6,fontWeight:500}}>{l}</div><div style={{fontSize:15,fontWeight:400,color,opacity:.82}}>{v}</div></div>;
+const StatCard=({icon,label,value,color})=><div style={{...S.card,borderLeft:"2px solid "+color+"77"}}><div style={{fontSize:9,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"1px",marginBottom:8,fontWeight:500}}>{label}</div><div style={{fontSize:20,fontWeight:400,color:color,opacity:.82,letterSpacing:"-0.3px"}}>{value}</div></div>;
+const MiniStat=({l,v,c})=><div style={{...S.card,flex:1,textAlign:"center",borderBottom:"1px solid "+c+"55"}}><div style={{fontSize:9,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"1px",marginBottom:6,fontWeight:500}}>{l}</div><div style={{fontSize:15,fontWeight:400,color:c,opacity:.85}}>{v}</div></div>;
 const AlertBanner=({cor,icon,texto,onClick})=><div onClick={onClick} style={{background:cor+"11",border:"1px solid "+cor+"33",borderRadius:8,padding:"9px 14px",fontSize:13,color:cor,cursor:"pointer",display:"flex",alignItems:"center",gap:8,flex:1}}>{icon} {texto}</div>;
 const DiIcon=({size=48})=><div style={{width:size,height:size,borderRadius:size*0.18,background:"#12141a",border:"1px solid #b8965a",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:500,fontSize:size*0.3,color:"#b8965a",fontFamily:"'IBM Plex Sans',sans-serif",flexShrink:0}}>DI</div>;
 const Splash=({msg})=><div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",flexDirection:"column",gap:16,background:"#16181d"}}><DiIcon size={64}/><div style={{fontSize:18,fontWeight:700,color:"#d6d3cc",marginTop:4}}>DocImóvel PRO</div><div style={{fontSize:13,color:"#4a4d56"}}>{msg}</div></div>;
@@ -494,6 +494,41 @@ const AppContent=({session})=>{
       setLoadingData(false);
     }
     load();
+  },[]);
+
+  // ── Supabase Realtime: sincronização automática entre usuários ──────────────
+  useEffect(()=>{
+    // Recarrega clientes quando houver INSERT/UPDATE/DELETE
+    const reloadClientes=async()=>{
+      const{data}=await sb.from("clientes").select("*").order("nome",{ascending:true});
+      if(data)setClientes(data.map(x=>({...x,estadoCivil:x.estado_civil||"",profissao:x.profissao||"",naturalidade:x.naturalidade||"",filiacao:x.filiacao||"",dataNascimento:x.data_nascimento||"",cnh:x.cnh||"",conjugeNome:x.conjuge_nome||"",conjugeCpf:x.conjuge_cpf||"",conjugeRg:x.conjuge_rg||"",conjugeProfissao:x.conjuge_profissao||"",conjugeNaturalidade:x.conjuge_naturalidade||"",conjugeFiliacao:x.conjuge_filiacao||"",regimeBens:x.regime_bens||"",dataCasamento:x.data_casamento||"",cartorioCasamento:x.cartorio_casamento||"",casamentoLivro:x.casamento_livro||"",casamentoFolha:x.casamento_folha||""})));
+    };
+    // Recarrega serviços (com diligências e pagamentos aninhados)
+    const reloadServicos=async()=>{
+      const{data}=await sb.from("servicos").select("*, diligencias(*), pagamentos_processo(*)").order("created_at",{ascending:false});
+      if(data)setServicos(data.map(sv=>({...sv,clienteId:sv.cliente_id,tipoProcesso:sv.tipo_processo||sv.tipoProcesso||(sv.dados_judiciais&&Object.keys(sv.dados_judiciais||{}).length>0?"judicial":(sv.estagio==="Judiciário"||sv.estagio==="Judicial"?"judicial":"extrajudicial")),dadosJudiciais:sv.dados_judiciais||sv.dadosJudiciais||{},prazoConclusao:sv.prazo_conclusao||sv.prazoConclusao||null,diligencias:sv.diligencias||[],pagamentos:sv.pagamentos_processo||[],estagios:sv.estagios||[],checklist:sv.checklist||{},outrosDesc:sv.outros_desc||"",orcamento:sv.orcamento||{valor:0,desconto:0,obs:"",status:"orcamento"}})));
+    };
+    // Recarrega recebimentos
+    const reloadRecebimentos=async()=>{
+      const{data}=await sb.from("recebimentos").select("*").order("data",{ascending:false});
+      if(data)setRecebimentos(data);
+    };
+    // Recarrega leads/CRM
+    const reloadLeads=async()=>{
+      const{data}=await sb.from("leads").select("*").order("created_at",{ascending:false});
+      if(data)setLeads(data);
+    };
+
+    const channel=sb.channel("docmovel-sync")
+      .on("postgres_changes",{event:"*",schema:"public",table:"clientes"},reloadClientes)
+      .on("postgres_changes",{event:"*",schema:"public",table:"servicos"},reloadServicos)
+      .on("postgres_changes",{event:"*",schema:"public",table:"diligencias"},reloadServicos)
+      .on("postgres_changes",{event:"*",schema:"public",table:"pagamentos_processo"},reloadServicos)
+      .on("postgres_changes",{event:"*",schema:"public",table:"recebimentos"},reloadRecebimentos)
+      .on("postgres_changes",{event:"*",schema:"public",table:"leads"},reloadLeads)
+      .subscribe();
+
+    return()=>sb.removeChannel(channel);
   },[]);
 
   const cn=(id)=>clientes.find(c=>c.id===id)?.nome||"-";
@@ -858,8 +893,9 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
         </div>
       </div>
 
-      {/* Linha 3: Diligências completas */}
-      <div style={{...S.card,marginTop:14,borderTop:"1px solid rgba(180,100,100,0.4)"}}>
+      {/* Linha 3: Diligências + Parcelas */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginTop:14}}>
+      <div style={{...S.card,borderLeft:"2px solid rgba(180,100,100,0.3)"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
           <div style={S.cardTitle}>Diligências — Todos os Serviços</div>
           <div style={{display:"flex",gap:6}}>
@@ -871,9 +907,9 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
         {todasDilig.filter(d=>d.status!=="Concluída").length===0&&<div style={S.empty}>Nenhuma diligência pendente.</div>}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
           {[
-            {grupo:"Vencidas",items:diligVencDash,cor:"#b46464"},
-            {grupo:"Hoje",items:diligHojeDash,cor:"#a06832"},
-            {grupo:"Próximos 7 dias",items:[...diligAmanha,...diligProx],cor:"#5a7aaa"},
+            {grupo:"Vencidas",items:[...diligVencDash].sort((a,b)=>(a.prazo||"").localeCompare(b.prazo||"")),cor:"#b46464"},
+            {grupo:"Hoje",items:[...diligHojeDash].sort((a,b)=>(a.prazo||"").localeCompare(b.prazo||"")),cor:"#a87840"},
+            {grupo:"Próximos 7 dias",items:[...diligAmanha,...diligProx].sort((a,b)=>(a.prazo||"").localeCompare(b.prazo||"")),cor:"#5a7aaa"},
           ].filter(g=>g.items.length>0).map(g=>(
             <div key={g.grupo}>
               <div style={{fontSize:11,fontWeight:800,color:g.cor,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6,paddingLeft:8,borderLeft:"3px solid "+g.cor}}>{g.grupo} ({g.items.length})</div>
@@ -890,7 +926,48 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
             </div>
           ))}
         </div>
-        {diligOk.length>0&&<div style={{marginTop:8,fontSize:11,color:"#4a4d56",textAlign:"right"}}>✓ {diligOk.length} diligência(s) concluída(s)</div>}
+        {diligOk.length>0&&<div style={{marginTop:8,fontSize:10,color:"#3e4048",textAlign:"right"}}>✓ {diligOk.length} diligência(s) concluída(s)</div>}
+      </div>
+      {(()=>{
+        const _hj=new Date().toISOString().slice(0,10);
+        const _d7=new Date();_d7.setDate(_d7.getDate()+7);const _d7s=_d7.toISOString().slice(0,10);
+        const parcelasCard=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>{
+          if(p.status==="pago")return false;
+          if(p.parcelado!==true){const desc=p.descricao||"";if(!(desc.indexOf("/")>-1&&desc.indexOf("(")>-1))return false;}
+          if(!p.data)return false;return p.data<=_d7s;
+        }).map(p=>({...p,clienteNome:cn(s.clienteId||s.cliente_id),servicoObj:s})))
+        .sort((a,b)=>(a.data||"").localeCompare(b.data||""));
+        const totalCard=parcelasCard.reduce((a,p)=>a+Number(p.valor||0),0);
+        return(
+          <div style={{...S.card}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+              <div style={S.cardTitle}>Parcelas — próx. 7 dias</div>
+              {parcelasCard.length>0&&<span style={{fontSize:11,fontWeight:400,color:"#b8965a",opacity:.7}}>R$ {fmt(totalCard)}</span>}
+            </div>
+            {parcelasCard.length===0&&<div style={{fontSize:11,color:"#5a8f6e",opacity:.6,padding:"6px 0"}}>Nenhuma parcela pendente.</div>}
+            <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:280,overflowY:"auto"}}>
+              {parcelasCard.map((p,i)=>{
+                const diff=Math.ceil((new Date(p.data+"T12:00:00")-new Date(_hj+"T12:00:00"))/(864e5));
+                const cor=diff<0?"#b46464":diff===0?"#a87840":diff<=3?"#a87840":"#3e4048";
+                const lbl=diff<0?diff+"d":diff===0?"hoje":"+"+diff+"d";
+                return(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:4,background:"#16181d",border:"1px solid #232629"}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:11,fontWeight:400,color:"#d6d3cc",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.descricao}</div>
+                      <div style={{fontSize:10,color:"#3e4048"}}>{p.clienteNome} · {p.data}</div>
+                    </div>
+                    <div style={{flexShrink:0,textAlign:"right"}}>
+                      <div style={{fontSize:11,fontWeight:400,color:cor,opacity:.75}}>{lbl}</div>
+                      <div style={{fontSize:10,color:"#4a4d56"}}>R$ {fmt(p.valor)}</div>
+                    </div>
+                    <button style={{...S.btnSm,fontSize:10,padding:"2px 8px",color:"#b8965a",borderColor:"rgba(184,150,90,0.2)",flexShrink:0}} onClick={()=>{if(abrirServicoVisao)abrirServicoVisao({...p.servicoObj,_abaInicial:"pagamentos"});}} className="bs">→</button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
       </div>
     </div>
   </div>;
@@ -1211,7 +1288,7 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
           </div>
         )}
       </div>}
-      {aba==="pagamentos"&&<div><div style={{display:"flex",gap:12,marginBottom:14}}><MiniStat l="Valor do serviço" v={"R$ "+fmt(valorLiq)} c="#5a7aaa"/><MiniStat l="Total pago" v={"R$ "+fmt(totPago)} c="#5a8f6e"/><MiniStat l="Saldo restante" v={"R$ "+fmt(saldo)} c={saldo>0?"#b46464":"#5a8f6e"}/></div><div style={{...S.card,marginBottom:14}}><div style={S.cardTitle}>Registrar Pagamento / Taxa</div><div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",gap:10}}><div><FL l="Descrição"/><input style={S.fi} value={novaPag.descricao} onChange={e=>setNovaPag({...novaPag,descricao:e.target.value})} placeholder="Ex: Entrada, taxa..."/></div><div><FL l="Valor"/><input style={S.fi} type="number" value={novaPag.valor} onChange={e=>setNovaPag({...novaPag,valor:e.target.value})}/></div><div><FL l="Forma"/><select style={S.fi} value={novaPag.forma} onChange={e=>setNovaPag({...novaPag,forma:e.target.value})}>{FORMAS.map(f=><option key={f}>{f}</option>)}</select></div><div><FL l="Data"/><input style={S.fi} type="date" value={novaPag.data} onChange={e=>setNovaPag({...novaPag,data:e.target.value})}/></div></div><div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
+      {aba==="pagamentos"&&<div><div style={{display:"flex",gap:12,marginBottom:14}}><MiniStat l="Valor do serviço" v={"R$ "+fmt(valorLiq)} c="#5a7aaa"/><MiniStat l="Recebido até hoje" v={"R$ "+fmt(totPago)} c="#5a8f6e"/><MiniStat l="Saldo restante" v={"R$ "+fmt(saldo)} c={saldo>0?"#b46464":"#5a8f6e"}/></div><div style={{...S.card,marginBottom:14}}><div style={S.cardTitle}>Registrar Pagamento / Taxa</div><div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",gap:10}}><div><FL l="Descrição"/><input style={S.fi} value={novaPag.descricao} onChange={e=>setNovaPag({...novaPag,descricao:e.target.value})} placeholder="Ex: Entrada, taxa..."/></div><div><FL l="Valor"/><input style={S.fi} type="number" value={novaPag.valor} onChange={e=>setNovaPag({...novaPag,valor:e.target.value})}/></div><div><FL l="Forma"/><select style={S.fi} value={novaPag.forma} onChange={e=>setNovaPag({...novaPag,forma:e.target.value})}>{FORMAS.map(f=><option key={f}>{f}</option>)}</select></div><div><FL l="Data"/><input style={S.fi} type="date" value={novaPag.data} onChange={e=>setNovaPag({...novaPag,data:e.target.value})}/></div></div><div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
                   <input type="checkbox" id="chkParc" checked={!!novaPag.parcelado} onChange={e=>setNovaPag(p=>({...p,parcelado:e.target.checked}))} style={{width:14,height:14,cursor:"pointer"}}/>
                   <label htmlFor="chkParc" style={{fontSize:11,color:"#d6d3cc",cursor:"pointer"}}>Parcelado</label>
                   {novaPag.parcelado&&<select style={{...S.selectSm,width:80}} value={novaPag.totalParcelas} onChange={e=>setNovaPag(p=>({...p,totalParcelas:Number(e.target.value)}))}>
@@ -1219,7 +1296,7 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
                   </select>}
                   {novaPag.parcelado&&<span style={{fontSize:11,color:"#5a8f6e"}}>= R$ {(Number(novaPag.valor||0)/Number(novaPag.totalParcelas||1)).toFixed(2)}/parc.</span>}
                 </div>
-                <button style={{...S.btnPrimary,marginTop:10}} onClick={addPag} className="bp">+ Registrar</button></div><div style={S.tableCard}><table style={S.table}><thead><tr>{["Data","Descrição","Forma","Valor","Situação",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead><tbody>{(servico.pagamentos||[]).map(p=><tr key={p.id} style={S.tr} className="tr"><td style={S.td}>{p.data}</td><td style={S.td}>{p.descricao}</td><td style={S.td}><Tag label={p.forma} color="#6a6aaa"/></td><td style={S.td}><span style={{fontWeight:700,color:"#5a8f6e"}}>R$ {fmt(p.valor)}</span></td><td style={S.td}><button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir este pagamento? Esta acao e permanente."))return;atualizar({pagamentos:(servico.pagamentos||[]).filter(x=>x.id!==p.id)})}} className="bs">✕</button><button style={S.btnSm} onClick={()=>setEditPag({...p})} className="bs">Ed</button><button style={{...S.btnSm,color:"#5a8f6e",borderColor:"#22c55e44"}} onClick={()=>gerarReciboServico(p,cliente,servico)} className="bs">Recibo</button></td></tr>)}</tbody></table></div></div>}
+                <button style={{...S.btnPrimary,marginTop:10}} onClick={addPag} className="bp">+ Registrar</button></div><div style={S.tableCard}><table style={S.table}><thead><tr>{["Data","Descrição","Forma","Valor","Situação",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead><tbody>{(servico.pagamentos||[]).map(p=><tr key={p.id} style={S.tr} className="tr"><td style={S.td}>{p.data}</td><td style={S.td}>{p.descricao}</td><td style={S.td}><Tag label={p.forma} color="#6a6aaa"/></td><td style={S.td}><span style={{fontWeight:700,color:"#5a8f6e"}}>R$ {fmt(p.valor)}</span></td><td style={S.td}>{(()=>{const desc=p.descricao||"";const isParc=p.parcelado===true||desc.indexOf("/")>-1&&desc.indexOf("(")>-1;if(p.status==="pago")return<Tag label="Pago" color="#5a8f6e"/>;if(!isParc)return<Tag label="Avulso" color="#5a7aaa"/>;const hj=td();if(p.data<=hj)return<Tag label="Vencida" color="#b46464"/>;const diff=Math.ceil((new Date(p.data+"T12:00:00")-new Date(hj+"T12:00:00"))/(864e5));return<Tag label={"Vence +"+diff+"d"} color={diff<=3?"#b46464":"#a87840"}/>;})()}</td><td style={S.td}>{(()=>{const desc=p.descricao||"";const isParc=p.parcelado===true||desc.indexOf("/")>-1&&desc.indexOf("(")>-1;if(isParc&&p.status!=="pago")return<button style={{...S.btnSm,color:"#5a8f6e",borderColor:"rgba(90,143,110,0.3)"}} onClick={()=>{if(!window.confirm("Confirmar recebimento desta parcela?"))return;atualizar({pagamentos:(servico.pagamentos||[]).map(x=>x.id===p.id?{...x,status:"pago",parcelado:true,dataPagamento:td()}:x)});}} className="bs">✓ Pago</button>;return null;})()}<button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir este pagamento? Esta acao e permanente."))return;atualizar({pagamentos:(servico.pagamentos||[]).filter(x=>x.id!==p.id)})}} className="bs">✕</button><button style={S.btnSm} onClick={()=>setEditPag({...p})} className="bs">Ed</button><button style={{...S.btnSm,color:"#5a8f6e",borderColor:"rgba(90,143,110,0.25)"}} onClick={()=>gerarReciboServico(p,cliente,servico)} className="bs">Recibo</button></td></tr>)}</tbody></table></div></div>}
       {aba==="contratos"&&<AbaContratos servico={servico} cliente={cliente} atualizar={atualizar} showToast={showToast}/>}
 {aba==="portal"&&<AbaPortalCliente servico={servico} cliente={cliente} atualizar={atualizar} showToast={showToast}/>}
     </div>
@@ -2471,16 +2548,16 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
             <div style={{...S.card,marginTop:14}}>
               <div style={S.cardTitle}>Movimento por mes</div>
               {dadosMensais.map((m,i)=>(m.recebido>0||m.pago>0)&&(
-                <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px solid #0f1f35"}}>
-                  <span style={{color:"#4a4d56",minWidth:28,fontWeight:600}}>{m.mes}</span>
-                  <div style={{flex:1,height:10,background:"#2a2d36",borderRadius:999,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:Math.min((m.recebido/(Math.max(...dadosMensais.map(x=>x.recebido||0))||1))*100,100)+"%",background:"#5a8f6e",borderRadius:999}}/>
+                <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.03)"}}>
+                  <span style={{color:"#4a4d56",minWidth:30,fontSize:11,fontWeight:400}}>{m.mes}</span>
+                  <div style={{flex:1,height:2,background:"rgba(255,255,255,0.05)",borderRadius:999,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:Math.min((m.recebido/(Math.max(...dadosMensais.map(x=>x.recebido||0))||1))*100,100)+"%",background:"#5a8f6e",borderRadius:999,opacity:.6}}/>
                   </div>
-                  <span style={{color:"#5a8f6e",fontWeight:700,minWidth:80}}>R$ {fmt(m.recebido)}</span>
-                  <div style={{flex:1,height:10,background:"#2a2d36",borderRadius:999,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:Math.min((m.pago/(Math.max(...dadosMensais.map(x=>x.pago||0))||1))*100,100)+"%",background:"#b46464",borderRadius:999}}/>
+                  <span style={{color:"#5a8f6e",fontWeight:400,minWidth:84,fontSize:11,textAlign:"right",opacity:.75}}>R$ {fmt(m.recebido)}</span>
+                  <div style={{flex:1,height:2,background:"rgba(255,255,255,0.05)",borderRadius:999,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:Math.min((m.pago/(Math.max(...dadosMensais.map(x=>x.pago||0))||1))*100,100)+"%",background:"#b46464",borderRadius:999,opacity:.6}}/>
                   </div>
-                  <span style={{color:"#b46464",fontWeight:700,minWidth:80}}>R$ {fmt(m.pago)}</span>
+                  <span style={{color:"#b46464",fontWeight:400,minWidth:84,fontSize:11,textAlign:"right",opacity:.75}}>R$ {fmt(m.pago)}</span>
                 </div>
               ))}
             </div>
@@ -3218,9 +3295,9 @@ const TelaCustos = ({showToast, custos, setCustos}) => {
               {MS.map((mes,i) => {
                 const v = custoMes(i);
                 return (
-                  <div key={i} style={{display:"flex",alignItems:"center",gap:12,marginBottom:7}}>
-                    <span style={{color:"#4a4d56",minWidth:28,fontSize:12,fontWeight:600}}>{mes}</span>
-                    <div style={{flex:1,height:10,background:"#2a2d36",borderRadius:999,overflow:"hidden"}}>
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:12,marginBottom:6}}>
+                    <span style={{color:"#4a4d56",minWidth:30,fontSize:11,fontWeight:400}}>{mes}</span>
+                    <div style={{flex:1,height:2,background:"rgba(255,255,255,0.05)",borderRadius:999,overflow:"hidden"}}>
                       <div style={{height:"100%",width:((v/maxMes)*100)+"%",background:"#b8965a",borderRadius:999,opacity:.6}}/>
                     </div>
                     <span style={{color:"#b46464",fontWeight:700,minWidth:90,textAlign:"right",fontSize:12}}>R$ {fC(v)}</span>
