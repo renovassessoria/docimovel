@@ -73,7 +73,7 @@ input,select,textarea{font-family:'IBM Plex Sans',sans-serif;}
     var eAtual = portal.estagio_atual || estagios[0].k;
     var idx = estagios.findIndex ? estagios.findIndex(function(e){return e.k===eAtual;}) : 0;
     for(var i=0;i<estagios.length;i++){if(estagios[i].k===eAtual){idx=i;break;}}
-    var cor = isJ ? "#b46464" : "#2563eb";
+    var cor = isJ ? "#b46464" : "#4a6a9a";
     var nome = (d.clientes && d.clientes.nome) || "";
     var datas = portal.datas || {};
 
@@ -189,12 +189,12 @@ const fmtK=(v)=>v>=1000?`R$${(v/1000).toFixed(1)}k`:`R$${v}`;
 const gp=()=>{const d=new Date();return `PRO-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}-${String(Math.floor(Math.random()*9000)+1000)}`;};
 
 // ── Componentes base ──
-const Tag=({label,color})=><span style={{background:color+"14",color,border:"1px solid "+color+"28",borderRadius:3,padding:"2px 7px",fontSize:9,fontWeight:500,whiteSpace:"nowrap",letterSpacing:"0.2px",textTransform:"uppercase",opacity:.9}}>{label}</span>;
+const Tag=({label,color})=><span style={{background:color+"14",color,border:"1px solid "+color+"28",borderRadius:3,padding:"2px 7px",fontSize:9,fontWeight:500,whiteSpace:"nowrap",opacity:.88}}>{label}</span>;
 const FL=({l})=><label style={{display:"block",fontSize:9,fontWeight:600,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:5}}>{l}</label>;
 const FI=({l,v,set,type="text",ph=""})=><div style={{marginBottom:10}}><FL l={l}/><input style={S.fi} type={type} value={v||""} onChange={e=>set(e.target.value)} placeholder={ph}/></div>;
 const InfoRow=({l,v,hl})=><div style={{display:"flex",gap:8,fontSize:12,marginBottom:5}}><span style={{color:"#4a4d56",minWidth:90}}>{l}:</span><span style={{color:hl?"#b46464":"#d6d3cc",fontWeight:hl?700:400}}>{v||"-"}</span></div>;
-const StatCard=({icon,label,value,color})=><div style={{...S.card,borderLeft:"2px solid "+color+"88"}}><div style={{fontSize:9,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"1px",marginBottom:8,fontWeight:500}}>{label}</div><div style={{fontSize:20,fontWeight:400,color,opacity:.85,letterSpacing:"-0.3px"}}>{value}</div></div>;
-const MiniStat=({l,v,c})=><div style={{...S.card,flex:1,textAlign:"center",borderBottom:"1px solid "+c+"66"}}><div style={{fontSize:9,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"1px",marginBottom:6,fontWeight:500}}>{l}</div><div style={{fontSize:15,fontWeight:400,color,opacity:.85,letterSpacing:"-0.2px"}}>{v}</div></div>;
+const StatCard=({icon,label,value,color})=><div style={{...S.card,borderLeft:"2px solid "+color+"77"}}><div style={{fontSize:9,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"1px",marginBottom:8,fontWeight:500}}>{label}</div><div style={{fontSize:20,fontWeight:400,color,opacity:.82,letterSpacing:"-0.3px"}}>{value}</div></div>;
+const MiniStat=({l,v,c})=><div style={{...S.card,flex:1,textAlign:"center",borderBottom:"1px solid "+c+"55"}}><div style={{fontSize:9,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"1px",marginBottom:6,fontWeight:500}}>{l}</div><div style={{fontSize:15,fontWeight:400,color,opacity:.82}}>{v}</div></div>;
 const AlertBanner=({cor,icon,texto,onClick})=><div onClick={onClick} style={{background:cor+"11",border:"1px solid "+cor+"33",borderRadius:8,padding:"9px 14px",fontSize:13,color:cor,cursor:"pointer",display:"flex",alignItems:"center",gap:8,flex:1}}>{icon} {texto}</div>;
 const DiIcon=({size=48})=><div style={{width:size,height:size,borderRadius:size*0.18,background:"#12141a",border:"1px solid #b8965a",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:500,fontSize:size*0.3,color:"#b8965a",fontFamily:"'IBM Plex Sans',sans-serif",flexShrink:0}}>DI</div>;
 const Splash=({msg})=><div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",flexDirection:"column",gap:16,background:"#16181d"}}><DiIcon size={64}/><div style={{fontSize:18,fontWeight:700,color:"#d6d3cc",marginTop:4}}>DocImóvel PRO</div><div style={{fontSize:13,color:"#4a4d56"}}>{msg}</div></div>;
@@ -335,7 +335,7 @@ const PortalClientePublico=({token})=>{
   const portal=dados.portal||{};
   const eAtual=portal.estagio_atual||estagios[0].k;
   const idx=estagios.findIndex(e=>e.k===eAtual);
-  const cor=isJ?"#b46464":"#2563eb";
+  const cor=isJ?"#b46464":"#4a6a9a";
   const nomeCliente=dados.clientes?.nome||"";
 
   return React.createElement("div",{style:{fontFamily:"Outfit,sans-serif",background:"#f1f5f9",minHeight:"100vh"}},
@@ -383,11 +383,11 @@ const PortalClientePublico=({token})=>{
       React.createElement("div",{style:{background:"white",borderRadius:14,padding:18,marginBottom:16,boxShadow:"0 2px 12px #00000010"}},
         React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#8a8782",textTransform:"uppercase",letterSpacing:".04em",marginBottom:12}},"Informacoes"),
         React.createElement("div",{style:{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #f1f5f9",fontSize:13}},
-          React.createElement("span",{style:{color:"#8a8782"}},"Tipo"),React.createElement("span",{style:{fontWeight:600,color:"#1e293b"}},dados.tipo)
+          React.createElement("span",{style:{color:"#8a8782"}},"Tipo"),React.createElement("span",{style:{fontWeight:600,color:"#2a2d36"}},dados.tipo)
         ),
         React.createElement("div",{style:{display:"flex",justifyContent:"space-between",padding:"7px 0",fontSize:13}},
           React.createElement("span",{style:{color:"#8a8782"}},"Protocolo criado em"),
-          React.createElement("span",{style:{fontWeight:600,color:"#1e293b"}},fmtDt(portal.datas?.[estagios[0].k]||""))
+          React.createElement("span",{style:{fontWeight:600,color:"#2a2d36"}},fmtDt(portal.datas?.[estagios[0].k]||""))
         )
       ),
       // Contato
@@ -683,7 +683,7 @@ const AppContent=({session})=>{
             ↓ Backup dos dados
           </button>
         </div>
-        <div style={{padding:"6px 14px",borderTop:"1px solid #0f1f35",textAlign:"center",fontSize:9,color:"#1e293b",lineHeight:1.6}}>
+        <div style={{padding:"6px 14px",borderTop:"1px solid #0f1f35",textAlign:"center",fontSize:9,color:"#2a2d36",lineHeight:1.6}}>
           2026 · © Carlos Alberto Pacheco<br/>Todos os direitos reservados
         </div>
         <div style={{padding:"10px 14px",borderTop:"1px solid #0f1f35",display:"flex",alignItems:"center",gap:8}}>
@@ -858,9 +858,8 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
         </div>
       </div>
 
-      {/* Linha 3: Diligências + Parcelas */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginTop:14}}>
-      <div style={{...S.card,borderLeft:"2px solid rgba(180,100,100,0.3)"}}>
+      {/* Linha 3: Diligências completas */}
+      <div style={{...S.card,marginTop:14,borderTop:"1px solid rgba(180,100,100,0.4)"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
           <div style={S.cardTitle}>Diligências — Todos os Serviços</div>
           <div style={{display:"flex",gap:6}}>
@@ -872,9 +871,9 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
         {todasDilig.filter(d=>d.status!=="Concluída").length===0&&<div style={S.empty}>Nenhuma diligência pendente.</div>}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
           {[
-            {grupo:"Vencidas",items:[...diligVencDash].sort((a,b)=>(a.prazo||"").localeCompare(b.prazo||"")),cor:"#b46464"},
-            {grupo:"Hoje",items:[...diligHojeDash].sort((a,b)=>(a.prazo||"").localeCompare(b.prazo||"")),cor:"#a87840"},
-            {grupo:"Próximos 7 dias",items:[...diligAmanha,...diligProx].sort((a,b)=>(a.prazo||"").localeCompare(b.prazo||"")),cor:"#5a7aaa"},
+            {grupo:"Vencidas",items:diligVencDash,cor:"#b46464"},
+            {grupo:"Hoje",items:diligHojeDash,cor:"#a06832"},
+            {grupo:"Próximos 7 dias",items:[...diligAmanha,...diligProx],cor:"#5a7aaa"},
           ].filter(g=>g.items.length>0).map(g=>(
             <div key={g.grupo}>
               <div style={{fontSize:11,fontWeight:800,color:g.cor,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6,paddingLeft:8,borderLeft:"3px solid "+g.cor}}>{g.grupo} ({g.items.length})</div>
@@ -891,48 +890,7 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
             </div>
           ))}
         </div>
-        {diligOk.length>0&&<div style={{marginTop:8,fontSize:10,color:"#3e4048",textAlign:"right"}}>✓ {diligOk.length} diligência(s) concluída(s)</div>}
-      </div>
-      {(()=>{
-        const _hj=new Date().toISOString().slice(0,10);
-        const _d7=new Date();_d7.setDate(_d7.getDate()+7);const _d7s=_d7.toISOString().slice(0,10);
-        const parcelasCard=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>{
-          if(p.status==="pago")return false;
-          if(p.parcelado!==true){const desc=p.descricao||"";if(!(desc.indexOf("/")>-1&&desc.indexOf("(")>-1))return false;}
-          if(!p.data)return false;return p.data<=_d7s;
-        }).map(p=>({...p,clienteNome:cn(s.clienteId||s.cliente_id),servicoObj:s})))
-        .sort((a,b)=>(a.data||"").localeCompare(b.data||""));
-        const totalCard=parcelasCard.reduce((a,p)=>a+Number(p.valor||0),0);
-        return(
-          <div style={{...S.card}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-              <div style={S.cardTitle}>Parcelas — próx. 7 dias</div>
-              {parcelasCard.length>0&&<span style={{fontSize:11,fontWeight:400,color:"#b8965a",opacity:.75}}>R$ {fmt(totalCard)}</span>}
-            </div>
-            {parcelasCard.length===0&&<div style={{fontSize:11,color:"#5a8f6e",opacity:.65,padding:"6px 0"}}>Nenhuma parcela pendente.</div>}
-            <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:280,overflowY:"auto"}}>
-              {parcelasCard.map((p,i)=>{
-                const diff=Math.ceil((new Date(p.data+"T12:00:00")-new Date(_hj+"T12:00:00"))/(864e5));
-                const cor=diff<0?"#b46464":diff===0?"#a87840":diff<=3?"#a87840":"#3e4048";
-                const lbl=diff<0?diff+"d":diff===0?"hoje":"+"+diff+"d";
-                return(
-                  <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:4,background:"#16181d",border:"1px solid #232629"}}>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:11,fontWeight:400,color:"#d6d3cc",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.descricao}</div>
-                      <div style={{fontSize:10,color:"#3e4048"}}>{p.clienteNome} · {p.data}</div>
-                    </div>
-                    <div style={{flexShrink:0,textAlign:"right"}}>
-                      <div style={{fontSize:11,fontWeight:400,color:cor,opacity:.8}}>{lbl}</div>
-                      <div style={{fontSize:10,color:"#4a4d56"}}>R$ {fmt(p.valor)}</div>
-                    </div>
-                    <button style={{...S.btnSm,fontSize:10,padding:"2px 8px",color:"#b8965a",borderColor:"rgba(184,150,90,0.2)",flexShrink:0}} onClick={()=>{if(abrirServicoVisao)abrirServicoVisao({...p.servicoObj,_abaInicial:"pagamentos"});}} className="bs">→</button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
+        {diligOk.length>0&&<div style={{marginTop:8,fontSize:11,color:"#4a4d56",textAlign:"right"}}>✓ {diligOk.length} diligência(s) concluída(s)</div>}
       </div>
     </div>
   </div>;
@@ -1022,7 +980,7 @@ const TelaServicos=({servicos,search,setSearch,cn,abrirModal,abrirServico,setPri
     <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
       <span style={{fontSize:11,color:"#4a4d56",fontWeight:600}}>Filtrar:</span>
       {[["todos","Todos"],["aberto","Em aberto"],["concluido","Concluídos"]].map(([k,l])=>(
-        <button key={k} onClick={()=>setFiltroStatus(k)} style={{padding:"5px 12px",borderRadius:7,border:"1px solid "+(filtroStatus===k?"#5a7aaa":"#2a2d36"),background:filtroStatus===k?"#071428":"#07101e",color:filtroStatus===k?"#5a7aaa":"#4a4d56",fontSize:12,fontWeight:600,cursor:"pointer"}} className="bs">{l}</button>
+        <button key={k} onClick={()=>setFiltroStatus(k)} style={{padding:"5px 12px",borderRadius:7,border:"1px solid "+(filtroStatus===k?"#5a7aaa":"#2a2d36"),background:filtroStatus===k?"#22252e":"#1a1d24",color:filtroStatus===k?"#5a7aaa":"#4a4d56",fontSize:12,fontWeight:600,cursor:"pointer"}} className="bs">{l}</button>
       ))}
       <select style={{...S.selectSm,fontSize:12}} value={filtroTipo} onChange={e=>setFiltroTipo(e.target.value)}>
         <option value="">Todos os tipos</option>
@@ -1253,7 +1211,7 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
           </div>
         )}
       </div>}
-      {aba==="pagamentos"&&<div><div style={{display:"flex",gap:12,marginBottom:14}}><MiniStat l="Valor do serviço" v={"R$ "+fmt(valorLiq)} c="#5a7aaa"/><MiniStat l="Recebido até hoje" v={"R$ "+fmt(totPago)} c="#5a8f6e"/><MiniStat l="Saldo restante" v={"R$ "+fmt(saldo)} c={saldo>0?"#b46464":"#5a8f6e"}/></div><div style={{...S.card,marginBottom:14}}><div style={S.cardTitle}>Registrar Pagamento / Taxa</div><div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",gap:10}}><div><FL l="Descrição"/><input style={S.fi} value={novaPag.descricao} onChange={e=>setNovaPag({...novaPag,descricao:e.target.value})} placeholder="Ex: Entrada, taxa..."/></div><div><FL l="Valor"/><input style={S.fi} type="number" value={novaPag.valor} onChange={e=>setNovaPag({...novaPag,valor:e.target.value})}/></div><div><FL l="Forma"/><select style={S.fi} value={novaPag.forma} onChange={e=>setNovaPag({...novaPag,forma:e.target.value})}>{FORMAS.map(f=><option key={f}>{f}</option>)}</select></div><div><FL l="Data"/><input style={S.fi} type="date" value={novaPag.data} onChange={e=>setNovaPag({...novaPag,data:e.target.value})}/></div></div><div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
+      {aba==="pagamentos"&&<div><div style={{display:"flex",gap:12,marginBottom:14}}><MiniStat l="Valor do serviço" v={"R$ "+fmt(valorLiq)} c="#5a7aaa"/><MiniStat l="Total pago" v={"R$ "+fmt(totPago)} c="#5a8f6e"/><MiniStat l="Saldo restante" v={"R$ "+fmt(saldo)} c={saldo>0?"#b46464":"#5a8f6e"}/></div><div style={{...S.card,marginBottom:14}}><div style={S.cardTitle}>Registrar Pagamento / Taxa</div><div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",gap:10}}><div><FL l="Descrição"/><input style={S.fi} value={novaPag.descricao} onChange={e=>setNovaPag({...novaPag,descricao:e.target.value})} placeholder="Ex: Entrada, taxa..."/></div><div><FL l="Valor"/><input style={S.fi} type="number" value={novaPag.valor} onChange={e=>setNovaPag({...novaPag,valor:e.target.value})}/></div><div><FL l="Forma"/><select style={S.fi} value={novaPag.forma} onChange={e=>setNovaPag({...novaPag,forma:e.target.value})}>{FORMAS.map(f=><option key={f}>{f}</option>)}</select></div><div><FL l="Data"/><input style={S.fi} type="date" value={novaPag.data} onChange={e=>setNovaPag({...novaPag,data:e.target.value})}/></div></div><div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
                   <input type="checkbox" id="chkParc" checked={!!novaPag.parcelado} onChange={e=>setNovaPag(p=>({...p,parcelado:e.target.checked}))} style={{width:14,height:14,cursor:"pointer"}}/>
                   <label htmlFor="chkParc" style={{fontSize:11,color:"#d6d3cc",cursor:"pointer"}}>Parcelado</label>
                   {novaPag.parcelado&&<select style={{...S.selectSm,width:80}} value={novaPag.totalParcelas} onChange={e=>setNovaPag(p=>({...p,totalParcelas:Number(e.target.value)}))}>
@@ -1261,7 +1219,7 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
                   </select>}
                   {novaPag.parcelado&&<span style={{fontSize:11,color:"#5a8f6e"}}>= R$ {(Number(novaPag.valor||0)/Number(novaPag.totalParcelas||1)).toFixed(2)}/parc.</span>}
                 </div>
-                <button style={{...S.btnPrimary,marginTop:10}} onClick={addPag} className="bp">+ Registrar</button></div><div style={S.tableCard}><table style={S.table}><thead><tr>{["Data","Descrição","Forma","Valor","Situação",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead><tbody>{(servico.pagamentos||[]).map(p=><tr key={p.id} style={S.tr} className="tr"><td style={S.td}>{p.data}</td><td style={S.td}>{p.descricao}</td><td style={S.td}><Tag label={p.forma} color="#6a6aaa"/></td><td style={S.td}><span style={{fontWeight:700,color:"#5a8f6e"}}>R$ {fmt(p.valor)}</span></td><td style={S.td}>{(()=>{const desc=p.descricao||"";const isParc=p.parcelado===true||desc.indexOf("/")>-1&&desc.indexOf("(")>-1;if(p.status==="pago")return<Tag label="Pago" color="#5a8f6e"/>;if(!isParc)return<Tag label="Avulso" color="#5a7aaa"/>;const hj=td();if(p.data<=hj)return<Tag label="Vencida" color="#b46464"/>;const diff=Math.ceil((new Date(p.data+"T12:00:00")-new Date(hj+"T12:00:00"))/(864e5));return<Tag label={"Vence +"+diff+"d"} color={diff<=3?"#b46464":"#a87840"}/>;})()}</td><td style={S.td}>{(()=>{const desc=p.descricao||"";const isParc=p.parcelado===true||desc.indexOf("/")>-1&&desc.indexOf("(")>-1;if(isParc&&p.status!=="pago")return<button style={{...S.btnSm,color:"#5a8f6e",borderColor:"rgba(90,143,110,0.25)",fontWeight:500}} onClick={()=>{if(!window.confirm("Confirmar recebimento desta parcela?"))return;atualizar({pagamentos:(servico.pagamentos||[]).map(x=>x.id===p.id?{...x,status:"pago",parcelado:true,dataPagamento:td()}:x)});}} className="bs">✓ Pago</button>;return null;})()}<button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir este pagamento? Esta acao e permanente."))return;atualizar({pagamentos:(servico.pagamentos||[]).filter(x=>x.id!==p.id)})}} className="bs">✕</button><button style={S.btnSm} onClick={()=>setEditPag({...p})} className="bs">Ed</button><button style={{...S.btnSm,color:"#5a8f6e",borderColor:"rgba(90,143,110,0.25)"}} onClick={()=>gerarReciboServico(p,cliente,servico)} className="bs">Recibo</button></td></tr>)}</tbody></table></div></div>}
+                <button style={{...S.btnPrimary,marginTop:10}} onClick={addPag} className="bp">+ Registrar</button></div><div style={S.tableCard}><table style={S.table}><thead><tr>{["Data","Descrição","Forma","Valor","Situação",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead><tbody>{(servico.pagamentos||[]).map(p=><tr key={p.id} style={S.tr} className="tr"><td style={S.td}>{p.data}</td><td style={S.td}>{p.descricao}</td><td style={S.td}><Tag label={p.forma} color="#6a6aaa"/></td><td style={S.td}><span style={{fontWeight:700,color:"#5a8f6e"}}>R$ {fmt(p.valor)}</span></td><td style={S.td}><button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir este pagamento? Esta acao e permanente."))return;atualizar({pagamentos:(servico.pagamentos||[]).filter(x=>x.id!==p.id)})}} className="bs">✕</button><button style={S.btnSm} onClick={()=>setEditPag({...p})} className="bs">Ed</button><button style={{...S.btnSm,color:"#5a8f6e",borderColor:"#22c55e44"}} onClick={()=>gerarReciboServico(p,cliente,servico)} className="bs">Recibo</button></td></tr>)}</tbody></table></div></div>}
       {aba==="contratos"&&<AbaContratos servico={servico} cliente={cliente} atualizar={atualizar} showToast={showToast}/>}
 {aba==="portal"&&<AbaPortalCliente servico={servico} cliente={cliente} atualizar={atualizar} showToast={showToast}/>}
     </div>
@@ -1469,7 +1427,7 @@ const AbaPortalCliente=({servico,cliente,atualizar,showToast})=>{
               const done=i<idx_atual;
               const active=i===idx_atual;
               return(
-                <div key={e.k} onClick={()=>salvarEstagio(e.k)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,border:"1px solid "+(active?"#5a7aaa":done?"#22c55e22":"#2a2d36"),background:active?"#071428":done?"#22c55e08":"#16181d",cursor:"pointer",transition:".15s"}}>
+                <div key={e.k} onClick={()=>salvarEstagio(e.k)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,border:"1px solid "+(active?"#5a7aaa":done?"#22c55e22":"#2a2d36"),background:active?"#22252e":done?"#22c55e08":"#16181d",cursor:"pointer",transition:".15s"}}>
                   <div style={{width:20,height:20,borderRadius:"50%",border:"2px solid "+(active?"#5a7aaa":done?"#5a8f6e":"#2a2d36"),background:active?"#5a7aaa":done?"#5a8f6e":"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"white",flexShrink:0}}>{done?"✓":active?"●":""}</div>
                   <div style={{flex:1}}>
                     <div style={{fontSize:12,fontWeight:600,color:active?"#5a7aaa":done?"#5a8f6e":"#4a4d56"}}>{e.l}</div>
@@ -1505,13 +1463,13 @@ const AbaPortalCliente=({servico,cliente,atualizar,showToast})=>{
               return(
                 <div key={e.k} style={{display:"flex",gap:10,marginBottom:0}}>
                   <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:24,flexShrink:0}}>
-                    <div style={{width:24,height:24,borderRadius:"50%",background:done?"#5a8f6e":active?(isJudicial?"#b46464":"#2563eb"):"white",border:"2px solid "+(done?"#5a8f6e":active?(isJudicial?"#b46464":"#2563eb"):"#d6d3cc"),display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:done||active?"white":"#cbd5e1",flexShrink:0,zIndex:1}}>{done?"✓":i+1}</div>
+                    <div style={{width:24,height:24,borderRadius:"50%",background:done?"#5a8f6e":active?(isJudicial?"#b46464":"#4a6a9a"):"white",border:"2px solid "+(done?"#5a8f6e":active?(isJudicial?"#b46464":"#4a6a9a"):"#d6d3cc"),display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:done||active?"white":"#cbd5e1",flexShrink:0,zIndex:1}}>{done?"✓":i+1}</div>
                     {i<estagios.length-1&&<div style={{width:2,flex:1,minHeight:24,background:done?"#5a8f6e":active?(isJudicial?"linear-gradient(#dc2626,#e2e8f0)":"linear-gradient(#2563eb,#e2e8f0)"):"#d6d3cc"}}></div>}
                   </div>
                   <div style={{padding:"2px 0 20px",flex:1}}>
                     <div style={{fontSize:12,fontWeight:700,color:done?"#15803d":active?(isJudicial?"#b46464":"#4a6a9a"):"#8a8782",marginBottom:2}}>{e.l}</div>
                     {active&&<div style={{fontSize:10,color:"#5a5d66",lineHeight:1.4,marginBottom:4}}>{e.desc}</div>}
-                    <div style={{fontSize:10,fontWeight:600,padding:"1px 7px",borderRadius:3,display:"inline-block",background:done?"#f0fdf4":active?(isJudicial?"#fef2f2":"#eff6ff"):"#f8fafc",color:done?"#4a7a5e":active?(isJudicial?"#b46464":"#2563eb"):"#8a8782"}}>{done?(fmtDt(portal.datas?.[e.k])||"Concluído"):active?"Em andamento":"Aguardando"}</div>
+                    <div style={{fontSize:10,fontWeight:600,padding:"1px 7px",borderRadius:3,display:"inline-block",background:done?"#f0fdf4":active?(isJudicial?"#fef2f2":"#eff6ff"):"#f8fafc",color:done?"#4a7a5e":active?(isJudicial?"#b46464":"#4a6a9a"):"#8a8782"}}>{done?(fmtDt(portal.datas?.[e.k])||"Concluído"):active?"Em andamento":"Aguardando"}</div>
                   </div>
                 </div>
               );
@@ -1945,7 +1903,7 @@ const TelaAndamento=({servicos,cn,diligVenc,diligHoje,abrirProcesso})=>{
         {(diligVenc.length>0||diligHoje.length>0)&&(
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16}}>
             {[{i:"Vencidos",t:"Prazos Vencidos",items:diligVenc,c:"#b46464"},{i:"Hoje",t:"Hoje/Amanha",items:diligHoje,c:"#a87840"},{i:"Ok",t:"Em dia",items:[],c:"#5a8f6e"}].map(g=>(
-              <div key={g.t} style={{...S.card,borderTop:"3px solid "+( g.items.length?g.c:"#1e293b")}}>
+              <div key={g.t} style={{...S.card,borderTop:"3px solid "+( g.items.length?g.c:"#2a2d36")}}>
                 <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
                   <span style={{fontWeight:700,color:g.c,fontSize:13}}>{g.t}</span>
                   <span style={{background:g.c+"22",color:g.c,borderRadius:12,padding:"1px 8px",fontSize:11,fontWeight:700}}>{g.items.length}</span>
@@ -1977,7 +1935,7 @@ const TelaAndamento=({servicos,cn,diligVenc,diligHoje,abrirProcesso})=>{
                 </div>
                 <div style={{fontSize:11,color:"#5a5d66",marginBottom:8}}>{s.protocolo}</div>
                 <div style={{height:4,background:"#2a2d36",borderRadius:999,overflow:"hidden",marginBottom:6}}>
-                  <div style={{width:pct+"%",height:"100%",background:"linear-gradient(90deg,#1d4ed8,#7c3aed)",borderRadius:999}}/>
+                  <div style={{width:pct+"%",height:"100%",background:"linear-gradient(90deg,#b8965a,#8a6a30)",borderRadius:999}}/>
                 </div>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}>
                   <span style={{color:"#4a4d56"}}>{done}/{total} etapas</span>
@@ -2003,7 +1961,7 @@ const TelaProcessoDetalhe=({servico,aba,setAba,atualizar,voltar,cn})=>{
     <div style={S.body}>
       {aba==="timeline"&&<div style={{display:"grid",gridTemplateColumns:"1fr 360px",gap:14}}>
         <div style={S.card}><div style={S.cardTitle}>Linha do Tempo</div><div style={{position:"relative",paddingLeft:30}}><div style={{position:"absolute",left:8,top:8,bottom:8,width:2,background:"#2a2d36"}}/>{(servico.estagios||[]).map((e,idx)=>{const cor=ECOR[e.nome]||"#5a5d66";const isAtual=servico.estagio===e.nome&&!e.concluido;return(<div key={idx} style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:18,position:"relative"}}><div style={{width:20,height:20,borderRadius:"50%",border:"2px solid "+cor,background:e.concluido?cor:"#1e2128",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,zIndex:1,marginLeft:-10,boxShadow:isAtual?`0 0 10px ${cor}88`:"none"}}>{e.concluido&&<span style={{fontSize:9,color:"#fff"}}>✓</span>}{isAtual&&<span style={{fontSize:8,color:cor}}>●</span>}</div><div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:13,fontWeight:e.concluido||isAtual?700:400,color:e.concluido?cor:isAtual?cor:"#4a4d56"}}>{e.nome}</span>{isAtual&&<Tag label="ATUAL" color={cor}/>}{e.concluido&&<Tag label="FEITO" color="#5a8f6e"/>}</div>{e.data&&<div style={{fontSize:11,color:"#4a4d56",marginTop:2}}>📅 {e.data}</div>}{!e.concluido&&<button style={{...S.btnSm,marginTop:4}} onClick={()=>{const estagios=(servico.estagios||[]).map((x,i)=>i===idx?{...x,concluido:true,data:td()}:x);const ultimo=estagios.filter(e=>e.concluido).at(-1);atualizar({estagios,estagio:ultimo?.nome||servico.estagio});}} className="bs">✓ Concluir</button>}</div></div>);})}</div></div>
-        <div style={S.card}><div style={S.cardTitle}>Resumo</div><InfoRow l="Tipo" v={servico.tipo}/><InfoRow l="Protocolo" v={servico.protocolo}/><InfoRow l="Abertura" v={(servico.created_at||"").slice(0,10)}/><InfoRow l="Estágio" v={servico.estagio}/><div style={{marginTop:12}}><FL l="Progresso"/><div style={{height:6,background:"#2a2d36",borderRadius:999,overflow:"hidden",marginBottom:4}}><div style={{width:Math.round(((servico.estagios||[]).filter(e=>e.concluido).length/Math.max((servico.estagios||[]).length,1))*100)+"%",height:"100%",background:"linear-gradient(90deg,#3b82f6,#8b5cf6)",borderRadius:999}}/></div><span style={{fontSize:11,color:"#5a5d66"}}>{(servico.estagios||[]).filter(e=>e.concluido).length} de {(servico.estagios||[]).length} etapas</span></div></div>
+        <div style={S.card}><div style={S.cardTitle}>Resumo</div><InfoRow l="Tipo" v={servico.tipo}/><InfoRow l="Protocolo" v={servico.protocolo}/><InfoRow l="Abertura" v={(servico.created_at||"").slice(0,10)}/><InfoRow l="Estágio" v={servico.estagio}/><div style={{marginTop:12}}><FL l="Progresso"/><div style={{height:6,background:"#2a2d36",borderRadius:999,overflow:"hidden",marginBottom:4}}><div style={{width:Math.round(((servico.estagios||[]).filter(e=>e.concluido).length/Math.max((servico.estagios||[]).length,1))*100)+"%",height:"100%",background:"linear-gradient(90deg,#5a8f6e,#4a7a5e)",borderRadius:999}}/></div><span style={{fontSize:11,color:"#5a5d66"}}>{(servico.estagios||[]).filter(e=>e.concluido).length} de {(servico.estagios||[]).length} etapas</span></div></div>
       </div>}
       {aba==="diligencias"&&<div><div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}><button style={S.btnPrimary} onClick={()=>setModalDilig({status:"Pendente",prazo:""})} className="bp">+ Nova Diligência</button></div>
         {grupos.map(g=>g.items.length>0&&<div key={g.l} style={{marginBottom:14}}><div style={{fontSize:11,fontWeight:800,color:g.c,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:8}}>{g.l}</div>{g.items.map(d=>{const dias=d.prazo?dd(d.prazo):99;const venc=dias<0&&d.status!=="Concluída";return(<div key={d.id} style={{...S.card,borderLeft:"3px solid "+g.c,marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}><div style={{flex:1}}><div style={{fontWeight:600,color:"#d6d3cc",fontSize:13,textDecoration:d.status==="Concluída"?"line-through":"none"}}>{d.descricao}</div><div style={{display:"flex",gap:10,marginTop:4,flexWrap:"wrap"}}>{d.orgao&&<span style={{fontSize:11,color:"#5a5d66"}}>📍 {d.orgao}</span>}{d.ref&&<span style={{fontSize:11,color:"#5a5d66"}}>🔖 {d.ref}</span>}{d.responsavel&&<span style={{fontSize:11,color:"#5a5d66"}}>👤 {d.responsavel}</span>}{d.prazo&&<span style={{fontSize:11,color:venc?"#b46464":dias<=1?"#a87840":"#5a5d66",fontWeight:venc||dias<=1?700:400}}>📅 {d.prazo}{d.status!=="Concluída"&&` (${venc?`venc.${Math.abs(dias)}d`:dias===0?"hoje":dias===1?"amanhã":`${dias}d`})`}</span>}<Tag label={d.status} color={d.status==="Concluída"?"#5a8f6e":d.status==="Em andamento"?"#5a7aaa":"#a87840"}/></div></div><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{d.status!=="Concluída"&&<><button style={S.btnSm} onClick={()=>{atualizar({diligencias:(servico.diligencias||[]).map(x=>x.id===d.id?{...x,status:"Em andamento"}:x)});}} className="bs">Em and.</button><button style={{...S.btnSm,background:"#22c55e22",color:"#5a8f6e",borderColor:"#22c55e44"}} onClick={()=>{atualizar({diligencias:(servico.diligencias||[]).map(x=>x.id===d.id?{...x,status:"Concluída"}:x)});}} className="bs">✓</button></>}<button style={S.btnSm} onClick={()=>setModalDilig({...d})} className="bs">Ed.</button><button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir esta diligência?"))return;atualizar({diligencias:(servico.diligencias||[]).filter(x=>x.id!==d.id)});}} className="bs">✕</button></div></div></div>);})}</div>)}
@@ -2074,7 +2032,7 @@ const TelaDiligencias=({servicos,cn,abrirServico})=>{
         {/* Contadores */}
         <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
           {[["todos","Todos",todasDilig.length,"#5a5d66"],["vencida","Vencidas",contadores.vencida,"#b46464"],["hoje","Hoje",contadores.hoje,"#a06832"],["amanha","Amanhã",contadores.amanha,"#eab308"],["proxima","Próximas",contadores.proxima,"#5a7aaa"],["concluida","Concluídas",contadores.concluida,"#5a8f6e"]].map(([k,l,n,c])=>(
-            <button key={k} onClick={()=>setFiltroStatus(k)} style={{padding:"6px 14px",borderRadius:8,border:"1px solid "+(filtroStatus===k?c+"66":"#2a2d36"),background:filtroStatus===k?c+"22":"#07101e",color:filtroStatus===k?c:"#5a5d66",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:6}} className="bs">
+            <button key={k} onClick={()=>setFiltroStatus(k)} style={{padding:"6px 14px",borderRadius:8,border:"1px solid "+(filtroStatus===k?c+"66":"#2a2d36"),background:filtroStatus===k?c+"22":"#1a1d24",color:filtroStatus===k?c:"#5a5d66",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:6}} className="bs">
               {l} <span style={{background:filtroStatus===k?c+"33":"#2a2d36",borderRadius:999,padding:"1px 7px",fontSize:11}}>{n}</span>
             </button>
           ))}
@@ -2361,7 +2319,7 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
                     )}
                   </div>
                 )}
-                <div style={{...S.fi,display:"flex",alignItems:"center",justifyContent:"space-between",background:form.cliente_id?"#22c55e0d":"#0a1628",cursor:"pointer"}} onClick={()=>setForm(f=>({...f,_buscaCli:" "}))}>
+                <div style={{...S.fi,display:"flex",alignItems:"center",justifyContent:"space-between",background:form.cliente_id?"#22c55e0d":"#22252e",cursor:"pointer"}} onClick={()=>setForm(f=>({...f,_buscaCli:" "}))}>
                   {form.cliente_id?(
                     <span style={{color:"#5a8f6e",fontWeight:600,fontSize:13}}>{(clientes.find(c=>c.id===form.cliente_id)||{}).nome||"Cliente selecionado"}</span>
                   ):(
@@ -2513,16 +2471,16 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
             <div style={{...S.card,marginTop:14}}>
               <div style={S.cardTitle}>Movimento por mes</div>
               {dadosMensais.map((m,i)=>(m.recebido>0||m.pago>0)&&(
-                <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.03)"}}>
-                  <span style={{color:"#4a4d56",minWidth:30,fontSize:11,fontWeight:400}}>{m.mes}</span>
-                  <div style={{flex:1,height:2,background:"rgba(255,255,255,0.05)",borderRadius:999,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:Math.min((m.recebido/(Math.max(...dadosMensais.map(x=>x.recebido||0))||1))*100,100)+"%",background:"#5a8f6e",borderRadius:999,opacity:.65}}/>
+                <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px solid #0f1f35"}}>
+                  <span style={{color:"#4a4d56",minWidth:28,fontWeight:600}}>{m.mes}</span>
+                  <div style={{flex:1,height:10,background:"#2a2d36",borderRadius:999,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:Math.min((m.recebido/(Math.max(...dadosMensais.map(x=>x.recebido||0))||1))*100,100)+"%",background:"#5a8f6e",borderRadius:999}}/>
                   </div>
-                  <span style={{color:"#5a8f6e",fontWeight:400,minWidth:84,fontSize:11,textAlign:"right",opacity:.8}}>R$ {fmt(m.recebido)}</span>
-                  <div style={{flex:1,height:2,background:"rgba(255,255,255,0.05)",borderRadius:999,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:Math.min((m.pago/(Math.max(...dadosMensais.map(x=>x.pago||0))||1))*100,100)+"%",background:"#b46464",borderRadius:999,opacity:.65}}/>
+                  <span style={{color:"#5a8f6e",fontWeight:700,minWidth:80}}>R$ {fmt(m.recebido)}</span>
+                  <div style={{flex:1,height:10,background:"#2a2d36",borderRadius:999,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:Math.min((m.pago/(Math.max(...dadosMensais.map(x=>x.pago||0))||1))*100,100)+"%",background:"#b46464",borderRadius:999}}/>
                   </div>
-                  <span style={{color:"#b46464",fontWeight:400,minWidth:84,fontSize:11,textAlign:"right",opacity:.8}}>R$ {fmt(m.pago)}</span>
+                  <span style={{color:"#b46464",fontWeight:700,minWidth:80}}>R$ {fmt(m.pago)}</span>
                 </div>
               ))}
             </div>
@@ -2604,10 +2562,10 @@ const GraficoPizza=({pago,resultado,total})=>{
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
           {[[pago,"#b46464","Pago / Despesas"],[resultado>=0?resultado:0,"#5a8f6e","Resultado positivo"],[resultado<0?Math.abs(resultado):0,"#a87840","Resultado negativo"]].map(([v,c,l])=>v>0&&(
             <div key={l} style={{display:"flex",alignItems:"center",gap:12}}>
-              <div style={{width:6,height:6,borderRadius:"50%",background:c,flexShrink:0,opacity:.75}}/>
+              <div style={{width:6,height:6,borderRadius:"50%",background:c,flexShrink:0,opacity:.7}}/>
               <div>
                 <div style={{fontSize:11,color:"#5a5d66",textTransform:"uppercase",letterSpacing:"0.5px"}}>{l}</div>
-                <div style={{fontSize:13,fontWeight:400,color:c,opacity:.85}}>R$ {fmtV(v)}</div>
+                <div style={{fontSize:13,fontWeight:400,color:c,opacity:.82}}>R$ {fmtV(v)}</div>
                 <div style={{fontSize:11,color:"#3e4048"}}>{total>0?((v/total)*100).toFixed(1):"0"}% do total</div>
               </div>
             </div>
@@ -3260,10 +3218,10 @@ const TelaCustos = ({showToast, custos, setCustos}) => {
               {MS.map((mes,i) => {
                 const v = custoMes(i);
                 return (
-                  <div key={i} style={{display:"flex",alignItems:"center",gap:12,marginBottom:6}}>
-                    <span style={{color:"#4a4d56",minWidth:30,fontSize:11,fontWeight:400}}>{mes}</span>
-                    <div style={{flex:1,height:2,background:"rgba(255,255,255,0.05)",borderRadius:999,overflow:"hidden"}}>
-                      <div style={{height:"100%",width:((v/maxMes)*100)+"%",background:"#b8965a",borderRadius:999,opacity:.65}}/>
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:12,marginBottom:7}}>
+                    <span style={{color:"#4a4d56",minWidth:28,fontSize:12,fontWeight:600}}>{mes}</span>
+                    <div style={{flex:1,height:10,background:"#2a2d36",borderRadius:999,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:((v/maxMes)*100)+"%",background:"#b8965a",borderRadius:999,opacity:.6}}/>
                     </div>
                     <span style={{color:"#b46464",fontWeight:700,minWidth:90,textAlign:"right",fontSize:12}}>R$ {fC(v)}</span>
                   </div>
@@ -3582,7 +3540,7 @@ const TelaUsuarios=({usuarios,setUsuarios,abrirModal,session})=>(
   <div style={S.body}>
     <div style={{...S.card,marginBottom:14,background:"#2a2d36",border:"1px solid #1e3a5f"}}><div style={{fontSize:13,color:"#8a8782",lineHeight:1.7}}>💡 <strong style={{color:"#d6d3cc"}}>Para convidar novos usuários:</strong> acesse o painel do Supabase → Authentication → Users → Invite User. Após o primeiro login, o perfil aparece aqui.</div></div>
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:14}}>
-      {usuarios.map(u=><div key={u.id} style={{...S.card,opacity:u.ativo!==false?1:0.5}}><div style={{display:"flex",gap:12,marginBottom:12}}><div style={{width:42,height:42,borderRadius:12,background:u.ativo!==false?"#b8965a":"#1e293b",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:13,color:"#fff",flexShrink:0}}>{(u.nome||"?").split(" ").slice(0,2).map(n=>n[0]).join("").toUpperCase()}</div><div style={{flex:1}}><div style={{fontWeight:700,color:"#d6d3cc"}}>{u.nome||"Sem nome"}</div><div style={{fontSize:12,color:"#5a5d66"}}>{u.cargo||"-"}</div></div><Tag label={PERFS[u.perfil]?.l||u.perfil||"-"} color={PERFS[u.perfil]?.c||"#5a5d66"}/></div>{u.id===session.user.id&&<div style={{fontSize:11,color:"#5a8f6e",marginBottom:8}}>● Você está logado com este perfil</div>}<div style={{display:"flex",justifyContent:"flex-end",gap:4}}><button style={S.btnSm} onClick={()=>abrirModal("usuario",{...u})} className="bs">Editar perfil</button><button style={{...S.btnSm,...(u.ativo!==false?S.btnDang:{background:"#22c55e11",color:"#5a8f6e",borderColor:"#22c55e33"})}} onClick={async()=>{await sb.from("usuarios").update({ativo:u.ativo===false}).eq("id",u.id);setUsuarios(prev=>prev.map(x=>x.id===u.id?{...x,ativo:x.ativo===false}:x));}} className="bs">{u.ativo!==false?"Desativar":"Ativar"}</button></div></div>)}
+      {usuarios.map(u=><div key={u.id} style={{...S.card,opacity:u.ativo!==false?1:0.5}}><div style={{display:"flex",gap:12,marginBottom:12}}><div style={{width:42,height:42,borderRadius:12,background:u.ativo!==false?"#b8965a":"#2a2d36",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:13,color:"#fff",flexShrink:0}}>{(u.nome||"?").split(" ").slice(0,2).map(n=>n[0]).join("").toUpperCase()}</div><div style={{flex:1}}><div style={{fontWeight:700,color:"#d6d3cc"}}>{u.nome||"Sem nome"}</div><div style={{fontSize:12,color:"#5a5d66"}}>{u.cargo||"-"}</div></div><Tag label={PERFS[u.perfil]?.l||u.perfil||"-"} color={PERFS[u.perfil]?.c||"#5a5d66"}/></div>{u.id===session.user.id&&<div style={{fontSize:11,color:"#5a8f6e",marginBottom:8}}>● Você está logado com este perfil</div>}<div style={{display:"flex",justifyContent:"flex-end",gap:4}}><button style={S.btnSm} onClick={()=>abrirModal("usuario",{...u})} className="bs">Editar perfil</button><button style={{...S.btnSm,...(u.ativo!==false?S.btnDang:{background:"#22c55e11",color:"#5a8f6e",borderColor:"#22c55e33"})}} onClick={async()=>{await sb.from("usuarios").update({ativo:u.ativo===false}).eq("id",u.id);setUsuarios(prev=>prev.map(x=>x.id===u.id?{...x,ativo:x.ativo===false}:x));}} className="bs">{u.ativo!==false?"Desativar":"Ativar"}</button></div></div>)}
     </div>
   </div></div>
 );
@@ -3682,7 +3640,7 @@ const ModalServico=({inicial,clientes,onSave,onClose})=>{
                 )}
               </div>
             )}
-            <div style={{...S.fi,display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",background:form.clienteId?"#22c55e0d":"#0a1628"}} onClick={()=>setForm({...form,_buscaCli:" "})}>
+            <div style={{...S.fi,display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",background:form.clienteId?"#22c55e0d":"#22252e"}} onClick={()=>setForm({...form,_buscaCli:" "})}>
               {form.clienteId?(
                 <span style={{color:"#5a8f6e",fontWeight:600}}>{(clientes.find(c=>c.id===form.clienteId)||{}).nome||"Cliente selecionado"}</span>
               ):(
@@ -3904,7 +3862,7 @@ const S={
   abaBtnActive:{background:"#22252e",color:"#d6d3cc",borderBottom:"1px solid #b8965a"},
   alertBanner:{background:"rgba(184,150,90,0.06)",border:"1px solid rgba(184,150,90,0.18)",borderRadius:7,padding:"9px 14px",fontSize:12,color:"#b8965a"},
   empty:{padding:"28px",textAlign:"center",color:"#3e4048",fontSize:12},
-  btnPrimary:{background:"#b8965a",color:"#0f0d09",border:"none",borderRadius:5,padding:"7px 16px",fontSize:12,fontWeight:500,cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.1px"},
+  btnPrimary:{background:"#b8965a",color:"#0f0d09",border:"none",borderRadius:5,padding:"7px 16px",fontSize:12,fontWeight:500,cursor:"pointer",whiteSpace:"nowrap"},
   btnSec:{background:"transparent",color:"#8a8782",border:"1px solid #2a2d36",borderRadius:5,padding:"7px 14px",fontSize:12,fontWeight:400,cursor:"pointer"},
   btnSm:{background:"#22252e",color:"#8a8782",border:"1px solid #2a2d36",borderRadius:4,padding:"3px 9px",fontSize:11,cursor:"pointer",marginRight:4,fontWeight:400},
   btnDang:{background:"rgba(180,100,100,0.08)",color:"#b46464",borderColor:"rgba(180,100,100,0.2)"},
