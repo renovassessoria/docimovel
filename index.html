@@ -8,22 +8,22 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Outfit',sans-serif;background:#060b14;color:#94a3b8;min-height:100vh;}
+body{font-family:'IBM Plex Sans',sans-serif;background:#16181d;color:#9a9690;min-height:100vh;}
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:#060b14;}
-::-webkit-scrollbar-thumb{background:#0f1f35;border-radius:999px;}
-.ni:hover{background:#0f1f35!important;color:#e2e8f0!important;}
-.tr:hover td{background:#090e1a!important;}
-.bp:hover{opacity:.88;}
-.bs:hover{border-color:#3b82f6!important;color:#3b82f6!important;}
-.ab:hover{background:#0f1f35!important;color:#94a3b8!important;}
-.cardh:hover{border-color:#1e3a5f!important;cursor:pointer;}
-.ci:hover{border-color:#1e3a5f!important;}
-.back:hover{background:#1e3a5f!important;}
-input,select,textarea{font-family:'Outfit',sans-serif;}
+::-webkit-scrollbar-thumb{background:#2a2d36;border-radius:999px;}
+.ni:hover{background:#22252e!important;color:#e8e6e0!important;}
+.tr:hover td{background:#22252e!important;}
+.bp:hover{opacity:.9;}
+.bs:hover{border-color:#c9a96e!important;color:#c9a96e!important;}
+.ab:hover{background:#22252e!important;color:#9a9690!important;}
+.cardh:hover{border-color:#3a3d46!important;cursor:pointer;}
+.ci:hover{border-color:#3a3d46!important;}
+.back:hover{background:#22252e!important;}
+input,select,textarea{font-family:'IBM Plex Sans',sans-serif;}
 @media print{body>*{display:none!important;}#print-area{display:block!important;position:fixed;top:0;left:0;width:100%;}}
 </style>
 </head>
@@ -189,15 +189,15 @@ const fmtK=(v)=>v>=1000?`R$${(v/1000).toFixed(1)}k`:`R$${v}`;
 const gp=()=>{const d=new Date();return `PRO-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}-${String(Math.floor(Math.random()*9000)+1000)}`;};
 
 // ── Componentes base ──
-const Tag=({label,color})=><span style={{background:color+"22",color,border:"1px solid "+color+"44",borderRadius:5,padding:"2px 7px",fontSize:10,fontWeight:700,whiteSpace:"nowrap"}}>{label}</span>;
-const FL=({l})=><label style={{display:"block",fontSize:10,fontWeight:700,color:"#334155",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:5}}>{l}</label>;
+const Tag=({label,color})=><span style={{background:color+"18",color,border:"1px solid "+color+"33",borderRadius:3,padding:"2px 8px",fontSize:9,fontWeight:600,whiteSpace:"nowrap",letterSpacing:"0.3px",textTransform:"uppercase"}}>{label}</span>;
+const FL=({l})=><label style={{display:"block",fontSize:9,fontWeight:700,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:5}}>{l}</label>;
 const FI=({l,v,set,type="text",ph=""})=><div style={{marginBottom:10}}><FL l={l}/><input style={S.fi} type={type} value={v||""} onChange={e=>set(e.target.value)} placeholder={ph}/></div>;
 const InfoRow=({l,v,hl})=><div style={{display:"flex",gap:8,fontSize:12,marginBottom:5}}><span style={{color:"#475569",minWidth:90}}>{l}:</span><span style={{color:hl?"#ef4444":"#e2e8f0",fontWeight:hl?700:400}}>{v||"-"}</span></div>;
 const StatCard=({icon,label,value,color})=><div style={{...S.card,borderTop:"3px solid "+color}}><div style={{fontSize:20,marginBottom:8}}>{icon}</div><div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:4}}>{label}</div><div style={{fontSize:20,fontWeight:800,color}}>{value}</div></div>;
 const MiniStat=({l,v,c})=><div style={{...S.card,flex:1,textAlign:"center",borderTop:"3px solid "+c}}><div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:4}}>{l}</div><div style={{fontSize:16,fontWeight:800,color:c}}>{v}</div></div>;
 const AlertBanner=({cor,icon,texto,onClick})=><div onClick={onClick} style={{background:cor+"11",border:"1px solid "+cor+"33",borderRadius:8,padding:"9px 14px",fontSize:13,color:cor,cursor:"pointer",display:"flex",alignItems:"center",gap:8,flex:1}}>{icon} {texto}</div>;
-const DiIcon=({size=48})=><div style={{width:size,height:size,borderRadius:size*0.25,background:"linear-gradient(135deg,#1d4ed8,#7c3aed)",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:size*0.375,color:"#fff",fontFamily:"'DM Sans',sans-serif",letterSpacing:"-0.5px",flexShrink:0}}>DI</div>;
-const Splash=({msg})=><div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",flexDirection:"column",gap:16,background:"#060b14"}}><DiIcon size={64}/><div style={{fontSize:18,fontWeight:700,color:"#e2e8f0",marginTop:4}}>DocImóvel PRO</div><div style={{fontSize:13,color:"#475569"}}>{msg}</div></div>;
+const DiIcon=({size=48})=><div style={{width:size,height:size,borderRadius:size*0.2,border:"1px solid #c9a96e",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:size*0.33,color:"#c9a96e",fontFamily:"'IBM Plex Sans',sans-serif",letterSpacing:"0px",flexShrink:0,background:"rgba(201,169,110,0.08)"}}>DI</div>;
+const Splash=({msg})=><div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",flexDirection:"column",gap:16,background:"#16181d"}}><DiIcon size={64}/><div style={{fontSize:18,fontWeight:700,color:"#e2e8f0",marginTop:4}}>DocImóvel PRO</div><div style={{fontSize:13,color:"#475569"}}>{msg}</div></div>;
 const PageHeader=({title,sub,children})=><header style={S.header}><div><div style={S.headerTitle}>{title}</div>{sub&&<div style={S.headerSub}>{sub}</div>}</div>{children&&<div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>{children}</div>}</header>;
 const Modal=({title,onClose,onSave,children,wide,cor})=>(
   <div style={S.overlay}>
@@ -222,8 +222,8 @@ const TelaLogin=()=>{
   const cadastrar=async()=>{if(!nome)return setErro("Informe seu nome.");setLoading(true);setErro("");const{error}=await sb.auth.signUp({email,password:senha,options:{data:{nome,perfil:"admin"}}});if(error)setErro(error.message);else setOk("Conta criada! Verifique seu e-mail.");setLoading(false);};
   const recuperar=async()=>{setLoading(true);setErro("");const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin});if(error)setErro(error.message);else setOk("E-mail de recuperação enviado!");setLoading(false);};
   return(
-    <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#060b14"}}>
-      <div style={{background:"#090e1a",border:"1px solid #0f1f35",borderRadius:16,padding:"32px",width:"100%",maxWidth:380}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#16181d"}}>
+      <div style={{background:"#1c1f26",border:"1px solid #2a2d36",borderRadius:12,padding:"32px",width:"100%",maxWidth:380}}>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:24}}>
           <DiIcon size={42}/>
           <div><div style={S.brandName}>DocImóvel PRO</div><div style={{fontSize:11,color:"#475569"}}>Gestão Documental</div></div>
@@ -657,29 +657,29 @@ const AppContent=({session})=>{
   if(loadingData)return<Splash msg="Carregando dados..."/>;
 
   return(
-    <div style={{display:"flex",minHeight:"100vh",background:"#060b14",fontFamily:"'Outfit',sans-serif",color:"#94a3b8"}}>
-      {toast&&<div style={{position:"fixed",top:20,right:20,background:toast.tipo==="erro"?"#ef4444":"#059669",borderRadius:10,padding:"12px 18px",color:"#fff",fontSize:13,fontWeight:600,zIndex:999,boxShadow:"0 4px 20px rgba(0,0,0,0.4)"}}>{toast.tipo==="ok"?"✓":"✕"} {toast.msg}</div>}
+    <div style={{display:"flex",minHeight:"100vh",background:"#16181d",fontFamily:"'IBM Plex Sans',sans-serif",color:"#9a9690"}}>
+      {toast&&<div style={{position:"fixed",top:20,right:20,background:toast.tipo==="erro"?"#c97070":"#5eab7e",borderRadius:8,padding:"11px 18px",color:"#fff",fontSize:12,fontWeight:500,zIndex:999,boxShadow:"0 4px 24px rgba(0,0,0,0.5)",border:"1px solid "+(toast.tipo==="erro"?"rgba(201,112,112,0.4)":"rgba(94,171,126,0.4)")}}>{toast.tipo==="ok"?"✓":"✕"} {toast.msg}</div>}
 
       {/* SIDEBAR */}
-      <aside style={{width:216,background:"#090e1a",borderRight:"1px solid #0f1f35",display:"flex",flexDirection:"column",flexShrink:0}}>
-        <div style={{padding:"14px 16px 12px",borderBottom:"1px solid #0f1f35",display:"flex",alignItems:"center",gap:10}}>
+      <aside style={{width:230,background:"#12141a",borderRight:"1px solid #2a2d36",display:"flex",flexDirection:"column",flexShrink:0}}>
+        <div style={{padding:"20px 18px",borderBottom:"1px solid #2a2d36",display:"flex",alignItems:"center",gap:12}}>
           <DiIcon size={36}/>
           <div>
-            <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",letterSpacing:"0.2px"}}>DocImóvel</div>
-            <div style={{fontSize:9,fontWeight:700,color:"#7c3aed",letterSpacing:"1px",background:"#7c3aed22",borderRadius:3,padding:"1px 5px",display:"inline-block",marginTop:2}}>PRO</div>
+            <div style={{fontSize:14,fontWeight:600,color:"#e8e6e0",letterSpacing:"0.2px"}}>DocImóvel</div>
+            <div style={{fontSize:9,fontWeight:600,color:"#c9a96e",letterSpacing:"1.5px",background:"rgba(201,169,110,0.1)",border:"1px solid rgba(201,169,110,0.25)",borderRadius:3,padding:"1px 5px",display:"inline-block",marginTop:2}}>PRO</div>
           </div>
         </div>
-        <nav style={{padding:"10px 8px",display:"flex",flexDirection:"column",gap:2,flex:1}}>
+        <nav style={{padding:"14px 10px",display:"flex",flexDirection:"column",gap:1,flex:1}}>
           {NAV.map(n=>{let badge=0;if(n.k==="andamento")badge=diligVenc.length+diligHoje.length;if(n.k==="captacao")badge=leadsN;if(n.k==="servicos")badge=orcA;return<button key={n.k} onClick={()=>{setTela(n.k);setServicoAberto(null);setProcessoAberto(null);}} style={{...S.navItem,...(tela===n.k?S.navActive:{})}} className="ni"><span style={{fontSize:14,minWidth:18,textAlign:"center"}}>{n.i}</span><span>{n.l}</span>{badge>0&&<span style={{marginLeft:"auto",background:"#ef4444",color:"#fff",borderRadius:999,fontSize:10,fontWeight:700,minWidth:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 5px"}}>{badge}</span>}</button>;})}
         </nav>
-        <div style={{padding:"12px 14px",borderTop:"1px solid #0f1f35",display:"flex",flexDirection:"column",gap:5}}>
+        <div style={{padding:"12px 16px",borderTop:"1px solid #2a2d36",display:"flex",flexDirection:"column",gap:5}}>
           <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{color:"#22c55e"}}>◉</span><span style={{fontSize:11,color:"#475569"}}>{clientes.length} clientes</span></div>
           <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{color:"#3b82f6"}}>◉</span><span style={{fontSize:11,color:"#475569"}}>{servicos.filter(s=>s.status!=="Concluído").length} processos ativos</span></div>
           {diligVenc.length>0&&<div style={{display:"flex",alignItems:"center",gap:6}}><span style={{color:"#ef4444"}}>⚠</span><span style={{fontSize:11,color:"#ef4444",fontWeight:600}}>{diligVenc.length} prazo(s) vencido(s)</span></div>}
         </div>
-        <div style={{padding:"8px 12px",borderTop:"1px solid #0f1f35"}}>
+        <div style={{padding:"8px 14px",borderTop:"1px solid #2a2d36"}}>
           <button onClick={()=>fazerBackup(sb,showToast)} className="bs"
-            style={{width:"100%",background:"#0f1f35",border:"1px solid #1e3a5f",borderRadius:7,padding:"8px 10px",color:"#94a3b8",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:8,fontWeight:600}}>
+            style={{width:"100%",background:"#22252e",border:"1px solid #2a2d36",borderRadius:6,padding:"8px 10px",color:"#6b6d76",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",gap:8,fontWeight:500}}>
             ↓ Backup dos dados
           </button>
         </div>
@@ -694,7 +694,7 @@ const AppContent=({session})=>{
       </aside>
 
       {/* MAIN */}
-      <main style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      <main style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:"#16181d"}}>
         {tela==="dashboard"&&<TelaDashboard clientes={clientes} servicos={servicos} abrirServico={(s)=>{setServicoAberto(s);setAbaServico("diligencias");setTela("servicos");}} abrirServicoVisao={(s)=>{setServicoAberto(s);setAbaServico(s._abaInicial||"visao");setTela("servicos");}} irAgenda={()=>setTela("agenda")} agenda={agenda} diligVenc={[...diligVenc,...prazosVenc,...parcelasVenc]} diligHoje={[...diligHoje,...prazosHoje,...prazosProx,...parcelasHoje]} leadsN={leadsN} orcA={orcA} cn={cn} irPara={setTela}/>}
         {tela==="clientes"&&<TelaClientes clientes={filtC} servicos={servicos} search={searchC} setSearch={setSearchC} abrirModal={abrirModal} setClientes={setClientes}/>}
         {tela==="servicos"&&!servicoAberto&&<TelaServicos servicos={filtS} search={searchS} setSearch={setSearchS} cn={cn} abrirModal={abrirModal} abrirServico={s=>{setServicoAberto(s);setAbaServico("visao");}} setPrintData={setPrintData} setServicos={setServicos} showToast={showToast} clientes={clientes}/>}
@@ -860,7 +860,7 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
 
       {/* Linha 3: Diligências + Parcelas lado a lado */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginTop:14}}>
-      <div style={{...S.card,borderTop:"3px solid #ef4444"}}>
+      <div style={{...S.card,borderTop:"2px solid #c97070"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
           <div style={S.cardTitle}>Diligências — Todos os Serviços</div>
           <div style={{display:"flex",gap:6}}>
@@ -872,9 +872,9 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
         {todasDilig.filter(d=>d.status!=="Concluída").length===0&&<div style={S.empty}>Nenhuma diligência pendente.</div>}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
           {[
-            {grupo:"Vencidas",items:[...diligVencDash].sort((a,b)=>(a.prazo||"").localeCompare(b.prazo||"")),cor:"#ef4444"},
-            {grupo:"Hoje",items:[...diligHojeDash].sort((a,b)=>(a.prazo||"").localeCompare(b.prazo||"")),cor:"#f97316"},
-            {grupo:"Próximos 7 dias",items:[...diligAmanha,...diligProx].sort((a,b)=>(a.prazo||"").localeCompare(b.prazo||"")),cor:"#3b82f6"},
+            {grupo:"Vencidas",items:[...diligVencDash].sort((a,b)=>(a.prazo||"").localeCompare(b.prazo||"")),cor:"#c97070"},
+            {grupo:"Hoje",items:[...diligHojeDash].sort((a,b)=>(a.prazo||"").localeCompare(b.prazo||"")),cor:"#d4a843"},
+            {grupo:"Próximos 7 dias",items:[...diligAmanha,...diligProx].sort((a,b)=>(a.prazo||"").localeCompare(b.prazo||"")),cor:"#6b9fd4"},
           ].filter(g=>g.items.length>0).map(g=>(
             <div key={g.grupo}>
               <div style={{fontSize:11,fontWeight:800,color:g.cor,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6,paddingLeft:8,borderLeft:"3px solid "+g.cor}}>{g.grupo} ({g.items.length})</div>
@@ -891,15 +891,14 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
             </div>
           ))}
         </div>
-        {diligOk.length>0&&<div style={{marginTop:8,fontSize:11,color:"#475569",textAlign:"right"}}>✓ {diligOk.length} diligência(s) concluída(s)</div>}
+        {diligOk.length>0&&<div style={{marginTop:8,fontSize:10,color:"#4a4d56",textAlign:"right"}}>✓ {diligOk.length} diligência(s) concluída(s)</div>}
       </div>
       {(()=>{
         const _hj=new Date().toISOString().slice(0,10);
         const _d7=new Date();_d7.setDate(_d7.getDate()+7);const _d7s=_d7.toISOString().slice(0,10);
         const parcelasCard=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>{
           if(p.status==="pago")return false;
-          const isParc=p.parcelado===true||/(\d+\/\d+)/.test(p.descricao||"");
-          if(!isParc)return false;
+          if(p.parcelado!==true){const desc=p.descricao||"";if(!(desc.indexOf("/")>-1&&desc.indexOf("(")>-1))return false;}
           if(!p.data)return false;
           return p.data<=_d7s;
         }).map(p=>({...p,clienteNome:cn(s.clienteId||s.cliente_id),servicoObj:s,protocolo:s.protocolo})))
@@ -909,26 +908,26 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
           <div style={{...S.card}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
               <div style={S.cardTitle}>Parcelas — próx. 7 dias</div>
-              {parcelasCard.length>0&&<span style={{fontSize:11,fontWeight:700,color:"#8b5cf6"}}>R$ {fmt(totalCard)}</span>}
+              {parcelasCard.length>0&&<span style={{fontSize:11,fontWeight:600,color:"#c9a96e"}}>R$ {fmt(totalCard)}</span>}
             </div>
-            {parcelasCard.length===0&&<div style={{fontSize:12,color:"#22c55e",padding:"6px 0"}}>Nenhuma parcela pendente.</div>}
+            {parcelasCard.length===0&&<div style={{fontSize:12,color:"#5eab7e",padding:"6px 0"}}>Nenhuma parcela pendente.</div>}
             <div style={{display:"flex",flexDirection:"column",gap:5,maxHeight:280,overflowY:"auto"}}>
               {parcelasCard.map((p,i)=>{
                 const diff=Math.ceil((new Date(p.data+"T12:00:00")-new Date(_hj+"T12:00:00"))/(864e5));
                 const venc=diff<0;const ehHoje=diff===0;
-                const cor=venc?"#ef4444":ehHoje?"#f97316":diff<=3?"#f59e0b":"#64748b";
+                const cor=venc?"#c97070":ehHoje?"#d4a843":diff<=3?"#d4a843":"#4a4d56";
                 const lbl=venc?diff+"d":ehHoje?"hoje":"+"+diff+"d";
                 return(
-                  <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",borderRadius:6,background:"#060b14",border:"1px solid #0f1f35"}}>
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:6,background:"#16181d",border:"1px solid #2a2d36"}}>
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:11,fontWeight:600,color:"#e2e8f0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.descricao}</div>
-                      <div style={{fontSize:10,color:"#475569"}}>{p.clienteNome} · {p.data}</div>
+                      <div style={{fontSize:11,fontWeight:500,color:"#e8e6e0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.descricao}</div>
+                      <div style={{fontSize:10,color:"#4a4d56"}}>{p.clienteNome} · {p.data}</div>
                     </div>
                     <div style={{flexShrink:0,textAlign:"right"}}>
-                      <div style={{fontSize:11,fontWeight:700,color:cor}}>{lbl}</div>
-                      <div style={{fontSize:10,color:"#64748b"}}>R$ {fmt(p.valor)}</div>
+                      <div style={{fontSize:11,fontWeight:600,color:cor}}>{lbl}</div>
+                      <div style={{fontSize:10,color:"#6b6d76"}}>R$ {fmt(p.valor)}</div>
                     </div>
-                    <button style={{...S.btnSm,fontSize:10,padding:"2px 7px",color:"#8b5cf6",borderColor:"#8b5cf644",flexShrink:0}}
+                    <button style={{...S.btnSm,fontSize:10,padding:"2px 8px",color:"#c9a96e",borderColor:"rgba(201,169,110,0.3)",flexShrink:0}}
                       onClick={()=>{if(abrirServicoVisao)abrirServicoVisao({...p.servicoObj,_abaInicial:"pagamentos"});}}
                       className="bs">→</button>
                   </div>
@@ -1258,7 +1257,7 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
           </div>
         )}
       </div>}
-      {aba==="pagamentos"&&<div><div style={{display:"flex",gap:12,marginBottom:14}}><MiniStat l="Valor do serviço" v={"R$ "+fmt(valorLiq)} c="#3b82f6"/><MiniStat l="Recebido até hoje" v={"R$ "+fmt(totPago)} c="#22c55e"/><MiniStat l="Saldo restante" v={"R$ "+fmt(saldo)} c={saldo>0?"#ef4444":"#22c55e"}/></div><div style={{...S.card,marginBottom:14}}><div style={S.cardTitle}>Registrar Pagamento / Taxa</div><div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",gap:10}}><div><FL l="Descrição"/><input style={S.fi} value={novaPag.descricao} onChange={e=>setNovaPag({...novaPag,descricao:e.target.value})} placeholder="Ex: Entrada, taxa..."/></div><div><FL l="Valor"/><input style={S.fi} type="number" value={novaPag.valor} onChange={e=>setNovaPag({...novaPag,valor:e.target.value})}/></div><div><FL l="Forma"/><select style={S.fi} value={novaPag.forma} onChange={e=>setNovaPag({...novaPag,forma:e.target.value})}>{FORMAS.map(f=><option key={f}>{f}</option>)}</select></div><div><FL l="Data"/><input style={S.fi} type="date" value={novaPag.data} onChange={e=>setNovaPag({...novaPag,data:e.target.value})}/></div></div><div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
+      {aba==="pagamentos"&&<div><div style={{display:"flex",gap:12,marginBottom:14}}><MiniStat l="Valor do serviço" v={"R$ "+fmt(valorLiq)} c="#3b82f6"/><MiniStat l="Recebido até hoje" v={"R$ "+fmt(totPago)} c="#5eab7e"/><MiniStat l="Saldo restante" v={"R$ "+fmt(saldo)} c={saldo>0?"#ef4444":"#22c55e"}/></div><div style={{...S.card,marginBottom:14}}><div style={S.cardTitle}>Registrar Pagamento / Taxa</div><div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",gap:10}}><div><FL l="Descrição"/><input style={S.fi} value={novaPag.descricao} onChange={e=>setNovaPag({...novaPag,descricao:e.target.value})} placeholder="Ex: Entrada, taxa..."/></div><div><FL l="Valor"/><input style={S.fi} type="number" value={novaPag.valor} onChange={e=>setNovaPag({...novaPag,valor:e.target.value})}/></div><div><FL l="Forma"/><select style={S.fi} value={novaPag.forma} onChange={e=>setNovaPag({...novaPag,forma:e.target.value})}>{FORMAS.map(f=><option key={f}>{f}</option>)}</select></div><div><FL l="Data"/><input style={S.fi} type="date" value={novaPag.data} onChange={e=>setNovaPag({...novaPag,data:e.target.value})}/></div></div><div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
                   <input type="checkbox" id="chkParc" checked={!!novaPag.parcelado} onChange={e=>setNovaPag(p=>({...p,parcelado:e.target.checked}))} style={{width:14,height:14,cursor:"pointer"}}/>
                   <label htmlFor="chkParc" style={{fontSize:11,color:"#e2e8f0",cursor:"pointer"}}>Parcelado</label>
                   {novaPag.parcelado&&<select style={{...S.selectSm,width:80}} value={novaPag.totalParcelas} onChange={e=>setNovaPag(p=>({...p,totalParcelas:Number(e.target.value)}))}>
@@ -1266,7 +1265,7 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
                   </select>}
                   {novaPag.parcelado&&<span style={{fontSize:11,color:"#22c55e"}}>= R$ {(Number(novaPag.valor||0)/Number(novaPag.totalParcelas||1)).toFixed(2)}/parc.</span>}
                 </div>
-                <button style={{...S.btnPrimary,marginTop:10}} onClick={addPag} className="bp">+ Registrar</button></div><div style={S.tableCard}><table style={S.table}><thead><tr>{["Data","Descrição","Forma","Valor","Situação",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead><tbody>{(servico.pagamentos||[]).map(p=><tr key={p.id} style={S.tr} className="tr"><td style={S.td}>{p.data}</td><td style={S.td}>{p.descricao}</td><td style={S.td}><Tag label={p.forma} color="#6366f1"/></td><td style={S.td}><span style={{fontWeight:700,color:"#22c55e"}}>R$ {fmt(p.valor)}</span></td><td style={S.td}>{(()=>{const isParc=p.parcelado===true||/\(\d+\/\d+\)/.test(p.descricao||"");if(p.status==="pago")return<Tag label="Pago" color="#22c55e"/>;if(!isParc)return<Tag label="Avulso" color="#3b82f6"/>;const hj=td();if(p.data<=hj)return<Tag label="Vencida" color="#f97316"/>;const diff=Math.ceil((new Date(p.data+"T12:00:00")-new Date(hj+"T12:00:00"))/(864e5));return<Tag label={"Vence +"+diff+"d"} color={diff<=3?"#ef4444":"#f59e0b"}/>;})()}</td><td style={S.td}>{(()=>{const isParc=p.parcelado===true||/\(\d+\/\d+\)/.test(p.descricao||"");return(isParc&&p.status!=="pago")&&<button style={{...S.btnSm,color:"#22c55e",borderColor:"#22c55e44",fontWeight:700}} onClick={()=>{if(!window.confirm("Confirmar recebimento desta parcela?"))return;atualizar({pagamentos:(servico.pagamentos||[]).map(x=>x.id===p.id?{...x,status:"pago",parcelado:true,dataPagamento:td()}:x)});}} className="bs">✓ Pago</button>;})()}<button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir este pagamento? Esta acao e permanente."))return;atualizar({pagamentos:(servico.pagamentos||[]).filter(x=>x.id!==p.id)})}} className="bs">✕</button><button style={S.btnSm} onClick={()=>setEditPag({...p})} className="bs">Ed</button><button style={{...S.btnSm,color:"#22c55e",borderColor:"#22c55e44"}} onClick={()=>gerarReciboServico(p,cliente,servico)} className="bs">Recibo</button></td></tr>)}</tbody></table></div></div>}
+                <button style={{...S.btnPrimary,marginTop:10}} onClick={addPag} className="bp">+ Registrar</button></div><div style={S.tableCard}><table style={S.table}><thead><tr>{["Data","Descrição","Forma","Valor","Situação",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead><tbody>{(servico.pagamentos||[]).map(p=><tr key={p.id} style={S.tr} className="tr"><td style={S.td}>{p.data}</td><td style={S.td}>{p.descricao}</td><td style={S.td}><Tag label={p.forma} color="#6366f1"/></td><td style={S.td}><span style={{fontWeight:700,color:"#22c55e"}}>R$ {fmt(p.valor)}</span></td><td style={S.td}>{(()=>{const desc=p.descricao||"";const isParc=p.parcelado===true||desc.indexOf("/")>-1&&desc.indexOf("(")>-1;if(p.status==="pago")return<Tag label="Pago" color="#5eab7e"/>;if(!isParc)return<Tag label="Avulso" color="#6b9fd4"/>;const hj=td();if(p.data<=hj)return<Tag label="Vencida" color="#c97070"/>;const diff=Math.ceil((new Date(p.data+"T12:00:00")-new Date(hj+"T12:00:00"))/(864e5));return<Tag label={"Vence +"+diff+"d"} color={diff<=3?"#c97070":"#d4a843"}/>;})()}</td><td style={S.td}>{(()=>{const desc=p.descricao||"";const isParc=p.parcelado===true||desc.indexOf("/")>-1&&desc.indexOf("(")>-1;if(isParc&&p.status!=="pago")return<button style={{...S.btnSm,color:"#5eab7e",borderColor:"rgba(94,171,126,0.3)",fontWeight:600}} onClick={()=>{if(!window.confirm("Confirmar recebimento desta parcela?"))return;atualizar({pagamentos:(servico.pagamentos||[]).map(x=>x.id===p.id?{...x,status:"pago",parcelado:true,dataPagamento:td()}:x)});}} className="bs">✓ Pago</button>;return null;})()}<button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir este pagamento? Esta acao e permanente."))return;atualizar({pagamentos:(servico.pagamentos||[]).filter(x=>x.id!==p.id)})}} className="bs">✕</button><button style={S.btnSm} onClick={()=>setEditPag({...p})} className="bs">Ed</button><button style={{...S.btnSm,color:"#5eab7e",borderColor:"rgba(94,171,126,0.3)"}} onClick={()=>gerarReciboServico(p,cliente,servico)} className="bs">Recibo</button></td></tr>)}</tbody></table></div></div>}
       {aba==="contratos"&&<AbaContratos servico={servico} cliente={cliente} atualizar={atualizar} showToast={showToast}/>}
 {aba==="portal"&&<AbaPortalCliente servico={servico} cliente={cliente} atualizar={atualizar} showToast={showToast}/>}
     </div>
@@ -3912,43 +3911,44 @@ const Recibo=({data,onClose,clientes=[]})=>{
 };
 
 const S={
-  card:{background:"#090e1a",border:"1px solid #0f1f35",borderRadius:12,padding:"16px"},
-  cardTitle:{fontSize:11,fontWeight:700,color:"#334155",textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:12,paddingBottom:10,borderBottom:"1px solid #0f1f35"},
+  card:{background:"#1e2128",border:"1px solid #2a2d36",borderRadius:10,padding:"16px",fontFamily:"'IBM Plex Sans',sans-serif"},
+  cardTitle:{fontSize:9,fontWeight:700,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"1.2px",marginBottom:12,paddingBottom:10,borderBottom:"1px solid #2a2d36"},
   tela:{display:"flex",flexDirection:"column",flex:1,overflow:"hidden"},
-  header:{background:"#090e1a",borderBottom:"1px solid #0f1f35",padding:"14px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap",flexShrink:0},
-  headerTitle:{fontSize:18,fontWeight:700,color:"#e2e8f0"},
-  headerSub:{fontSize:12,color:"#475569",marginTop:2},
+  header:{background:"#1c1f26",borderBottom:"1px solid #2a2d36",padding:"14px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap",flexShrink:0},
+  headerTitle:{fontSize:18,fontWeight:600,color:"#e8e6e0",fontFamily:"'Playfair Display',serif",letterSpacing:"-0.2px"},
+  headerSub:{fontSize:11,color:"#6b6d76",marginTop:2},
   body:{flex:1,padding:"20px 24px",overflowY:"auto"},
   sg4:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:16},
-  tableCard:{background:"#090e1a",border:"1px solid #0f1f35",borderRadius:12,overflow:"auto"},
+  tableCard:{background:"#1e2128",border:"1px solid #2a2d36",borderRadius:10,overflow:"auto"},
   table:{width:"100%",borderCollapse:"collapse"},
-  th:{textAlign:"left",padding:"10px 14px",fontSize:10,fontWeight:700,color:"#334155",textTransform:"uppercase",letterSpacing:"0.6px",borderBottom:"1px solid #0f1f35",whiteSpace:"nowrap"},
-  td:{padding:"11px 14px",fontSize:13,color:"#94a3b8",borderBottom:"1px solid #060b14",verticalAlign:"top"},
+  th:{textAlign:"left",padding:"10px 14px",fontSize:9,fontWeight:700,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"1px",borderBottom:"1px solid #2a2d36",whiteSpace:"nowrap"},
+  td:{padding:"11px 14px",fontSize:12,color:"#9a9690",borderBottom:"1px solid rgba(255,255,255,0.03)",verticalAlign:"top"},
   tr:{transition:"background 0.12s"},
-  proto:{fontFamily:"monospace",fontSize:11,color:"#7c3aed",background:"#7c3aed11",borderRadius:4,padding:"2px 6px"},
-  navItem:{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",borderRadius:8,border:"none",background:"transparent",color:"#64748b",fontSize:13,fontWeight:500,cursor:"pointer",textAlign:"left",position:"relative"},
-  navActive:{background:"#0f1f35",color:"#e2e8f0"},
-  brandMark:{width:36,height:36,borderRadius:10,background:"linear-gradient(135deg,#1d4ed8,#7c3aed)",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:13,color:"#fff",flexShrink:0},
-  brandName:{fontSize:15,fontWeight:700,color:"#e2e8f0"},
-  backBtn:{background:"#0f1f35",border:"1px solid #1e3a5f",color:"#94a3b8",borderRadius:7,padding:"5px 12px",fontSize:12,cursor:"pointer"},
-  search:{background:"#0f1f35",border:"1px solid #1e3a5f",borderRadius:8,padding:"7px 12px",color:"#e2e8f0",fontSize:13,outline:"none",width:220},
-  selectSm:{background:"#0f1f35",border:"1px solid #1e3a5f",borderRadius:8,padding:"7px 12px",color:"#e2e8f0",fontSize:12,outline:"none",cursor:"pointer"},
-  abaBtn:{padding:"7px 14px",border:"none",borderRadius:7,background:"transparent",color:"#475569",fontSize:12,fontWeight:600,cursor:"pointer"},
-  abaBtnActive:{background:"#0f1f35",color:"#e2e8f0"},
-  alertBanner:{background:"#f59e0b11",border:"1px solid #f59e0b33",borderRadius:8,padding:"9px 14px",fontSize:13,color:"#fcd34d"},
-  empty:{padding:"28px",textAlign:"center",color:"#334155",fontSize:13},
-  btnPrimary:{background:"linear-gradient(135deg,#1d4ed8,#7c3aed)",color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"},
-  btnSec:{background:"#0f1f35",color:"#94a3b8",border:"1px solid #1e3a5f",borderRadius:8,padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer"},
-  btnSm:{background:"#0f1f35",color:"#94a3b8",border:"1px solid #1e3a5f",borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",marginRight:4,fontWeight:500},
-  btnDang:{background:"#ef444411",color:"#ef4444",borderColor:"#ef444433"},
-  overlay:{position:"fixed",inset:0,background:"rgba(0,0,0,0.82)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,backdropFilter:"blur(4px)"},
-  modal:{background:"#090e1a",border:"1px solid #0f1f35",borderRadius:14,width:"95%",maxWidth:500,maxHeight:"90vh",overflow:"auto"},
-  modalHeader:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 20px",borderBottom:"1px solid #0f1f35"},
-  modalTitle:{fontSize:15,fontWeight:700,color:"#e2e8f0"},
-  modalClose:{background:"none",border:"none",color:"#475569",fontSize:16,cursor:"pointer"},
+  proto:{fontFamily:"'IBM Plex Mono',monospace",fontSize:11,color:"#c9a96e",background:"rgba(201,169,110,0.1)",borderRadius:4,padding:"2px 7px",border:"1px solid rgba(201,169,110,0.2)"},
+  navItem:{display:"flex",alignItems:"center",gap:10,padding:"9px 10px",borderRadius:"0 6px 6px 0",border:"none",background:"transparent",color:"#4a4d56",fontSize:12,fontWeight:400,cursor:"pointer",textAlign:"left",position:"relative",letterSpacing:"0.1px"},
+  navActive:{background:"rgba(201,169,110,0.08)",color:"#c9a96e",borderLeft:"2px solid #c9a96e"},
+  brandMark:{width:36,height:36,borderRadius:8,border:"1px solid #c9a96e",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:"#c9a96e",flexShrink:0},
+  brandName:{fontSize:14,fontWeight:600,color:"#e8e6e0"},
+  backBtn:{background:"#22252e",border:"1px solid #2a2d36",color:"#9a9690",borderRadius:6,padding:"5px 12px",fontSize:12,cursor:"pointer"},
+  search:{background:"#22252e",border:"1px solid #2a2d36",borderRadius:7,padding:"7px 12px",color:"#e8e6e0",fontSize:12,outline:"none",width:220},
+  selectSm:{background:"#22252e",border:"1px solid #2a2d36",borderRadius:7,padding:"7px 12px",color:"#e8e6e0",fontSize:12,outline:"none",cursor:"pointer"},
+  abaBtn:{padding:"7px 14px",border:"none",borderRadius:6,background:"transparent",color:"#4a4d56",fontSize:12,fontWeight:500,cursor:"pointer"},
+  abaBtnActive:{background:"#22252e",color:"#e8e6e0",borderBottom:"2px solid #c9a96e"},
+  alertBanner:{background:"rgba(212,168,67,0.08)",border:"1px solid rgba(212,168,67,0.25)",borderRadius:8,padding:"9px 14px",fontSize:13,color:"#d4a843"},
+  empty:{padding:"28px",textAlign:"center",color:"#4a4d56",fontSize:12},
+  btnPrimary:{background:"#c9a96e",color:"#12140a",border:"none",borderRadius:6,padding:"8px 18px",fontSize:12,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.2px"},
+  btnSec:{background:"transparent",color:"#9a9690",border:"1px solid #2a2d36",borderRadius:6,padding:"8px 16px",fontSize:12,fontWeight:400,cursor:"pointer"},
+  btnSm:{background:"#22252e",color:"#9a9690",border:"1px solid #2a2d36",borderRadius:5,padding:"4px 10px",fontSize:11,cursor:"pointer",marginRight:4,fontWeight:400},
+  btnDang:{background:"rgba(201,112,112,0.1)",color:"#c97070",borderColor:"rgba(201,112,112,0.25)"},
+  overlay:{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,backdropFilter:"blur(4px)"},
+  modal:{background:"#1c1f26",border:"1px solid #2a2d36",borderRadius:12,width:"95%",maxWidth:500,maxHeight:"90vh",overflow:"auto"},
+  modalHeader:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 20px",borderBottom:"1px solid #2a2d36"},
+  modalTitle:{fontSize:14,fontWeight:600,color:"#e8e6e0",fontFamily:"'Playfair Display',serif"},
+  modalClose:{background:"none",border:"none",color:"#4a4d56",fontSize:16,cursor:"pointer"},
   modalBody:{padding:"18px 20px"},
-  modalFooter:{display:"flex",justifyContent:"flex-end",gap:10,padding:"12px 20px",borderTop:"1px solid #0f1f35"},
-  fi:{width:"100%",background:"#0f1f35",border:"1px solid #1e3a5f",borderRadius:8,padding:"8px 11px",color:"#e2e8f0",fontSize:13,outline:"none",boxSizing:"border-box"},
+  modalFooter:{display:"flex",justifyContent:"flex-end",gap:10,padding:"12px 20px",borderTop:"1px solid #2a2d36"},
+  fi:{width:"100%",background:"#22252e",border:"1px solid #2a2d36",borderRadius:7,padding:"8px 11px",color:"#e8e6e0",fontSize:12,outline:"none",boxSizing:"border-box"},
+  label:{display:"block",fontSize:9,fontWeight:700,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:5},
 };
 
 // Só iniciar React se nao for portal (portal ja foi renderizado em JS puro)
