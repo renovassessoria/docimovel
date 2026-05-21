@@ -500,11 +500,11 @@ const AppContent=({session})=>{
   useEffect(()=>{
     const reloadClientes=async()=>{
       const{data}=await sb.from("clientes").select("*").order("nome",{ascending:true});
-      if(data)setClientes(data.map(x=>({...x,estadoCivil:x.estado_civil||"",profissao:x.profissao||"",naturalidade:x.naturalidade||"",filiacao:x.filiacao||"",dataNascimento:x.data_nascimento||"",cnh:x.cnh||"",conjugeNome:x.conjuge_nome||"",conjugeCpf:x.conjuge_cpf||"",conjugeRg:x.conjuge_rg||"",conjugeProfissao:x.conjuge_profissao||"",conjugeNaturalidade:x.conjuge_naturalidade||"",conjugeFiliacao:x.conjuge_filiacao||"",regimeBens:x.regime_bens||"",dataCasamento:x.data_casamento||"",cartorioCasamento:x.cartorio_casamento||"",casamentoLivro:x.casamento_livro||"",casamentoFolha:x.casamento_folha||""}))););
+      if(data)setClientes(data.map(x=>({...x,estadoCivil:x.estado_civil||"",profissao:x.profissao||"",naturalidade:x.naturalidade||"",filiacao:x.filiacao||"",dataNascimento:x.data_nascimento||"",cnh:x.cnh||"",conjugeNome:x.conjuge_nome||"",conjugeCpf:x.conjuge_cpf||"",conjugeRg:x.conjuge_rg||"",conjugeProfissao:x.conjuge_profissao||"",conjugeNaturalidade:x.conjuge_naturalidade||"",conjugeFiliacao:x.conjuge_filiacao||"",regimeBens:x.regime_bens||"",dataCasamento:x.data_casamento||"",cartorioCasamento:x.cartorio_casamento||"",casamentoLivro:x.casamento_livro||"",casamentoFolha:x.casamento_folha||""})));
     };
     const reloadServicos=async()=>{
       const{data}=await sb.from("servicos").select("*, diligencias(*), pagamentos_processo(*)").order("created_at",{ascending:false});
-      if(data)setServicos(data.map(sv=>({...sv,clienteId:sv.cliente_id,tipoProcesso:sv.tipo_processo||sv.tipoProcesso||(sv.dados_judiciais&&Object.keys(sv.dados_judiciais||{}).length>0?"judicial":(sv.estagio==="Judiciário"||sv.estagio==="Judicial"?"judicial":"extrajudicial")),dadosJudiciais:sv.dados_judiciais||sv.dadosJudiciais||{},prazoConclusao:sv.prazo_conclusao||sv.prazoConclusao||null,diligencias:sv.diligencias||[],pagamentos:sv.pagamentos_processo||[],estagios:sv.estagios||[],checklist:sv.checklist||{},outrosDesc:sv.outros_desc||"",orcamento:sv.orcamento||{valor:0,desconto:0,obs:"",status:"Orçamento"}}))););
+      if(data)setServicos(data.map(sv=>({...sv,clienteId:sv.cliente_id,tipoProcesso:sv.tipo_processo||sv.tipoProcesso||(sv.dados_judiciais&&Object.keys(sv.dados_judiciais||{}).length>0?"judicial":(sv.estagio==="Judiciário"||sv.estagio==="Judicial"?"judicial":"extrajudicial")),dadosJudiciais:sv.dados_judiciais||sv.dadosJudiciais||{},prazoConclusao:sv.prazo_conclusao||sv.prazoConclusao||null,diligencias:sv.diligencias||[],pagamentos:sv.pagamentos_processo||[],estagios:sv.estagios||[],checklist:sv.checklist||{},outrosDesc:sv.outros_desc||"",orcamento:sv.orcamento||{valor:0,desconto:0,obs:"",status:"Orçamento"}})));
     };
     const reloadRecebimentos=async()=>{
       const{data}=await sb.from("recebimentos").select("*").order("data",{ascending:false});
@@ -514,6 +514,17 @@ const AppContent=({session})=>{
       const{data}=await sb.from("leads").select("*").order("created_at",{ascending:false});
       if(data)setLeads(data);
     };
+    const reloadAgenda=async()=>{
+      try{const{data}=await sb.from("agenda").select("*").order("data",{ascending:true});if(data)setAgenda(data);}catch(e){}
+    };
+    const reloadPagamentos=async()=>{
+      const{data}=await sb.from("pagamentos").select("*").order("data",{ascending:false});
+      if(data)setPagamentos(data);
+    };
+    const reloadUsuarios=async()=>{
+      const{data}=await sb.from("usuarios").select("*");
+      if(data)setUsuarios(data);
+    };
     const channel=sb.channel("docmovel-sync")
       .on("postgres_changes",{event:"*",schema:"public",table:"clientes"},reloadClientes)
       .on("postgres_changes",{event:"*",schema:"public",table:"servicos"},reloadServicos)
@@ -521,6 +532,9 @@ const AppContent=({session})=>{
       .on("postgres_changes",{event:"*",schema:"public",table:"pagamentos_processo"},reloadServicos)
       .on("postgres_changes",{event:"*",schema:"public",table:"recebimentos"},reloadRecebimentos)
       .on("postgres_changes",{event:"*",schema:"public",table:"leads"},reloadLeads)
+      .on("postgres_changes",{event:"*",schema:"public",table:"agenda"},reloadAgenda)
+      .on("postgres_changes",{event:"*",schema:"public",table:"pagamentos"},reloadPagamentos)
+      .on("postgres_changes",{event:"*",schema:"public",table:"usuarios"},reloadUsuarios)
       .subscribe();
     return()=>sb.removeChannel(channel);
   },[]);
