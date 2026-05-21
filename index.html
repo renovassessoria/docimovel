@@ -462,7 +462,7 @@ const AppContent=({session})=>{
         sb.from("leads").select("*").order("created_at",{ascending:false}),
       ]);
       if(c.data)setClientes(c.data.map(x=>({...x,estadoCivil:x.estado_civil||"",profissao:x.profissao||"",naturalidade:x.naturalidade||"",filiacao:x.filiacao||"",dataNascimento:x.data_nascimento||"",cnh:x.cnh||"",conjugeNome:x.conjuge_nome||"",conjugeCpf:x.conjuge_cpf||"",conjugeRg:x.conjuge_rg||"",conjugeProfissao:x.conjuge_profissao||"",conjugeNaturalidade:x.conjuge_naturalidade||"",conjugeFiliacao:x.conjuge_filiacao||"",regimeBens:x.regime_bens||"",dataCasamento:x.data_casamento||"",cartorioCasamento:x.cartorio_casamento||"",casamentoLivro:x.casamento_livro||"",casamentoFolha:x.casamento_folha||""})));
-      if(s.data)setServicos(s.data.map(sv=>({...sv,clienteId:sv.cliente_id,tipoProcesso:sv.tipo_processo||sv.tipoProcesso||(sv.dados_judiciais&&Object.keys(sv.dados_judiciais||{}).length>0?"judicial":(sv.estagio==="Judiciário"||sv.estagio==="Judicial"?"judicial":"extrajudicial")),dadosJudiciais:sv.dados_judiciais||sv.dadosJudiciais||{},prazoConclusao:sv.prazo_conclusao||sv.prazoConclusao||null,diligencias:sv.diligencias||[],pagamentos:sv.pagamentos_processo||[],estagios:sv.estagios||[],checklist:sv.checklist||{},outrosDesc:sv.outros_desc||"",orcamento:sv.orcamento||{valor:0,desconto:0,obs:"",status:"Orçamento"}})));
+      if(s.data)setServicos(s.data.map(sv=>({...sv,clienteId:sv.cliente_id,tipoProcesso:sv.tipo_processo||sv.tipoProcesso||(sv.dados_judiciais&&Object.keys(sv.dados_judiciais||{}).length>0?"judicial":(sv.estagio==="Judiciário"||sv.estagio==="Judicial"?"judicial":"extrajudicial")),dadosJudiciais:sv.dados_judiciais||sv.dadosJudiciais||{},prazoConclusao:sv.prazo_conclusao||sv.prazoConclusao||null,diligencias:sv.diligencias||[],pagamentos:(sv.pagamentos_processo||[]).map(p=>({...p,parcelado:p.parcelado||false,status:p.status||"pendente",dataPagamento:p.data_pagamento||null,grupoParcela:p.grupo_parcela||null,parcelaNumero:p.parcela_numero||null,totalParcelas:p.total_parcelas||null})),estagios:sv.estagios||[],checklist:sv.checklist||{},outrosDesc:sv.outros_desc||"",orcamento:sv.orcamento||{valor:0,desconto:0,obs:"",status:"Orçamento"}})));
       if(r.data)setRecebimentos(r.data);
       if(p.data)setPagamentos(p.data);
       if(u.data)setUsuarios(u.data);
@@ -496,15 +496,14 @@ const AppContent=({session})=>{
     load();
   },[]);
 
-  // ── Realtime: sincronização automática entre usuários ──────────────────
   useEffect(()=>{
     const reloadClientes=async()=>{
       const{data}=await sb.from("clientes").select("*").order("nome",{ascending:true});
-      if(data)setClientes(data.map(x=>({...x,estadoCivil:x.estado_civil||"",profissao:x.profissao||"",naturalidade:x.naturalidade||"",filiacao:x.filiacao||"",dataNascimento:x.data_nascimento||"",cnh:x.cnh||"",conjugeNome:x.conjuge_nome||"",conjugeCpf:x.conjuge_cpf||"",conjugeRg:x.conjuge_rg||"",conjugeProfissao:x.conjuge_profissao||"",conjugeNaturalidade:x.conjuge_naturalidade||"",conjugeFiliacao:x.conjuge_filiacao||"",regimeBens:x.regime_bens||"",dataCasamento:x.data_casamento||"",cartorioCasamento:x.cartorio_casamento||"",casamentoLivro:x.casamento_livro||"",casamentoFolha:x.casamento_folha||""})));
+      if(data)setClientes(data.map(x=>({...x,estadoCivil:x.estado_civil||"",profissao:x.profissao||"",naturalidade:x.naturalidade||"",filiacao:x.filiacao||"",dataNascimento:x.data_nascimento||"",cnh:x.cnh||"",conjugeNome:x.conjuge_nome||"",conjugeCpf:x.conjuge_cpf||"",conjugeRg:x.conjuge_rg||"",conjugeProfissao:x.conjuge_profissao||"",conjugeNaturalidade:x.conjuge_naturalidade||"",conjugeFiliacao:x.conjuge_filiacao||"",regimeBens:x.regime_bens||"",dataCasamento:x.data_casamento||"",cartorioCasamento:x.cartorio_casamento||"",casamentoLivro:x.casamento_livro||"",casamentoFolha:x.casamento_folha||""}))););
     };
     const reloadServicos=async()=>{
       const{data}=await sb.from("servicos").select("*, diligencias(*), pagamentos_processo(*)").order("created_at",{ascending:false});
-      if(data)setServicos(data.map(sv=>({...sv,clienteId:sv.cliente_id,tipoProcesso:sv.tipo_processo||sv.tipoProcesso||(sv.dados_judiciais&&Object.keys(sv.dados_judiciais||{}).length>0?"judicial":(sv.estagio==="Judiciário"||sv.estagio==="Judicial"?"judicial":"extrajudicial")),dadosJudiciais:sv.dados_judiciais||sv.dadosJudiciais||{},prazoConclusao:sv.prazo_conclusao||sv.prazoConclusao||null,diligencias:sv.diligencias||[],pagamentos:sv.pagamentos_processo||[],estagios:sv.estagios||[],checklist:sv.checklist||{},outrosDesc:sv.outros_desc||"",orcamento:sv.orcamento||{valor:0,desconto:0,obs:"",status:"Orçamento"}})));
+      if(data)setServicos(data.map(sv=>({...sv,clienteId:sv.cliente_id,tipoProcesso:sv.tipo_processo||sv.tipoProcesso||(sv.dados_judiciais&&Object.keys(sv.dados_judiciais||{}).length>0?"judicial":(sv.estagio==="Judiciário"||sv.estagio==="Judicial"?"judicial":"extrajudicial")),dadosJudiciais:sv.dados_judiciais||sv.dadosJudiciais||{},prazoConclusao:sv.prazo_conclusao||sv.prazoConclusao||null,diligencias:sv.diligencias||[],pagamentos:(sv.pagamentos_processo||[]).map(p=>({...p,parcelado:p.parcelado||false,status:p.status||"pendente",dataPagamento:p.data_pagamento||null,grupoParcela:p.grupo_parcela||null,parcelaNumero:p.parcela_numero||null,totalParcelas:p.total_parcelas||null})),estagios:sv.estagios||[],checklist:sv.checklist||{},outrosDesc:sv.outros_desc||"",orcamento:sv.orcamento||{valor:0,desconto:0,obs:"",status:"Orçamento"}}))););
     };
     const reloadRecebimentos=async()=>{
       const{data}=await sb.from("recebimentos").select("*").order("data",{ascending:false});
@@ -565,8 +564,20 @@ const AppContent=({session})=>{
       const sv=servicos.find(s=>s.id===id);
       const antigas=(sv?.pagamentos||[]).map(p=>p.id);
       for(const p of patch.pagamentos){
-        const isNew=!p.id||!String(p.id).includes("-");if(isNew){
-          const{data}=await sb.from("pagamentos_processo").insert({servico_id:id,descricao:p.descricao,valor:Number(p.valor),forma:p.forma,data:p.data,parcelado:p.parcelado||false,status:p.status||"pendente",grupo_parcela:p.grupoParcela||null,parcela_numero:p.parcelaNumero||null,total_parcelas:p.totalParcelas||null}).select().single();
+        const isNew=!p.id||!String(p.id).includes("-");
+        if(isNew){
+          const{data}=await sb.from("pagamentos_processo").insert({
+            servico_id:id,
+            descricao:p.descricao,
+            valor:Number(p.valor),
+            forma:p.forma,
+            data:p.data,
+            parcelado:p.parcelado||false,
+            status:p.status||"pendente",
+            grupo_parcela:p.grupoParcela||null,
+            parcela_numero:p.parcelaNumero||null,
+            total_parcelas:p.totalParcelas||null
+          }).select().single();
           if(data){
             p.id=data.id;
             const sv=servicos.find(s=>s.id===id);
@@ -576,10 +587,13 @@ const AppContent=({session})=>{
             if(recData){p.recebimento_id=recData.id;setRecebimentos(prev=>[recData,...prev]);}
           }
         } else {
-          // Pagamento já existe — atualizar status e campos
           await sb.from("pagamentos_processo").update({
-            descricao:p.descricao,valor:Number(p.valor),forma:p.forma,data:p.data,
-            parcelado:p.parcelado||false,status:p.status||"pendente",
+            descricao:p.descricao,
+            valor:Number(p.valor),
+            forma:p.forma,
+            data:p.data,
+            parcelado:p.parcelado||false,
+            status:p.status||"pendente",
             data_pagamento:p.dataPagamento||null,
             grupo_parcela:p.grupoParcela||null,
             parcela_numero:p.parcelaNumero||null,
@@ -959,7 +973,7 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
           <div style={{...S.card}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
               <div style={S.cardTitle}>Parcelas — próx. 7 dias</div>
-              {parcelasCard.length>0&&<span style={{fontSize:11,fontWeight:400,color:"#b8965a",opacity:.7}}>R$ {fmt(totalCard)}</span>}
+              {parcelasCard.length>0&&<span style={{fontSize:11,color:"#b8965a"}}>R$ {fmt(totalCard)}</span>}
             </div>
             {parcelasCard.length===0&&<div style={{fontSize:11,color:"#5a8f6e",opacity:.6,padding:"6px 0"}}>Nenhuma parcela pendente.</div>}
             <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:280,overflowY:"auto"}}>
@@ -970,11 +984,11 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
                 return(
                   <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:4,background:"#16181d",border:"1px solid #232629"}}>
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:11,fontWeight:400,color:"#d6d3cc",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.descricao}</div>
+                      <div style={{fontSize:11,color:"#d6d3cc",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.descricao}</div>
                       <div style={{fontSize:10,color:"#3e4048"}}>{p.clienteNome} · {p.data}</div>
                     </div>
                     <div style={{flexShrink:0,textAlign:"right"}}>
-                      <div style={{fontSize:11,fontWeight:400,color:cor,opacity:.75}}>{lbl}</div>
+                      <div style={{fontSize:11,color:cor}}>{lbl}</div>
                       <div style={{fontSize:10,color:"#4a4d56"}}>R$ {fmt(p.valor)}</div>
                     </div>
                     <button style={{...S.btnSm,fontSize:10,padding:"2px 8px",color:"#b8965a",borderColor:"rgba(184,150,90,0.2)",flexShrink:0}}
@@ -1315,7 +1329,7 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
                   </select>}
                   {novaPag.parcelado&&<span style={{fontSize:11,color:"#5a8f6e"}}>= R$ {(Number(novaPag.valor||0)/Number(novaPag.totalParcelas||1)).toFixed(2)}/parc.</span>}
                 </div>
-                <button style={{...S.btnPrimary,marginTop:10}} onClick={addPag} className="bp">+ Registrar</button></div><div style={S.tableCard}><table style={S.table}><thead><tr>{["Data","Descrição","Forma","Valor","Situação",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead><tbody>{(servico.pagamentos||[]).map(p=><tr key={p.id} style={S.tr} className="tr"><td style={S.td}>{p.data}</td><td style={S.td}>{p.descricao}</td><td style={S.td}><Tag label={p.forma} color="#6a6aaa"/></td><td style={S.td}><span style={{fontWeight:700,color:"#5a8f6e"}}>R$ {fmt(p.valor)}</span></td><td style={S.td}>{(()=>{const desc=p.descricao||"";const isParc=p.parcelado===true||desc.includes("(")&&desc.includes("/");if(p.status==="pago")return<Tag label="Pago" color="#5a8f6e"/>;if(!isParc)return<Tag label="Avulso" color="#5a7aaa"/>;const hj=td();if(p.data<=hj)return<Tag label="Vencida" color="#b46464"/>;const diff=Math.ceil((new Date(p.data+"T12:00:00")-new Date(hj+"T12:00:00"))/(864e5));return<Tag label={"Vence +"+diff+"d"} color={diff<=3?"#b46464":"#a87840"}/>;})()}</td><td style={S.td}>{(()=>{const desc=p.descricao||"";const isParc=p.parcelado===true||desc.includes("(")&&desc.includes("/");if(isParc&&p.status!=="pago")return(<button style={{...S.btnSm,color:"#5a8f6e",borderColor:"rgba(90,143,110,0.3)"}} onClick={()=>{if(!window.confirm("Confirmar recebimento desta parcela?"))return;atualizar({pagamentos:(servico.pagamentos||[]).map(x=>x.id===p.id?{...x,status:"pago",dataPagamento:td()}:x)});}} className="bs">✓ Pago</button>);return null;})()}<button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir este pagamento? Esta acao e permanente."))return;atualizar({pagamentos:(servico.pagamentos||[]).filter(x=>x.id!==p.id)})}} className="bs">✕</button><button style={S.btnSm} onClick={()=>setEditPag({...p})} className="bs">Ed</button><button style={{...S.btnSm,color:"#5a8f6e",borderColor:"rgba(90,143,110,0.25)"}} onClick={()=>gerarReciboServico(p,cliente,servico)} className="bs">Recibo</button></td></tr>)}</tbody></table></div></div>}
+                <button style={{...S.btnPrimary,marginTop:10}} onClick={addPag} className="bp">+ Registrar</button></div><div style={S.tableCard}><table style={S.table}><thead><tr>{["Data","Descrição","Forma","Valor","Situação",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead><tbody>{(servico.pagamentos||[]).map(p=><tr key={p.id} style={S.tr} className="tr"><td style={S.td}>{p.data}</td><td style={S.td}>{p.descricao}</td><td style={S.td}><Tag label={p.forma} color="#6a6aaa"/></td><td style={S.td}><span style={{fontWeight:700,color:"#5a8f6e"}}>R$ {fmt(p.valor)}</span></td><td style={S.td}>{(()=>{const desc=p.descricao||"";const isParc=p.parcelado===true||desc.includes("(")&&desc.includes("/");if(p.status==="pago")return<Tag label="Pago" color="#5a8f6e"/>;if(!isParc)return<Tag label="Avulso" color="#5a7aaa"/>;const hj=td();if(p.data<=hj)return<Tag label="Vencida" color="#b46464"/>;const diff=Math.ceil((new Date(p.data+"T12:00:00")-new Date(hj+"T12:00:00"))/(864e5));return<Tag label={"Vence +"+diff+"d"} color={diff<=3?"#b46464":"#a87840"}/>;})()}</td><td style={S.td}>{(()=>{const desc=p.descricao||"";const isParc=p.parcelado===true||desc.includes("(")&&desc.includes("/");if(isParc&&p.status!=="pago")return(<button style={{...S.btnSm,color:"#5a8f6e",borderColor:"#22c55e44"}} onClick={()=>{if(!window.confirm("Confirmar recebimento desta parcela?"))return;atualizar({pagamentos:(servico.pagamentos||[]).map(x=>x.id===p.id?{...x,status:"pago",dataPagamento:td()}:x)});}} className="bs">✓ Pago</button>);return null;})()}<button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir este pagamento? Esta acao e permanente."))return;atualizar({pagamentos:(servico.pagamentos||[]).filter(x=>x.id!==p.id)})}} className="bs">✕</button><button style={S.btnSm} onClick={()=>setEditPag({...p})} className="bs">Ed</button><button style={{...S.btnSm,color:"#5a8f6e",borderColor:"#22c55e44"}} onClick={()=>gerarReciboServico(p,cliente,servico)} className="bs">Recibo</button></td></tr>)}</tbody></table></div></div>}
       {aba==="contratos"&&<AbaContratos servico={servico} cliente={cliente} atualizar={atualizar} showToast={showToast}/>}
 {aba==="portal"&&<AbaPortalCliente servico={servico} cliente={cliente} atualizar={atualizar} showToast={showToast}/>}
     </div>
