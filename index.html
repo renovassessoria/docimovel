@@ -538,9 +538,6 @@ const AppContent=({session})=>{
           orcamento:sv.orcamento||{valor:0,desconto:0,obs:"",status:"Orçamento"}
         }));
         setServicos(mapped);
-        // Atualizar servicoAberto e processoAberto se estiverem abertos
-        setServicoAberto(prev=>prev?mapped.find(s=>s.id===prev.id)||prev:null);
-        setProcessoAberto(prev=>prev?mapped.find(s=>s.id===prev.id)||prev:null);
       }
       if(r.data)setRecebimentos(r.data);
       if(l.data)setLeads(l.data);
@@ -551,7 +548,6 @@ const AppContent=({session})=>{
       .on("postgres_changes",{event:"*",schema:"public",table:"clientes"},load2)
       .on("postgres_changes",{event:"*",schema:"public",table:"servicos"},load2)
       .on("postgres_changes",{event:"*",schema:"public",table:"diligencias"},load2)
-      .on("postgres_changes",{event:"*",schema:"public",table:"pagamentos_processo"},load2)
       .on("postgres_changes",{event:"*",schema:"public",table:"recebimentos"},load2)
       .on("postgres_changes",{event:"*",schema:"public",table:"leads"},load2)
       .on("postgres_changes",{event:"*",schema:"public",table:"agenda"},load2)
