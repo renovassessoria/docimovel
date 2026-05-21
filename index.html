@@ -496,29 +496,24 @@ const AppContent=({session})=>{
     load();
   },[]);
 
-  // ── Supabase Realtime: sincronização automática entre usuários ──────────────
+  // ── Realtime: sincronização automática entre usuários ──────────────────
   useEffect(()=>{
-    // Recarrega clientes quando houver INSERT/UPDATE/DELETE
     const reloadClientes=async()=>{
       const{data}=await sb.from("clientes").select("*").order("nome",{ascending:true});
-      if(data)setClientes(data.map(x=>({...x,estadoCivil:x.estado_civil||"",profissao:x.profissao||"",naturalidade:x.naturalidade||"",filiacao:x.filiacao||"",dataNascimento:x.data_nascimento||"",cnh:x.cnh||"",conjugeNome:x.conjuge_nome||"",conjugeCpf:x.conjuge_cpf||"",conjugeRg:x.conjuge_rg||"",conjugeProfissao:x.conjuge_profissao||"",conjugeNaturalidade:x.conjuge_naturalidade||"",conjugeFiliacao:x.conjuge_filiacao||"",regimeBens:x.regime_bens||"",dataCasamento:x.data_casamento||"",cartorioCasamento:x.cartorio_casamento||"",casamentoLivro:x.casamento_livro||"",casamentoFolha:x.casamento_folha||""})));
+      if(data)setClientes(data.map(x=>({...x,estadoCivil:x.estado_civil||"",profissao:x.profissao||"",naturalidade:x.naturalidade||"",filiacao:x.filiacao||"",dataNascimento:x.data_nascimento||"",cnh:x.cnh||"",conjugeNome:x.conjuge_nome||"",conjugeCpf:x.conjuge_cpf||"",conjugeRg:x.conjuge_rg||"",conjugeProfissao:x.conjuge_profissao||"",conjugeNaturalidade:x.conjuge_naturalidade||"",conjugeFiliacao:x.conjuge_filiacao||"",regimeBens:x.regime_bens||"",dataCasamento:x.data_casamento||"",cartorioCasamento:x.cartorio_casamento||"",casamentoLivro:x.casamento_livro||"",casamentoFolha:x.casamento_folha||""}))););
     };
-    // Recarrega serviços (com diligências e pagamentos aninhados)
     const reloadServicos=async()=>{
       const{data}=await sb.from("servicos").select("*, diligencias(*), pagamentos_processo(*)").order("created_at",{ascending:false});
-      if(data)setServicos(data.map(sv=>({...sv,clienteId:sv.cliente_id,tipoProcesso:sv.tipo_processo||sv.tipoProcesso||(sv.dados_judiciais&&Object.keys(sv.dados_judiciais||{}).length>0?"judicial":(sv.estagio==="Judiciário"||sv.estagio==="Judicial"?"judicial":"extrajudicial")),dadosJudiciais:sv.dados_judiciais||sv.dadosJudiciais||{},prazoConclusao:sv.prazo_conclusao||sv.prazoConclusao||null,diligencias:sv.diligencias||[],pagamentos:sv.pagamentos_processo||[],estagios:sv.estagios||[],checklist:sv.checklist||{},outrosDesc:sv.outros_desc||"",orcamento:sv.orcamento||{valor:0,desconto:0,obs:"",status:"orcamento"}})));
+      if(data)setServicos(data.map(sv=>({...sv,clienteId:sv.cliente_id,tipoProcesso:sv.tipo_processo||sv.tipoProcesso||(sv.dados_judiciais&&Object.keys(sv.dados_judiciais||{}).length>0?"judicial":(sv.estagio==="Judiciário"||sv.estagio==="Judicial"?"judicial":"extrajudicial")),dadosJudiciais:sv.dados_judiciais||sv.dadosJudiciais||{},prazoConclusao:sv.prazo_conclusao||sv.prazoConclusao||null,diligencias:sv.diligencias||[],pagamentos:sv.pagamentos_processo||[],estagios:sv.estagios||[],checklist:sv.checklist||{},outrosDesc:sv.outros_desc||"",orcamento:sv.orcamento||{valor:0,desconto:0,obs:"",status:"Orçamento"}}))););
     };
-    // Recarrega recebimentos
     const reloadRecebimentos=async()=>{
       const{data}=await sb.from("recebimentos").select("*").order("data",{ascending:false});
       if(data)setRecebimentos(data);
     };
-    // Recarrega leads/CRM
     const reloadLeads=async()=>{
       const{data}=await sb.from("leads").select("*").order("created_at",{ascending:false});
       if(data)setLeads(data);
     };
-
     const channel=sb.channel("docmovel-sync")
       .on("postgres_changes",{event:"*",schema:"public",table:"clientes"},reloadClientes)
       .on("postgres_changes",{event:"*",schema:"public",table:"servicos"},reloadServicos)
@@ -527,7 +522,6 @@ const AppContent=({session})=>{
       .on("postgres_changes",{event:"*",schema:"public",table:"recebimentos"},reloadRecebimentos)
       .on("postgres_changes",{event:"*",schema:"public",table:"leads"},reloadLeads)
       .subscribe();
-
     return()=>sb.removeChannel(channel);
   },[]);
 
@@ -557,9 +551,8 @@ const AppContent=({session})=>{
       const sv=servicos.find(s=>s.id===id);
       const antigas=(sv?.pagamentos||[]).map(p=>p.id);
       for(const p of patch.pagamentos){
-        const isSupabaseId=p.id&&String(p.id).includes("-");
-        if(!isSupabaseId){
-          const{data}=await sb.from("pagamentos_processo").insert({servico_id:id,descricao:p.descricao,valor:Number(p.valor),forma:p.forma,data:p.data,parcelado:p.parcelado||false,status:p.status||"pendente"}).select().single();
+        const isNew=!p.id||!String(p.id).includes("-");if(isNew){
+          const{data}=await sb.from("pagamentos_processo").insert({servico_id:id,descricao:p.descricao,valor:Number(p.valor),forma:p.forma,data:p.data,parcelado:p.parcelado||false,status:p.status||"pendente",grupo_parcela:p.grupoParcela||null,parcela_numero:p.parcelaNumero||null,total_parcelas:p.totalParcelas||null}).select().single();
           if(data){
             p.id=data.id;
             const sv=servicos.find(s=>s.id===id);
@@ -569,7 +562,15 @@ const AppContent=({session})=>{
             if(recData){p.recebimento_id=recData.id;setRecebimentos(prev=>[recData,...prev]);}
           }
         } else {
-          await sb.from("pagamentos_processo").update({status:p.status||"pendente",data_pagamento:p.dataPagamento||null,descricao:p.descricao,valor:Number(p.valor),forma:p.forma,data:p.data,parcelado:p.parcelado||false}).eq("id",p.id);
+          // Pagamento já existe — atualizar status e campos
+          await sb.from("pagamentos_processo").update({
+            descricao:p.descricao,valor:Number(p.valor),forma:p.forma,data:p.data,
+            parcelado:p.parcelado||false,status:p.status||"pendente",
+            data_pagamento:p.dataPagamento||null,
+            grupo_parcela:p.grupoParcela||null,
+            parcela_numero:p.parcelaNumero||null,
+            total_parcelas:p.totalParcelas||null
+          }).eq("id",p.id);
         }
       }
       const novosIds=patch.pagamentos.map(p=>p.id).filter(Boolean);
@@ -895,7 +896,7 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
 
       {/* Linha 3: Diligências + Parcelas */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginTop:14}}>
-      <div style={{...S.card,borderLeft:"2px solid rgba(180,100,100,0.3)"}}>
+      <div style={{...S.card,borderLeft:"2px solid rgba(180,100,100,0.35)"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
           <div style={S.cardTitle}>Diligências — Todos os Serviços</div>
           <div style={{display:"flex",gap:6}}>
@@ -933,8 +934,10 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
         const _d7=new Date();_d7.setDate(_d7.getDate()+7);const _d7s=_d7.toISOString().slice(0,10);
         const parcelasCard=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>{
           if(p.status==="pago")return false;
-          if(p.parcelado!==true){const desc=p.descricao||"";if(!(desc.indexOf("/")>-1&&desc.indexOf("(")>-1))return false;}
-          if(!p.data)return false;return p.data<=_d7s;
+          const isParc=p.parcelado===true||(p.descricao&&p.descricao.includes("(")&&p.descricao.includes("/"));
+          if(!isParc)return false;
+          if(!p.data)return false;
+          return p.data<=_d7s;
         }).map(p=>({...p,clienteNome:cn(s.clienteId||s.cliente_id),servicoObj:s})))
         .sort((a,b)=>(a.data||"").localeCompare(b.data||""));
         const totalCard=parcelasCard.reduce((a,p)=>a+Number(p.valor||0),0);
@@ -960,7 +963,9 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
                       <div style={{fontSize:11,fontWeight:400,color:cor,opacity:.75}}>{lbl}</div>
                       <div style={{fontSize:10,color:"#4a4d56"}}>R$ {fmt(p.valor)}</div>
                     </div>
-                    <button style={{...S.btnSm,fontSize:10,padding:"2px 8px",color:"#b8965a",borderColor:"rgba(184,150,90,0.2)",flexShrink:0}} onClick={()=>{if(abrirServicoVisao)abrirServicoVisao({...p.servicoObj,_abaInicial:"pagamentos"});}} className="bs">→</button>
+                    <button style={{...S.btnSm,fontSize:10,padding:"2px 8px",color:"#b8965a",borderColor:"rgba(184,150,90,0.2)",flexShrink:0}}
+                      onClick={()=>{if(abrirServicoVisao)abrirServicoVisao({...p.servicoObj,_abaInicial:"pagamentos"});}}
+                      className="bs">→</button>
                   </div>
                 );
               })}
@@ -1140,9 +1145,9 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
   const [novaPag,setNovaPag]=useState({descricao:"",valor:"",forma:"PIX",data:td(),parcelado:false,totalParcelas:2});
   const [modalOrc,setModalOrc]=useState(null);
   const [editPag,setEditPag]=useState(null);
-  const hoje=td();
+  const _hj=td();
   const totPago=(servico.pagamentos||[])
-    .filter(p=>p.status==="pago"||((!p.status||p.status==="pendente")&&p.data<=hoje))
+    .filter(p=>p.status==="pago"||((!p.status||p.status==="pendente")&&p.data<=_hj))
     .reduce((s,p)=>s+Number(p.valor),0);
   const valorLiq=Number(servico.orcamento?.valor||0)-Number(servico.orcamento?.desconto||0);
   const saldo=valorLiq-totPago;
@@ -1296,7 +1301,7 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
                   </select>}
                   {novaPag.parcelado&&<span style={{fontSize:11,color:"#5a8f6e"}}>= R$ {(Number(novaPag.valor||0)/Number(novaPag.totalParcelas||1)).toFixed(2)}/parc.</span>}
                 </div>
-                <button style={{...S.btnPrimary,marginTop:10}} onClick={addPag} className="bp">+ Registrar</button></div><div style={S.tableCard}><table style={S.table}><thead><tr>{["Data","Descrição","Forma","Valor","Situação",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead><tbody>{(servico.pagamentos||[]).map(p=><tr key={p.id} style={S.tr} className="tr"><td style={S.td}>{p.data}</td><td style={S.td}>{p.descricao}</td><td style={S.td}><Tag label={p.forma} color="#6a6aaa"/></td><td style={S.td}><span style={{fontWeight:700,color:"#5a8f6e"}}>R$ {fmt(p.valor)}</span></td><td style={S.td}>{(()=>{const desc=p.descricao||"";const isParc=p.parcelado===true||desc.indexOf("/")>-1&&desc.indexOf("(")>-1;if(p.status==="pago")return<Tag label="Pago" color="#5a8f6e"/>;if(!isParc)return<Tag label="Avulso" color="#5a7aaa"/>;const hj=td();if(p.data<=hj)return<Tag label="Vencida" color="#b46464"/>;const diff=Math.ceil((new Date(p.data+"T12:00:00")-new Date(hj+"T12:00:00"))/(864e5));return<Tag label={"Vence +"+diff+"d"} color={diff<=3?"#b46464":"#a87840"}/>;})()}</td><td style={S.td}>{(()=>{const desc=p.descricao||"";const isParc=p.parcelado===true||desc.indexOf("/")>-1&&desc.indexOf("(")>-1;if(isParc&&p.status!=="pago")return<button style={{...S.btnSm,color:"#5a8f6e",borderColor:"rgba(90,143,110,0.3)"}} onClick={()=>{if(!window.confirm("Confirmar recebimento desta parcela?"))return;atualizar({pagamentos:(servico.pagamentos||[]).map(x=>x.id===p.id?{...x,status:"pago",parcelado:true,dataPagamento:td()}:x)});}} className="bs">✓ Pago</button>;return null;})()}<button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir este pagamento? Esta acao e permanente."))return;atualizar({pagamentos:(servico.pagamentos||[]).filter(x=>x.id!==p.id)})}} className="bs">✕</button><button style={S.btnSm} onClick={()=>setEditPag({...p})} className="bs">Ed</button><button style={{...S.btnSm,color:"#5a8f6e",borderColor:"rgba(90,143,110,0.25)"}} onClick={()=>gerarReciboServico(p,cliente,servico)} className="bs">Recibo</button></td></tr>)}</tbody></table></div></div>}
+                <button style={{...S.btnPrimary,marginTop:10}} onClick={addPag} className="bp">+ Registrar</button></div><div style={S.tableCard}><table style={S.table}><thead><tr>{["Data","Descrição","Forma","Valor","Situação",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead><tbody>{(servico.pagamentos||[]).map(p=><tr key={p.id} style={S.tr} className="tr"><td style={S.td}>{p.data}</td><td style={S.td}>{p.descricao}</td><td style={S.td}><Tag label={p.forma} color="#6a6aaa"/></td><td style={S.td}><span style={{fontWeight:700,color:"#5a8f6e"}}>R$ {fmt(p.valor)}</span></td><td style={S.td}>{(()=>{const desc=p.descricao||"";const isParc=p.parcelado===true||desc.includes("(")&&desc.includes("/");if(p.status==="pago")return<Tag label="Pago" color="#5a8f6e"/>;if(!isParc)return<Tag label="Avulso" color="#5a7aaa"/>;const hj=td();if(p.data<=hj)return<Tag label="Vencida" color="#b46464"/>;const diff=Math.ceil((new Date(p.data+"T12:00:00")-new Date(hj+"T12:00:00"))/(864e5));return<Tag label={"Vence +"+diff+"d"} color={diff<=3?"#b46464":"#a87840"}/>;})()}</td><td style={S.td}>{(()=>{const desc=p.descricao||"";const isParc=p.parcelado===true||desc.includes("(")&&desc.includes("/");if(isParc&&p.status!=="pago")return(<button style={{...S.btnSm,color:"#5a8f6e",borderColor:"rgba(90,143,110,0.3)"}} onClick={()=>{if(!window.confirm("Confirmar recebimento desta parcela?"))return;atualizar({pagamentos:(servico.pagamentos||[]).map(x=>x.id===p.id?{...x,status:"pago",dataPagamento:td()}:x)});}} className="bs">✓ Pago</button>);return null;})()}<button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir este pagamento? Esta acao e permanente."))return;atualizar({pagamentos:(servico.pagamentos||[]).filter(x=>x.id!==p.id)})}} className="bs">✕</button><button style={S.btnSm} onClick={()=>setEditPag({...p})} className="bs">Ed</button><button style={{...S.btnSm,color:"#5a8f6e",borderColor:"rgba(90,143,110,0.25)"}} onClick={()=>gerarReciboServico(p,cliente,servico)} className="bs">Recibo</button></td></tr>)}</tbody></table></div></div>}
       {aba==="contratos"&&<AbaContratos servico={servico} cliente={cliente} atualizar={atualizar} showToast={showToast}/>}
 {aba==="portal"&&<AbaPortalCliente servico={servico} cliente={cliente} atualizar={atualizar} showToast={showToast}/>}
     </div>
@@ -2548,7 +2553,7 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
             <div style={{...S.card,marginTop:14}}>
               <div style={S.cardTitle}>Movimento por mes</div>
               {dadosMensais.map((m,i)=>(m.recebido>0||m.pago>0)&&(
-                <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.03)"}}>
+                <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px solid #0f1f35"}}>
                   <span style={{color:"#4a4d56",minWidth:30,fontSize:11,fontWeight:400}}>{m.mes}</span>
                   <div style={{flex:1,height:2,background:"rgba(255,255,255,0.05)",borderRadius:999,overflow:"hidden"}}>
                     <div style={{height:"100%",width:Math.min((m.recebido/(Math.max(...dadosMensais.map(x=>x.recebido||0))||1))*100,100)+"%",background:"#5a8f6e",borderRadius:999,opacity:.6}}/>
