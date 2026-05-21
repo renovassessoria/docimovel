@@ -538,6 +538,27 @@ const AppContent=({session})=>{
           orcamento:sv.orcamento||{valor:0,desconto:0,obs:"",status:"Orçamento"}
         }));
         setServicos(mapped);
+        // Preservar dados do serviço aberto — não sobrescrever com dados do banco
+        // pois o usuário pode ter acabado de salvar e o banco pode ter delay
+        setServicoAberto(prev=>{
+          if(!prev)return prev;
+          const atualizado=mapped.find(s=>s.id===prev.id);
+          if(!atualizado)return prev;
+          // Manter pagamentos do estado local se tiver mais que o banco
+          const pagsLocais=prev.pagamentos||[];
+          const pagsBanco=atualizado.pagamentos||[];
+          const pagamentos=pagsLocais.length>=pagsBanco.length?pagsLocais:pagsBanco;
+          return{...atualizado,pagamentos};
+        });
+        setProcessoAberto(prev=>{
+          if(!prev)return prev;
+          const atualizado=mapped.find(s=>s.id===prev.id);
+          if(!atualizado)return prev;
+          const pagsLocais=prev.pagamentos||[];
+          const pagsBanco=atualizado.pagamentos||[];
+          const pagamentos=pagsLocais.length>=pagsBanco.length?pagsLocais:pagsBanco;
+          return{...atualizado,pagamentos};
+        });
       }
       if(r.data)setRecebimentos(r.data);
       if(l.data)setLeads(l.data);
