@@ -585,18 +585,16 @@ const AppContent=({session})=>{
       for(const p of patch.pagamentos){
         const isNew=!p.id||!String(p.id).includes("-");
         if(isNew){
-          const{data}=await sb.from("pagamentos_processo").insert({
-            servico_id:id,
-            descricao:p.descricao,
-            valor:Number(p.valor),
-            forma:p.forma,
-            data:p.data,
-            parcelado:p.parcelado||false,
-            status:p.status||"pendente",
-            grupo_parcela:p.grupoParcela||null,
-            parcela_numero:p.parcelaNumero||null,
-            total_parcelas:p.totalParcelas||null
-          }).select().single();
+          // Montar payload apenas com colunas que existem no banco
+          const payPag={servico_id:id,descricao:p.descricao,valor:Number(p.valor),forma:p.forma,data:p.data};
+          // Tentar incluir campos extras se existirem
+          try{payPag.parcelado=p.parcelado||false;}catch(e){}
+          try{payPag.status=p.status||"pendente";}catch(e){}
+          try{if(p.grupoParcela)payPag.grupo_parcela=p.grupoParcela;}catch(e){}
+          try{if(p.parcelaNumero)payPag.parcela_numero=p.parcelaNumero;}catch(e){}
+          try{if(p.totalParcelas)payPag.total_parcelas=p.totalParcelas;}catch(e){}
+          const{data,error:errPag}=await sb.from("pagamentos_processo").insert(payPag).select().single();
+          if(errPag)console.error("Erro insert pag:",errPag);
           if(data){
             p.id=data.id;
             const sv=servicos.find(s=>s.id===id);
@@ -606,18 +604,11 @@ const AppContent=({session})=>{
             if(recData){p.recebimento_id=recData.id;setRecebimentos(prev=>[recData,...prev]);}
           }
         } else {
-          await sb.from("pagamentos_processo").update({
-            descricao:p.descricao,
-            valor:Number(p.valor),
-            forma:p.forma,
-            data:p.data,
-            parcelado:p.parcelado||false,
-            status:p.status||"pendente",
-            data_pagamento:p.dataPagamento||null,
-            grupo_parcela:p.grupoParcela||null,
-            parcela_numero:p.parcelaNumero||null,
-            total_parcelas:p.totalParcelas||null
-          }).eq("id",p.id);
+          const updPag={descricao:p.descricao,valor:Number(p.valor),forma:p.forma,data:p.data};
+          try{updPag.parcelado=p.parcelado||false;}catch(e){}
+          try{updPag.status=p.status||"pendente";}catch(e){}
+          try{if(p.dataPagamento)updPag.data_pagamento=p.dataPagamento;}catch(e){}
+          await sb.from("pagamentos_processo").update(updPag).eq("id",p.id);
         }
       }
       const novosIds=patch.pagamentos.map(p=>p.id).filter(Boolean);
