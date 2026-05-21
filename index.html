@@ -517,25 +517,31 @@ const AppContent=({session})=>{
         cartorioCasamento:x.cartorio_casamento||"",
         casamentoLivro:x.casamento_livro||"",casamentoFolha:x.casamento_folha||""
       })));
-      if(s.data)setServicos(s.data.map(sv=>({...sv,
-        clienteId:sv.cliente_id,
-        tipoProcesso:sv.tipo_processo||sv.tipoProcesso||(sv.dados_judiciais&&Object.keys(sv.dados_judiciais||{}).length>0?"judicial":(sv.estagio==="Judiciário"||sv.estagio==="Judicial"?"judicial":"extrajudicial")),
-        dadosJudiciais:sv.dados_judiciais||sv.dadosJudiciais||{},
-        prazoConclusao:sv.prazo_conclusao||sv.prazoConclusao||null,
-        diligencias:sv.diligencias||[],
-        pagamentos:(sv.pagamentos_processo||[]).map(p=>({...p,
-          parcelado:p.parcelado||false,
-          status:p.status||"pendente",
-          dataPagamento:p.data_pagamento||null,
-          grupoParcela:p.grupo_parcela||null,
-          parcelaNumero:p.parcela_numero||null,
-          totalParcelas:p.total_parcelas||null
-        })),
-        estagios:sv.estagios||[],
-        checklist:sv.checklist||{},
-        outrosDesc:sv.outros_desc||"",
-        orcamento:sv.orcamento||{valor:0,desconto:0,obs:"",status:"Orçamento"}
-      })));
+      if(s.data){
+        const mapped=s.data.map(sv=>({...sv,
+          clienteId:sv.cliente_id,
+          tipoProcesso:sv.tipo_processo||sv.tipoProcesso||(sv.dados_judiciais&&Object.keys(sv.dados_judiciais||{}).length>0?"judicial":(sv.estagio==="Judiciário"||sv.estagio==="Judicial"?"judicial":"extrajudicial")),
+          dadosJudiciais:sv.dados_judiciais||sv.dadosJudiciais||{},
+          prazoConclusao:sv.prazo_conclusao||sv.prazoConclusao||null,
+          diligencias:sv.diligencias||[],
+          pagamentos:(sv.pagamentos_processo||[]).map(p=>({...p,
+            parcelado:p.parcelado||false,
+            status:p.status||"pendente",
+            dataPagamento:p.data_pagamento||null,
+            grupoParcela:p.grupo_parcela||null,
+            parcelaNumero:p.parcela_numero||null,
+            totalParcelas:p.total_parcelas||null
+          })),
+          estagios:sv.estagios||[],
+          checklist:sv.checklist||{},
+          outrosDesc:sv.outros_desc||"",
+          orcamento:sv.orcamento||{valor:0,desconto:0,obs:"",status:"Orçamento"}
+        }));
+        setServicos(mapped);
+        // Atualizar servicoAberto e processoAberto se estiverem abertos
+        setServicoAberto(prev=>prev?mapped.find(s=>s.id===prev.id)||prev:null);
+        setProcessoAberto(prev=>prev?mapped.find(s=>s.id===prev.id)||prev:null);
+      }
       if(r.data)setRecebimentos(r.data);
       if(l.data)setLeads(l.data);
       if(ag.data)setAgenda(ag.data);
