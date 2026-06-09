@@ -1146,7 +1146,7 @@ const addHistRec=(item)=>{
   const h=getHistRec();
   const novo=[{...item,id:Date.now()},...h].slice(0,100);
   window._histRec=novo;
-  try{window._sb&&window._sb.from("configuracoes").upsert({id:"historico_recibos",dados:novo,updated_at:new Date().toISOString()}).catch(()=>{});}catch(e){}
+  try{sb.from("configuracoes").upsert({id:"historico_recibos",dados:novo,updated_at:new Date().toISOString()});}catch(e){console.error("Erro ao salvar recibo:",e);}
 };
 
 
@@ -3052,7 +3052,7 @@ const addHistCC = (item) => {
   const h = getHistCC();
   const novo = [{...item, id:Date.now()},...h].slice(0,50);
   window._histCC = novo;
-  try{ window._sb&&window._sb.from("configuracoes").upsert({id:"historico_contracheques",dados:novo,updated_at:new Date().toISOString()}).catch(()=>{}); }catch(e){}
+  try{ sb.from("configuracoes").upsert({id:"historico_contracheques",dados:novo,updated_at:new Date().toISOString()}); }catch(e){console.error("Erro ao salvar contracheque:",e);}
 };
 
 const imprimirCC = (func, empresa, cnpj, endereco, mes, ano, bonus) => {
@@ -3129,7 +3129,7 @@ const ModalContracheque = ({func, onClose, showToast}) => {
   const [aba, setAba] = useState("gerar");
   const [hist, setHist] = useState(getHistCC);
   if(!func) return null;
-  const upE = (p) => { const n={...emp,...p}; setEmp(n); window._empresaDados=n; window._sb&&window._sb.from("configuracoes").upsert({id:"empresa",dados:n,updated_at:new Date().toISOString()}).catch(()=>{}); };
+  const upE = (p) => { const n={...emp,...p}; setEmp(n); window._empresaDados=n; sb.from("configuracoes").upsert({id:"empresa",dados:n,updated_at:new Date().toISOString()}); };
   const pronto = emp.nome && emp.cnpj && emp.endereco;
   const s = Number(func.salario||0);
   const inss = (v) => { if(v<=1518) return v*0.075; if(v<=2666.68) return v*0.09; if(v<=4000.03) return v*0.12; if(v<=7786.02) return v*0.14; return 908.86; };
