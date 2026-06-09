@@ -1142,11 +1142,12 @@ const TelaServicos=({servicos,search,setSearch,cn,abrirModal,abrirServico,setPri
 };
 
 const getHistRec=()=>window._histRec||[];
-const addHistRec=(item)=>{
+const addHistRec=async(item)=>{
   const h=getHistRec();
   const novo=[{...item,id:Date.now()},...h].slice(0,100);
   window._histRec=novo;
-  try{sb.from("configuracoes").upsert({id:"historico_recibos",dados:novo,updated_at:new Date().toISOString()});}catch(e){console.error("Erro ao salvar recibo:",e);}
+  const {error}=await sb.from("configuracoes").upsert({id:"historico_recibos",dados:novo,updated_at:new Date().toISOString()});
+  if(error)console.error("Erro ao salvar recibo:",error);
 };
 
 
@@ -3048,11 +3049,13 @@ const usePermissao=(perfil)=>({
 });
 
 const getHistCC = () => window._histCC||[];
-const addHistCC = (item) => {
+const addHistCC = async (item) => {
   const h = getHistCC();
   const novo = [{...item, id:Date.now()},...h].slice(0,50);
   window._histCC = novo;
-  try{ sb.from("configuracoes").upsert({id:"historico_contracheques",dados:novo,updated_at:new Date().toISOString()}); }catch(e){console.error("Erro ao salvar contracheque:",e);}
+  const {error} = await sb.from("configuracoes").upsert({id:"historico_contracheques",dados:novo,updated_at:new Date().toISOString()});
+  if(error)console.error("Erro ao salvar contracheque:",error);
+  else console.log("Contracheque salvo com sucesso, total:",novo.length);
 };
 
 const imprimirCC = (func, empresa, cnpj, endereco, mes, ano, bonus) => {
