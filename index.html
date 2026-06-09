@@ -595,8 +595,8 @@ const AppContent=({session})=>{
       const sv=servicos.find(s=>s.id===id);
       const antigas=(sv?.diligencias||[]).map(d=>d.id);
       for(const d of patch.diligencias){
-        if(!d.id||String(d.id).length<20){const{data}=await sb.from("diligencias").insert({servico_id:id,descricao:d.descricao,orgao:d.orgao,prazo:d.prazo||null,status:d.status,obs:d.obs}).select().single();if(data)d.id=data.id;}
-        else await sb.from("diligencias").update({descricao:d.descricao,orgao:d.orgao,prazo:d.prazo||null,status:d.status,obs:d.obs}).eq("id",d.id);
+        if(!d.id||String(d.id).length<20){const{data}=await sb.from("diligencias").insert({servico_id:id,descricao:d.descricao,orgao:d.orgao,prazo:d.prazo||null,status:d.status,obs:d.obs,ref:d.ref||null,responsavel:d.responsavel||null}).select().single();if(data)d.id=data.id;}
+        else await sb.from("diligencias").update({descricao:d.descricao,orgao:d.orgao,prazo:d.prazo||null,status:d.status,obs:d.obs,ref:d.ref||null,responsavel:d.responsavel||null}).eq("id",d.id);
       }
       const novosIds=patch.diligencias.map(d=>d.id).filter(Boolean);
       for(const oid of antigas)if(!novosIds.includes(oid))await sb.from("diligencias").delete().eq("id",oid);
