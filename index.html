@@ -1206,6 +1206,7 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
   const [novaPag,setNovaPag]=useState({descricao:"",valor:"",forma:"PIX",data:td(),parcelado:false,totalParcelas:2});
   const [modalOrc,setModalOrc]=useState(null);
   const [editPag,setEditPag]=useState(null);
+  const [localOutrosDesc,setLocalOutrosDesc]=useState(undefined);
   const _hj=td();
   const totPago=(servico.pagamentos||[])
     .filter(p=>p.status==="pago"||((!p.status||p.status==="pendente")&&p.data<=_hj))
@@ -1268,7 +1269,7 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
     ...(isConcluido&&portal.token?{portal:{...portal,estagio_atual:estagioFinal,datas}}:{})
   });
 }}>{ESTAGIOS.map(o=><option key={o}>{o}</option>)}</select>{servico.estagio==="Concluído"&&<div style={{marginTop:10,background:"#22c55e0d",border:"1px solid #22c55e33",borderRadius:8,padding:"10px"}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><span style={{fontSize:11,color:"#5a8f6e",fontWeight:700}}>Concluído em:</span><input style={{...S.fi,width:"auto",flex:1}} type="date" value={servico.dataConclusao||td()} onChange={e=>atualizar({dataConclusao:e.target.value})}/></div><FL l="Observação de conclusão"/><textarea style={{...S.fi,minHeight:70,resize:"vertical"}} value={servico.obsConclusao||""} onChange={e=>atualizar({obsConclusao:e.target.value})} placeholder="Ex: Escritura entregue. Retirado por João Silva, CPF 000.000.000-00..."/></div>}</div></div></div>}
-      {aba==="checklist"&&<div style={S.card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><div style={S.cardTitle}>Documentos Apresentados</div><button style={S.btnPrimary} onClick={()=>setPrintData({...servico,_via:true})} className="bp">🖨 Via do Cliente</button></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{CHECKLIST.map(item=><label key={item.key} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:7,background:"#16181d",border:"1px solid #0f1f35",cursor:"pointer"}} className="ci"><input type="checkbox" checked={!!(servico.checklist||{})[item.key]} onChange={()=>toggleCheck(item.key)} style={{accentColor:"#5a8f6e",width:15,height:15}}/><span style={{fontSize:13,color:(servico.checklist||{})[item.key]?"#d6d3cc":"#5a5d66"}}>{item.label}{item.pj&&<span style={{fontSize:10,color:"#7a6aaa"}}> [PJ]</span>}</span></label>)}</div><div style={{marginTop:14}}><FL l="Outros documentos"/><textarea style={{...S.fi,minHeight:60,resize:"vertical"}} value={servico.outrosDesc||""} onChange={e=>atualizar({outrosDesc:e.target.value})} placeholder="Descreva..."/></div></div>}
+      {aba==="checklist"&&<div style={S.card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><div style={S.cardTitle}>Documentos Apresentados</div><button style={S.btnPrimary} onClick={()=>setPrintData({...servico,_via:true})} className="bp">🖨 Via do Cliente</button></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{CHECKLIST.map(item=><label key={item.key} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:7,background:"#16181d",border:"1px solid #0f1f35",cursor:"pointer"}} className="ci"><input type="checkbox" checked={!!(servico.checklist||{})[item.key]} onChange={()=>toggleCheck(item.key)} style={{accentColor:"#5a8f6e",width:15,height:15}}/><span style={{fontSize:13,color:(servico.checklist||{})[item.key]?"#d6d3cc":"#5a5d66"}}>{item.label}{item.pj&&<span style={{fontSize:10,color:"#7a6aaa"}}> [PJ]</span>}</span></label>)}</div><div style={{marginTop:14}}><FL l="Outros documentos"/><textarea style={{...S.fi,minHeight:60,resize:"vertical"}} value={localOutrosDesc!==undefined?localOutrosDesc:(servico.outrosDesc||"")} onChange={e=>setLocalOutrosDesc(e.target.value)} onBlur={e=>{atualizar({outrosDesc:e.target.value});setLocalOutrosDesc(undefined);}} placeholder="Descreva..."/></div></div>}
       {aba==="diligencias"&&<div>
         <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
           <button style={S.btnPrimary} onClick={()=>setModalDilig2({status:"Pendente",prazo:""})} className="bp">+ Nova Diligência</button>
@@ -2634,11 +2635,12 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
         {aba==="recebimentos"&&(
           <div style={S.tableCard}>
             <table style={S.table}>
-              <thead><tr>{["Data","Descricao","Cliente","Categoria","Forma","Valor",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+              <thead><tr>{["Data","Descricao","Protocolo","Cliente","Categoria","Forma","Valor",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
               <tbody>{recF.sort((a,b)=>(b.data||"").localeCompare(a.data||"")).map(r=>(
                 <tr key={r.id} style={S.tr} className="tr">
                   <td style={S.td}>{r.data}</td>
                   <td style={S.td}>{r.descricao}</td>
+                  <td style={S.td}>{r.protocolo||"-"}</td>
                   <td style={S.td}>{r.cliente||"-"}</td>
                   <td style={S.td}><Tag label={r.categoria} color="#5a8f6e"/></td>
                   <td style={S.td}><Tag label={r.forma} color="#5a7aaa"/></td>
@@ -2656,11 +2658,12 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
         {aba==="pagamentos"&&(
           <div style={S.tableCard}>
             <table style={S.table}>
-              <thead><tr>{["Data","Descricao","Categoria","Forma","Valor",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+              <thead><tr>{["Data","Descricao","Protocolo","Categoria","Forma","Valor",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
               <tbody>{pagF.sort((a,b)=>(b.data||"").localeCompare(a.data||"")).map(p=>(
                 <tr key={p.id} style={S.tr} className="tr">
                   <td style={S.td}>{p.data}</td>
                   <td style={S.td}>{p.descricao}</td>
+                  <td style={S.td}>{p.protocolo||"-"}</td>
                   <td style={S.td}><Tag label={p.categoria} color="#b46464"/></td>
                   <td style={S.td}><Tag label={p.forma} color="#6a6aaa"/></td>
                   <td style={S.td}><span style={{fontWeight:700,color:"#b46464"}}>R$ {fmt(p.valor)}</span></td>
