@@ -2846,8 +2846,9 @@ const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,
             .filter(s=>s.status!=="Orçamento"&&s.orcamento?.status!=="Orçamento"&&s.status!=="Concluído"&&s.status!=="Concluido")
             .map(s=>{
               const valorTotal=Number(s.orcamento?.valor||0);
+              const _hj2=new Date().toISOString().slice(0,10);
               const pago=(s.pagamentos||[])
-                .filter(p=>p.status==="pago")
+                .filter(p=>p.status==="pago"||((!p.status||p.status==="pendente")&&(p.data||"")<=_hj2))
                 .reduce((a,p)=>a+Number(p.valor||0),0);
               const saldo=valorTotal-pago;
               return{
