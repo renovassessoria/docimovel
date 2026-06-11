@@ -2760,7 +2760,7 @@ const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,
     const tipo=s.tipo||"Outros";
     if(!porTipo[tipo])porTipo[tipo]={tipo,total:0,pago:0,aberto:0,qtd:0};
     const valorTotal=Number(s.orcamento?.valor||0);
-    const pags=(s.pagamentos||[]).reduce((a,p)=>a+Number(p.valor||0),0);
+    const pags=(s.pagamentos||[]).filter(p=>p.status==="pago"||(p.data&&p.data<=_hjRel)).reduce((a,p)=>a+Number(p.valor||0),0);
     porTipo[tipo].total+=valorTotal;
     porTipo[tipo].pago+=pags;
     porTipo[tipo].aberto+=(valorTotal-pags>0?valorTotal-pags:0);
@@ -2775,7 +2775,7 @@ const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,
     const nome=cn?cn(cliId):"Cliente";
     if(!porCliente[cliId])porCliente[cliId]={nome,total:0,pago:0,aberto:0,qtd:0};
     const valorTotal=Number(s.orcamento?.valor||0);
-    const pags=(s.pagamentos||[]).reduce((a,p)=>a+Number(p.valor||0),0);
+    const pags=(s.pagamentos||[]).filter(p=>p.status==="pago"||(p.data&&p.data<=_hjRel)).reduce((a,p)=>a+Number(p.valor||0),0);
     porCliente[cliId].total+=valorTotal;
     porCliente[cliId].pago+=pags;
     porCliente[cliId].aberto+=(valorTotal-pags>0?valorTotal-pags:0);
@@ -2783,10 +2783,11 @@ const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,
   });
   const clientesList=Object.values(porCliente).sort((a,b)=>b.total-a.total).slice(0,15);
 
+  const _hjRel=new Date().toISOString().slice(0,10);
   // Em aberto
   const emAberto=(servicos||[]).filter(s=>s.status!=="Concluído"&&s.status!=="Concluido").map(s=>{
     const valorTotal=Number(s.orcamento?.valor||0);
-    const pags=(s.pagamentos||[]).reduce((a,p)=>a+Number(p.valor||0),0);
+    const pags=(s.pagamentos||[]).filter(p=>p.status==="pago"||(p.data&&p.data<=_hjRel)).reduce((a,p)=>a+Number(p.valor||0),0);
     const saldo=valorTotal-pags;
     return{...s,saldo,valorTotal,pags,clienteNome:cn?cn(s.clienteId||s.cliente_id):"?"};
   }).filter(s=>s.saldo>0).sort((a,b)=>b.saldo-a.saldo);
@@ -2843,12 +2844,14 @@ const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,
 
           // ── Seção 2: Saldo remanescente por serviço (fechados) ────────────
           const saldosPorServico=(servicos||[])
-            .filter(s=>s.status!=="Orçamento"&&s.orcamento?.status!=="Orçamento"&&s.status!=="Concluído"&&s.status!=="Concluido")
+            .filter(s=>s.status!=="Orçamento"&&s.orcamento?.status!=="Orçamento")
             .map(s=>{
               const valorTotal=Number(s.orcamento?.valor||0);
-              // Mesma lógica do saldo restante na aba pagamentos
               const valorLiq2=Number(s.orcamento?.valor||0)-Number(s.orcamento?.desconto||0);
-              const pago=(s.pagamentos||[]).reduce((a,p)=>a+Number(p.valor||0),0);
+              const _hj3=new Date().toISOString().slice(0,10);
+              const pago=(s.pagamentos||[])
+                .filter(p=>p.status==="pago"||(p.data&&p.data<=_hj3))
+                .reduce((a,p)=>a+Number(p.valor||0),0);
               const saldo=valorLiq2-pago;
               return{
                 clienteNome:cn(s.clienteId||s.cliente_id),
