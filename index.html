@@ -2841,20 +2841,25 @@ const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,
           ).sort((a,b)=>(b.orcamento?.valor||0)-(a.orcamento?.valor||0));
           const totalOrcAbertos=orcAbertos.reduce((a,s)=>a+Number(s.orcamento?.valor||0),0);
 
-          // ── Seção 2: Honorários a receber (serviços fechados c/ parcelas pendentes) ──
-          const hoje=new Date().toISOString().slice(0,10);
-          const parcelasPendentes=(servicos||[])
-            .filter(s=>s.status!=="Orçamento"&&s.orcamento?.status!=="Orçamento")
-            .flatMap(s=>(s.pagamentos||[])
-              .filter(p=>p.status!=="pago")
-              .map(p=>({
-                ...p,
+          // ── Seção 2: Saldo remanescente por serviço (fechados) ────────────
+          const saldosPorServico=(servicos||[])
+            .filter(s=>s.status!=="Orçamento"&&s.orcamento?.status!=="Orçamento"&&s.status!=="Concluído"&&s.status!=="Concluido")
+            .map(s=>{
+              const valorTotal=Number(s.orcamento?.valor||0);
+              const pago=(s.pagamentos||[])
+                .filter(p=>p.status==="pago")
+                .reduce((a,p)=>a+Number(p.valor||0),0);
+              const saldo=valorTotal-pago;
+              return{
                 clienteNome:cn(s.clienteId||s.cliente_id),
-                protocolo:s.protocolo||"",
-                tipo:s.tipo||""
-              }))
-            ).sort((a,b)=>(a.data||"").localeCompare(b.data||""));
-          const totalPendentes=parcelasPendentes.reduce((a,p)=>a+Number(p.valor||0),0);
+                protocolo:s.protocolo||"-",
+                tipo:s.tipo||"-",
+                valorTotal,pago,saldo
+              };
+            })
+            .filter(s=>s.saldo>0)
+            .sort((a,b)=>b.saldo-a.saldo);
+          const totalSaldo=saldosPorServico.reduce((a,s)=>a+s.saldo,0);
 
           return(
             <div>
@@ -2862,8 +2867,8 @@ const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,
               <div style={S.sg4}>
                 <StatCard icon="○" label="Orçamentos em aberto" value={orcAbertos.length+" orç."} color="#a87840"/>
                 <StatCard icon="R$" label="Valor orçamentos abertos" value={"R$ "+fmt(totalOrcAbertos)} color="#a87840"/>
-                <StatCard icon="◎" label="Parcelas a receber" value={parcelasPendentes.length+" parc."} color="#5a7aaa"/>
-                <StatCard icon="R$" label="Total a receber" value={"R$ "+fmt(totalPendentes)} color="#5a8f6e"/>
+                <StatCard icon="◎" label="Serviços com saldo" value={saldosPorServico.length+" serv."} color="#5a7aaa"/>
+                <StatCard icon="R$" label="Total a receber" value={"R$ "+fmt(totalSaldo)} color="#5a8f6e"/>
               </div>
 
               {/* Seção 1 — Orçamentos não fechados */}
@@ -2872,44 +2877,42 @@ const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,
                 {orcAbertos.length===0
                   ?<div style={S.empty}>Nenhum orçamento em aberto.</div>
                   :<table style={S.table}>
-                    <thead><tr>{["Cliente","Protocolo","Tipo","Valor Orçado","Status"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                    <thead><tr>{["Cliente","Protocolo","Tipo","Valor Orçado"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
                     <tbody>{orcAbertos.map((s,i)=>(
                       <tr key={i} style={S.tr} className="tr">
                         <td style={{...S.td,fontWeight:500,color:"#d6d3cc"}}>{cn(s.clienteId||s.cliente_id)}</td>
                         <td style={S.td}>{s.protocolo||"-"}</td>
                         <td style={S.td}>{s.tipo||"-"}</td>
                         <td style={{...S.td,fontWeight:500,color:"#a87840"}}>R$ {fmt(s.orcamento?.valor||0)}</td>
-                        <td style={S.td}><Tag label="Orçamento" color="#a87840"/></td>
                       </tr>
                     ))}</tbody>
                   </table>
                 }
               </div>
 
-              {/* Seção 2 — Honorários a receber (serviços fechados) */}
+              {/* Seção 2 — Saldo remanescente por serviço */}
               <div style={{...S.card,marginTop:14}}>
-                <div style={{...S.cardTitle,marginBottom:12}}>Honorários a receber — serviços em andamento</div>
-                {parcelasPendentes.length===0
-                  ?<div style={S.empty}>Nenhuma parcela pendente cadastrada.</div>
+                <div style={{...S.cardTitle,marginBottom:12}}>Honorários a receber — saldo remanescente por serviço</div>
+                {saldosPorServico.length===0
+                  ?<div style={S.empty}>Nenhum saldo a receber.</div>
                   :<table style={S.table}>
-                    <thead><tr>{["Vencimento","Cliente","Protocolo","Descrição","Forma","Valor","Situação"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
-                    <tbody>{parcelasPendentes.map((p,i)=>{
-                      const diff=Math.ceil((new Date((p.data||hoje)+"T12:00:00")-new Date(hoje+"T12:00:00"))/(864e5));
-                      const vencida=diff<0;
-                      const cor=vencida?"#b46464":diff===0?"#a87840":diff<=7?"#a87840":"#8a8782";
-                      const lbl=vencida?Math.abs(diff)+"d atraso":diff===0?"Hoje":"+"+diff+"d";
-                      return(
+                    <thead><tr>{["Cliente","Protocolo","Tipo","Valor Total","Recebido","Saldo"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                    <tbody>
+                      {saldosPorServico.map((s,i)=>(
                         <tr key={i} style={S.tr} className="tr">
-                          <td style={{...S.td,color:cor,fontWeight:500}}>{p.data||"-"}</td>
-                          <td style={S.td}>{p.clienteNome}</td>
-                          <td style={S.td}>{p.protocolo||"-"}</td>
-                          <td style={S.td}>{p.descricao||"-"}</td>
-                          <td style={S.td}>{p.forma||"-"}</td>
-                          <td style={{...S.td,fontWeight:500,color:"#b8965a"}}>R$ {fmt(p.valor)}</td>
-                          <td style={S.td}><Tag label={lbl} color={cor}/></td>
+                          <td style={{...S.td,fontWeight:500,color:"#d6d3cc"}}>{s.clienteNome}</td>
+                          <td style={S.td}>{s.protocolo}</td>
+                          <td style={S.td}>{s.tipo}</td>
+                          <td style={S.td}>R$ {fmt(s.valorTotal)}</td>
+                          <td style={{...S.td,color:"#5a8f6e"}}>R$ {fmt(s.pago)}</td>
+                          <td style={{...S.td,fontWeight:500,color:"#b8965a"}}>R$ {fmt(s.saldo)}</td>
                         </tr>
-                      );
-                    })}</tbody>
+                      ))}
+                      <tr style={{background:"rgba(255,255,255,0.03)"}}>
+                        <td style={{...S.td,fontWeight:600,color:"#d6d3cc"}} colSpan={5}>TOTAL A RECEBER</td>
+                        <td style={{...S.td,fontWeight:600,color:"#b8965a"}}>R$ {fmt(totalSaldo)}</td>
+                      </tr>
+                    </tbody>
                   </table>
                 }
               </div>
