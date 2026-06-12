@@ -203,6 +203,13 @@ const fmtCPF=(v)=>{
   if(n.length<=9)return n.slice(0,3)+"."+n.slice(3,6)+"."+n.slice(6);
   return n.slice(0,3)+"."+n.slice(3,6)+"."+n.slice(6,9)+"-"+n.slice(9);
 };
+const fmtTel=(v)=>{
+  const n=v.replace(/\D/g,"").slice(0,11);
+  if(n.length<=2)return n.length?"("+n:"";
+  if(n.length<=6)return "("+n.slice(0,2)+") "+n.slice(2);
+  if(n.length<=10)return "("+n.slice(0,2)+") "+n.slice(2,6)+"-"+n.slice(6);
+  return "("+n.slice(0,2)+") "+n.slice(2,7)+"-"+n.slice(7);
+};
 const DiIcon=({size=48})=><div style={{width:size,height:size,borderRadius:size*0.18,background:"#12141a",border:"1px solid #b8965a",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:500,fontSize:size*0.3,color:"#b8965a",fontFamily:"'IBM Plex Sans',sans-serif",flexShrink:0}}>DI</div>;
 const Splash=({msg})=><div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",flexDirection:"column",gap:16,background:"#16181d"}}><DiIcon size={64}/><div style={{fontSize:18,fontWeight:700,color:"#d6d3cc",marginTop:4}}>DocImóvel PRO</div><div style={{fontSize:13,color:"#4a4d56"}}>{msg}</div></div>;
 const PageHeader=({title,sub,children})=><header style={S.header}><div><div style={S.headerTitle}>{title}</div>{sub&&<div style={S.headerSub}>{sub}</div>}</div>{children&&<div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>{children}</div>}</header>;
@@ -3042,7 +3049,7 @@ const TelaCaptacao=({leads,setLeads,atualizarLead,showToast,sb})=>{
             <div style={S.modalBody}>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                 <div style={{gridColumn:"1/-1"}}><FI l="Nome completo" v={modal.nome||""} set={v=>setModal({...modal,nome:v})}/></div>
-                <FI l="Telefone" v={modal.telefone||""} set={v=>setModal({...modal,telefone:v})}/>
+                <FI l="Telefone" v={modal.telefone||""} set={v=>setModal({...modal,telefone:fmtTel(v)})} ph="(75) 99999-9999"/>
                 <FI l="E-mail" v={modal.email||""} set={v=>setModal({...modal,email:v})} type="email"/>
                 <div><FL l="Como chegou ate nos"/><select style={S.fi} value={modal.origem||""} onChange={e=>setModal({...modal,origem:e.target.value})}><option value="">Selecione...</option>{ORIGENS.map(o=><option key={o}>{o}</option>)}</select></div>
                 <div><FL l="Status"/><select style={S.fi} value={modal.status||"Novo"} onChange={e=>setModal({...modal,status:e.target.value})}>{STATUS_LEAD.map(s=><option key={s}>{s}</option>)}</select></div>
@@ -3727,8 +3734,8 @@ const ModalCliente=({inicial,onSave,onClose,clientes=[]})=>{
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
       <div style={{gridColumn:"1/-1"}}><FL l={form.tipo==="pj"?"Razão Social":"Nome completo"}/><input style={S.fi} value={form.nome||""} onChange={e=>setForm({...form,nome:e.target.value})}/></div>
       {form.tipo==="pf"?<><div><FL l="CPF"/><input style={S.fi} value={form.cpf||""} onChange={e=>{const v=fmtCPF(e.target.value);setForm({...form,cpf:v});checarCPF(v);}} placeholder="000.000.000-00"/></div><FI l="RG" v={form.rg||""} set={v=>setForm({...form,rg:v})}/></>:<><div><FL l="CNPJ"/><input style={S.fi} value={form.cnpj||""} onChange={e=>{setForm({...form,cnpj:e.target.value});checarCPF(e.target.value);}} placeholder="00.000.000/0000-00"/></div><FI l="Nome Fantasia" v={form.fantasia||""} set={v=>setForm({...form,fantasia:v})}/></>}
-      <FI l="Telefone" v={form.telefone||""} set={v=>setForm({...form,telefone:v})}/>
-      <FI l="WhatsApp" v={form.whatsapp||""} set={v=>setForm({...form,whatsapp:v})}/>
+      <FI l="Telefone" v={form.telefone||""} set={v=>setForm({...form,telefone:fmtTel(v)})} ph="(75) 99999-9999"/>
+      <FI l="WhatsApp" v={form.whatsapp||""} set={v=>setForm({...form,whatsapp:fmtTel(v)})} ph="(75) 99999-9999"/>
       <div style={{gridColumn:"1/-1"}}><FI l="E-mail" v={form.email||""} set={v=>setForm({...form,email:v})} type="email"/></div>
       <div style={{gridColumn:"1/-1"}}><FI l="Endereço" v={form.endereco||""} set={v=>setForm({...form,endereco:v})}/></div>
       <FI l="Cidade" v={form.cidade||""} set={v=>setForm({...form,cidade:v})}/>
