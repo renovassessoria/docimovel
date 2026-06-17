@@ -476,7 +476,7 @@ const AppContent=({session})=>{
         sb.from("leads").select("*").order("created_at",{ascending:false}),
       ]);
       if(c.data)setClientes(c.data.map(x=>({...x,estadoCivil:x.estado_civil||"",profissao:x.profissao||"",naturalidade:x.naturalidade||"",filiacao:x.filiacao||"",dataNascimento:x.data_nascimento||"",cnh:x.cnh||"",conjugeNome:x.conjuge_nome||"",conjugeCpf:x.conjuge_cpf||"",conjugeRg:x.conjuge_rg||"",conjugeProfissao:x.conjuge_profissao||"",conjugeNaturalidade:x.conjuge_naturalidade||"",conjugeFiliacao:x.conjuge_filiacao||"",regimeBens:x.regime_bens||"",dataCasamento:x.data_casamento||"",cartorioCasamento:x.cartorio_casamento||"",casamentoLivro:x.casamento_livro||"",casamentoFolha:x.casamento_folha||"",matriculaCasamento:x.casamento_matricula||""})));
-      if(s.data)setServicos(s.data.map(sv=>({...sv,clienteId:sv.cliente_id,tipoProcesso:sv.tipo_processo||sv.tipoProcesso||(sv.dados_judiciais&&Object.keys(sv.dados_judiciais||{}).length>0?"judicial":(sv.estagio==="Judiciário"||sv.estagio==="Judicial"?"judicial":"extrajudicial")),dadosJudiciais:sv.dados_judiciais||sv.dadosJudiciais||{},prazoConclusao:sv.prazo_conclusao||sv.prazoConclusao||null,diligencias:sv.diligencias||[],pagamentos:(sv.pagamentos_processo||[]).map(p=>({...p,parcelado:p.parcelado||false,status:p.status||"pendente",dataPagamento:p.data_pagamento||null,grupoParcela:p.grupo_parcela||null,parcelaNumero:p.parcela_numero||null,totalParcelas:p.total_parcelas||null})),estagios:sv.estagios||[],checklist:sv.checklist||{},outrosDesc:sv.outros_desc||"",orcamento:sv.orcamento||{valor:0,desconto:0,obs:"",status:"Orçamento"}})));
+      if(s.data)setServicos(s.data.map(sv=>({...sv,clienteId:sv.cliente_id,tipoProcesso:sv.tipo_processo||sv.tipoProcesso||(sv.dados_judiciais&&Object.keys(sv.dados_judiciais||{}).length>0?"judicial":(sv.estagio==="Judiciário"||sv.estagio==="Judicial"?"judicial":"extrajudicial")),dadosJudiciais:sv.dados_judiciais||sv.dadosJudiciais||{},prazoConclusao:sv.prazo_conclusao||sv.prazoConclusao||null,diligencias:sv.diligencias||[],pagamentos:(sv.pagamentos_processo||[]).map(p=>({...p,parcelado:p.parcelado||false,status:p.status||"pendente",dataPagamento:p.data_pagamento||null,grupoParcela:p.grupo_parcela||null,parcelaNumero:p.parcela_numero||null,totalParcelas:p.total_parcelas||null,notaFiscal:p.nota_fiscal||false})),estagios:sv.estagios||[],checklist:sv.checklist||{},outrosDesc:sv.outros_desc||"",orcamento:sv.orcamento||{valor:0,desconto:0,obs:"",status:"Orçamento"}})));
       if(r.data)setRecebimentos(r.data);
       if(p.data)setPagamentos(p.data);
       if(u.data)setUsuarios(u.data);
@@ -626,6 +626,7 @@ const AppContent=({session})=>{
           // Tentar incluir campos extras se existirem
           try{payPag.parcelado=p.parcelado||false;}catch(e){}
           try{payPag.status=p.status||"pendente";}catch(e){}
+          try{payPag.nota_fiscal=p.notaFiscal||false;}catch(e){}
           try{if(p.grupoParcela)payPag.grupo_parcela=p.grupoParcela;}catch(e){}
           try{if(p.parcelaNumero)payPag.parcela_numero=p.parcelaNumero;}catch(e){}
           try{if(p.totalParcelas)payPag.total_parcelas=p.totalParcelas;}catch(e){}
@@ -643,6 +644,7 @@ const AppContent=({session})=>{
           const updPag={descricao:p.descricao,valor:Number(p.valor),forma:p.forma,data:p.data};
           try{updPag.parcelado=p.parcelado||false;}catch(e){}
           try{updPag.status=p.status||"pendente";}catch(e){}
+          try{updPag.nota_fiscal=p.notaFiscal||false;}catch(e){}
           try{if(p.dataPagamento)updPag.data_pagamento=p.dataPagamento;}catch(e){}
           await sb.from("pagamentos_processo").update(updPag).eq("id",p.id);
         }
@@ -815,7 +817,7 @@ const AppContent=({session})=>{
         {tela==="andamento"&&!processoAberto&&<TelaAndamento servicos={servicos} cn={cn} diligVenc={diligVenc} diligHoje={diligHoje} abrirProcesso={s=>{setProcessoAberto(s);setAbaProcesso("timeline");}}/>}
         {tela==="andamento"&&processoAberto&&<TelaProcessoDetalhe servico={processoAberto} aba={abaProcesso} setAba={setAbaProcesso} atualizar={p=>atualizarServico(processoAberto.id,p)} voltar={()=>setProcessoAberto(null)} cn={cn}/>}
         {tela==="financeiro"&&<TelaFinanceiro aba={abaFin} setAba={setAbaFin} recebimentos={recebimentos} pagamentos={pagamentos} setRecebimentos={setRecebimentos} setPagamentos={setPagamentos} totRec={totRec} totPag={totPag} lucro={lucro} dadosMensais={dadosMensais} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} abrirModal={abrirModal} setReciboData={setReciboData} sb={sb}/>}
-        {tela==="relatorios"&&<TelaRelatorios dadosMensais={dadosMensais} totRec={totRec} totPag={totPag} lucro={lucro} recAno={recAno} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} recebimentos={recebimentos} pagamentos={pagamentos} servicos={servicos} cn={cn}/>}
+        {tela==="relatorios"&&<TelaRelatorios dadosMensais={dadosMensais} totRec={totRec} totPag={totPag} lucro={lucro} recAno={recAno} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} recebimentos={recebimentos} pagamentos={pagamentos} servicos={servicos} cn={cn} clientes={clientes}/>}
         {tela==="custos"&&<TelaCustos showToast={showToast} custos={custos} setCustos={v=>{setCustos(v);sb.from("configuracoes").upsert({id:"custos",dados:v,updated_at:new Date().toISOString()}).then(()=>{}).catch(()=>{});}} sb={sb}/>}
         {tela==="captacao"&&<TelaCaptacao leads={leads} setLeads={setLeads} atualizarLead={atualizarLead} showToast={showToast} sb={sb}/>}
         {tela==="usuarios"&&<TelaUsuarios usuarios={usuarios} setUsuarios={setUsuarios} abrirModal={abrirModal} session={session}/>}
@@ -1377,7 +1379,25 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
                   </select>}
                   {novaPag.parcelado&&<span style={{fontSize:11,color:"#5a8f6e"}}>= R$ {(Number(novaPag.valor||0)/Number(novaPag.totalParcelas||1)).toFixed(2)}/parc.</span>}
                 </div>
-                <button style={{...S.btnPrimary,marginTop:10}} onClick={addPag} className="bp">+ Registrar</button></div><div style={S.tableCard}><table style={S.table}><thead><tr>{["Data","Descrição","Forma","Valor","Situação",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead><tbody>{(servico.pagamentos||[]).map(p=><tr key={p.id} style={S.tr} className="tr"><td style={S.td}>{p.data}</td><td style={S.td}>{p.descricao}</td><td style={S.td}><Tag label={p.forma} color="#6a6aaa"/></td><td style={S.td}><span style={{fontWeight:700,color:"#5a8f6e"}}>R$ {fmt(p.valor)}</span></td><td style={S.td}>{(()=>{const desc=p.descricao||"";const isParc=p.parcelado===true||desc.includes("(")&&desc.includes("/");if(p.status==="pago")return<Tag label="Pago" color="#5a8f6e"/>;if(!isParc)return<Tag label="Avulso" color="#5a7aaa"/>;const hj=td();if(p.data<=hj)return<Tag label="Vencida" color="#b46464"/>;const diff=Math.ceil((new Date(p.data+"T12:00:00")-new Date(hj+"T12:00:00"))/(864e5));return<Tag label={"Vence +"+diff+"d"} color={diff<=3?"#b46464":"#a87840"}/>;})()}</td><td style={S.td}>{(()=>{const desc=p.descricao||"";const isParc=p.parcelado===true||desc.includes("(")&&desc.includes("/");if(isParc&&p.status!=="pago")return(<button style={{...S.btnSm,color:"#5a8f6e",borderColor:"#22c55e44"}} onClick={()=>{if(!window.confirm("Confirmar recebimento desta parcela?"))return;atualizar({pagamentos:(servico.pagamentos||[]).map(x=>x.id===p.id?{...x,status:"pago",dataPagamento:td()}:x)});}} className="bs">✓ Pago</button>);return null;})()}<button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir este pagamento? Esta acao e permanente."))return;atualizar({pagamentos:(servico.pagamentos||[]).filter(x=>x.id!==p.id)})}} className="bs">✕</button><button style={S.btnSm} onClick={()=>setEditPag({...p})} className="bs">Ed</button><button style={{...S.btnSm,color:"#5a8f6e",borderColor:"#22c55e44"}} onClick={()=>gerarReciboServico(p,cliente,servico)} className="bs">Recibo</button></td></tr>)}</tbody></table></div></div>}
+                <button style={{...S.btnPrimary,marginTop:10}} onClick={addPag} className="bp">+ Registrar</button></div><div style={S.tableCard}><table style={S.table}><thead><tr>{["Data","Descrição","Forma","Valor","Situação","NF",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead><tbody>{(servico.pagamentos||[]).map(p=><tr key={p.id} style={S.tr} className="tr"><td style={S.td}>{p.data}</td><td style={S.td}>{p.descricao}</td><td style={S.td}><Tag label={p.forma} color="#6a6aaa"/></td><td style={S.td}><span style={{fontWeight:700,color:"#5a8f6e"}}>R$ {fmt(p.valor)}</span></td><td style={{...S.td,textAlign:"center"}}>
+  <input type="checkbox" checked={p.notaFiscal||false}
+    title={p.notaFiscal?"NF emitida":"NF não emitida"}
+    onChange={()=>atualizar({pagamentos:(servico.pagamentos||[]).map(x=>x.id===p.id?{...x,notaFiscal:!x.notaFiscal}:x)})}
+    style={{cursor:"pointer",accentColor:"#b8965a",width:14,height:14}}/>
+</td>
+<td style={S.td}>{(()=>{const desc=p.descricao||"";const isParc=p.parcelado===true||desc.includes("(")&&desc.includes("/");if(p.status==="pago")return<Tag label="Pago" color="#5a8f6e"/>;if(!isParc)return<Tag label="Avulso" color="#5a7aaa"/>;const hj=td();if(p.data<=hj)return<Tag label="Vencida" color="#b46464"/>;const diff=Math.ceil((new Date(p.data+"T12:00:00")-new Date(hj+"T12:00:00"))/(864e5));return<Tag label={"Vence +"+diff+"d"} color={diff<=3?"#b46464":"#a87840"}/>;})()}</td><td style={S.td}>{(()=>{const desc=p.descricao||"";const isParc=p.parcelado===true||desc.includes("(")&&desc.includes("/");if(isParc&&p.status!=="pago")return(<button style={{...S.btnSm,color:"#5a8f6e",borderColor:"#22c55e44"}} onClick={()=>{if(!window.confirm("Confirmar recebimento desta parcela?"))return;atualizar({pagamentos:(servico.pagamentos||[]).map(x=>x.id===p.id?{...x,status:"pago",dataPagamento:td()}:x)});}} className="bs">✓ Pago</button>);return null;})()}<button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir este pagamento? Esta acao e permanente."))return;atualizar({pagamentos:(servico.pagamentos||[]).filter(x=>x.id!==p.id)})}} className="bs">✕</button><button style={S.btnSm} onClick={()=>setEditPag({...p})} className="bs">Ed</button><button style={{...S.btnSm,color:"#5a8f6e",borderColor:"#22c55e44"}} onClick={()=>gerarReciboServico(p,cliente,servico)} className="bs">Recibo</button>
+{p.status!=="pago"&&<button style={{...S.btnSm,color:"#25d366",borderColor:"rgba(37,211,102,0.3)"}}
+  onClick={()=>{
+    const tel=(cliente?.whatsapp||cliente?.telefone||"").replace(/\D/g,"");
+    const nome=cliente?.nome||"cliente";
+    const proto=servico?.protocolo||"";
+    const data=p.data||"";
+    const valor=Number(p.valor||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+    const msg=`Prezado(a) ${nome},\nVenho por meio desse, lembrar que a parcela do processo ${proto} vence hoje, ${data}, no valor de R$ ${valor}.\n\nPix: 53.826.458/0001-60\n\nCaso já tenha efetuado o pagamento, desconsidere a mensagem.\n\nAtenciosamente,\nCarlos A. Pacheco`;
+    const url=tel?"https://wa.me/55"+tel+"?text="+encodeURIComponent(msg):"https://wa.me/?text="+encodeURIComponent(msg);
+    window.open(url,"_blank");
+  }} className="bs">WhatsApp</button>}
+</td></tr>)}</tbody></table></div></div>}
       {aba==="contratos"&&<AbaContratos servico={servico} cliente={cliente} atualizar={atualizar} showToast={showToast}/>}
 {aba==="portal"&&<AbaPortalCliente servico={servico} cliente={cliente} atualizar={atualizar} showToast={showToast}/>}
     </div>
@@ -2738,7 +2758,7 @@ const GraficoPizza=({pago,resultado,total})=>{
   );
 };
 
-const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,setAnoFin,recebimentos,pagamentos,servicos,cn})=>{
+const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,setAnoFin,recebimentos,pagamentos,servicos,cn,clientes})=>{
   const [abaRel,setAbaRel]=useState("financeiro");
   const [dtIni,setDtIni]=useState("");
   const [dtFim,setDtFim]=useState("");
@@ -2843,13 +2863,59 @@ const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,
 
       {/* Abas internas */}
       <div style={{display:"flex",gap:0,padding:"0 24px",background:"#1e2128",borderBottom:"1px solid #0f1f35"}}>
-        {[{k:"financeiro",l:"◉ Financeiro"},{k:"honorarios",l:"▣ Honorários"}].map(a=>(
+        {[{k:"financeiro",l:"◉ Financeiro"},{k:"honorarios",l:"▣ Honorários"},{k:"irpf",l:"◈ IRPF"}].map(a=>(
           <button key={a.k} onClick={()=>setAbaRel(a.k)} style={{...S.abaBtn,...(abaRel===a.k?S.abaBtnActive:{})}} className="ab">{a.l}</button>
         ))}
       </div>
 
       <div style={S.body}>
-        {abaRel==="honorarios"&&(()=>{
+        {abaRel==="irpf"&&(()=>{
+  const anoIRPF=anoFin;
+  // Agrupar por cliente — somar pagamentos do ano selecionado
+  const porCliente={};
+  (servicos||[]).forEach(s=>{
+    const cliId=s.clienteId||s.cliente_id;
+    const cli=clientes.find(c=>c.id===cliId)||{};
+    (s.pagamentos||[]).forEach(p=>{
+      if(!(p.data||"").startsWith(String(anoIRPF)))return;
+      if(!porCliente[cliId])porCliente[cliId]={nome:cli.nome||"-",cpf:cli.cpf||"-",total:0};
+      porCliente[cliId].total+=Number(p.valor||0);
+    });
+  });
+  const lista=Object.values(porCliente).filter(c=>c.total>0).sort((a,b)=>b.total-a.total);
+  const totalGeral=lista.reduce((a,c)=>a+c.total,0);
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:10}}>
+        <div style={{fontSize:13,color:"#8a8782"}}>Ano-base: <span style={{color:"#b8965a",fontWeight:500}}>{anoIRPF}</span> · {lista.length} cliente(s)</div>
+        <div style={{fontSize:13,color:"#8a8782"}}>Total recebido: <span style={{color:"#5a8f6e",fontWeight:500}}>R$ {fmt(totalGeral)}</span></div>
+      </div>
+      {lista.length===0
+        ?<div style={S.empty}>Nenhum pagamento encontrado para {anoIRPF}.</div>
+        :<div style={S.tableCard}>
+          <table style={S.table}>
+            <thead><tr>{["Cliente","CPF","Total Recebido no Ano"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+            <tbody>
+              {lista.map((c,i)=>(
+                <tr key={i} style={S.tr} className="tr">
+                  <td style={{...S.td,fontWeight:500,color:"#d6d3cc"}}>{c.nome}</td>
+                  <td style={{...S.td,fontFamily:"'IBM Plex Mono',monospace",fontSize:11}}>{c.cpf}</td>
+                  <td style={{...S.td,fontWeight:500,color:"#5a8f6e"}}>R$ {fmt(c.total)}</td>
+                </tr>
+              ))}
+              <tr style={{background:"rgba(255,255,255,0.03)"}}>
+                <td style={{...S.td,fontWeight:600,color:"#d6d3cc"}} colSpan={2}>TOTAL GERAL</td>
+                <td style={{...S.td,fontWeight:600,color:"#5a8f6e"}}>R$ {fmt(totalGeral)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      }
+      <div style={{marginTop:10,fontSize:10,color:"#4a4d56",textAlign:"right"}}>* Valores baseados nos pagamentos cadastrados no sistema para o ano {anoIRPF}</div>
+    </div>
+  );
+})()}
+{abaRel==="honorarios"&&(()=>{
           // ── Seção 1: Orçamentos não fechados ─────────────────────────────
           const orcAbertos=(servicos||[]).filter(s=>
             s.orcamento?.status==="Orçamento"||s.status==="Orçamento"
