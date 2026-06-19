@@ -2899,10 +2899,12 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
               obs:modalColab.obs||null
             };
             if(modalColab.id){
-              await sb.from("colaboradores").update(pay).eq("id",modalColab.id);
+              const{error}=await sb.from("colaboradores").update(pay).eq("id",modalColab.id);
+              if(error){alert("Erro ao atualizar: "+error.message);console.error(error);return;}
               setColaboradores(prev=>prev.map(c=>c.id===modalColab.id?{...c,...pay}:c));
             }else{
-              const{data}=await sb.from("colaboradores").insert(pay).select().single();
+              const{data,error}=await sb.from("colaboradores").insert(pay).select().single();
+              if(error){alert("Erro ao salvar: "+error.message);console.error(error);return;}
               if(data)setColaboradores(prev=>[...prev,data].sort((a,b)=>(a.nome||"").localeCompare(b.nome||"")));
             }
             setModalColab(null);
