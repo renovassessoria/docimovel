@@ -437,6 +437,7 @@ const App=()=>{
 const AppContent=({session})=>{
   const [tela,setTela]=useState("dashboard");
   const [clientes,setClientes]=useState([]);
+  const [colaboradores,setColaboradores]=useState([]);
   const [servicos,setServicos]=useState([]);
   const [recebimentos,setRecebimentos]=useState([]);
   const [pagamentos,setPagamentos]=useState([]);
@@ -475,6 +476,7 @@ const AppContent=({session})=>{
         sb.from("usuarios").select("*"),
         sb.from("leads").select("*").order("created_at",{ascending:false}),
       ]);
+      try{const{data:colData}=await sb.from("colaboradores").select("*").order("nome",{ascending:true});if(colData)setColaboradores(colData);}catch(e){}
       if(c.data)setClientes(c.data.map(x=>({...x,estadoCivil:x.estado_civil||"",profissao:x.profissao||"",naturalidade:x.naturalidade||"",filiacao:x.filiacao||"",dataNascimento:x.data_nascimento||"",cnh:x.cnh||"",conjugeNome:x.conjuge_nome||"",conjugeCpf:x.conjuge_cpf||"",conjugeRg:x.conjuge_rg||"",conjugeProfissao:x.conjuge_profissao||"",conjugeNaturalidade:x.conjuge_naturalidade||"",conjugeFiliacao:x.conjuge_filiacao||"",regimeBens:x.regime_bens||"",dataCasamento:x.data_casamento||"",cartorioCasamento:x.cartorio_casamento||"",casamentoLivro:x.casamento_livro||"",casamentoFolha:x.casamento_folha||"",matriculaCasamento:x.casamento_matricula||""})));
       if(s.data)setServicos(s.data.map(sv=>({...sv,clienteId:sv.cliente_id,tipoProcesso:sv.tipo_processo||sv.tipoProcesso||(sv.dados_judiciais&&Object.keys(sv.dados_judiciais||{}).length>0?"judicial":(sv.estagio==="Judiciário"||sv.estagio==="Judicial"?"judicial":"extrajudicial")),dadosJudiciais:sv.dados_judiciais||sv.dadosJudiciais||{},prazoConclusao:sv.prazo_conclusao||sv.prazoConclusao||null,diligencias:sv.diligencias||[],pagamentos:(sv.pagamentos_processo||[]).map(p=>({...p,parcelado:p.parcelado||false,status:p.status||"pendente",dataPagamento:p.data_pagamento||null,grupoParcela:p.grupo_parcela||null,parcelaNumero:p.parcela_numero||null,totalParcelas:p.total_parcelas||null,notaFiscal:p.nota_fiscal||false})),estagios:sv.estagios||[],checklist:sv.checklist||{},outrosDesc:sv.outros_desc||"",orcamento:sv.orcamento||{valor:0,desconto:0,obs:"",status:"Orçamento"}})));
       if(r.data)setRecebimentos(r.data);
@@ -691,7 +693,7 @@ const AppContent=({session})=>{
   };
 
   const salvarPag=async(form)=>{
-    const pay={descricao:form.descricao,categoria:form.categoria,valor:Number(form.valor),forma:form.forma,data:form.data,protocolo:form.protocolo,competencia:form.competencia||(form.data||"").slice(0,7)};
+    const pay={descricao:form.descricao,categoria:form.categoria,valor:Number(form.valor),forma:form.forma,data:form.data,protocolo:form.protocolo,competencia:form.competencia||(form.data||"").slice(0,7),colaborador_id:form.colaborador_id||null};
     if(form.id){await sb.from("pagamentos").update(pay).eq("id",form.id);setPagamentos(prev=>prev.map(p=>p.id===form.id?{...p,...pay}:p));}
     else{const{data}=await sb.from("pagamentos").insert(pay).select().single();if(data)setPagamentos(prev=>[data,...prev]);}
     fecharModal("pag");showToast("Pagamento salvo!");
@@ -816,7 +818,7 @@ const AppContent=({session})=>{
         {tela==="judicial"&&<TelaJudicial servicos={servicos} setServicos={setServicos} clientes={clientes} cn={cn} irPara={setTela} sb={sb} showToast={showToast} abrirServico={s=>{setServicoAberto(s);setAbaServico("visao");setTela("servicos");}}/>}
         {tela==="andamento"&&!processoAberto&&<TelaAndamento servicos={servicos} cn={cn} diligVenc={diligVenc} diligHoje={diligHoje} abrirProcesso={s=>{setProcessoAberto(s);setAbaProcesso("timeline");}}/>}
         {tela==="andamento"&&processoAberto&&<TelaProcessoDetalhe servico={processoAberto} aba={abaProcesso} setAba={setAbaProcesso} atualizar={p=>atualizarServico(processoAberto.id,p)} voltar={()=>setProcessoAberto(null)} cn={cn}/>}
-        {tela==="financeiro"&&<TelaFinanceiro aba={abaFin} setAba={setAbaFin} recebimentos={recebimentos} pagamentos={pagamentos} setRecebimentos={setRecebimentos} setPagamentos={setPagamentos} totRec={totRec} totPag={totPag} lucro={lucro} dadosMensais={dadosMensais} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} abrirModal={abrirModal} setReciboData={setReciboData} sb={sb}/>}
+        {tela==="financeiro"&&<TelaFinanceiro aba={abaFin} setAba={setAbaFin} recebimentos={recebimentos} pagamentos={pagamentos} setRecebimentos={setRecebimentos} setPagamentos={setPagamentos} totRec={totRec} totPag={totPag} lucro={lucro} dadosMensais={dadosMensais} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} abrirModal={abrirModal} setReciboData={setReciboData} sb={sb} colaboradores={colaboradores} setColaboradores={setColaboradores}/>}
         {tela==="relatorios"&&<TelaRelatorios dadosMensais={dadosMensais} totRec={totRec} totPag={totPag} lucro={lucro} recAno={recAno} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} recebimentos={recebimentos} pagamentos={pagamentos} servicos={servicos} cn={cn} clientes={clientes}/>}
         {tela==="custos"&&<TelaCustos showToast={showToast} custos={custos} setCustos={v=>{setCustos(v);sb.from("configuracoes").upsert({id:"custos",dados:v,updated_at:new Date().toISOString()}).then(()=>{}).catch(()=>{});}} sb={sb}/>}
         {tela==="captacao"&&<TelaCaptacao leads={leads} setLeads={setLeads} atualizarLead={atualizarLead} showToast={showToast} sb={sb}/>}
@@ -826,7 +828,7 @@ const AppContent=({session})=>{
       {modais.cliente&&<ModalCliente inicial={modais.cliente} onSave={salvarCliente} onClose={()=>fecharModal("cliente")} clientes={clientes}/>}
       {modais.servico&&<ModalServico inicial={modais.servico} clientes={clientes} onSave={salvarServico} onClose={()=>fecharModal("servico")}/>}
       {modais.rec&&<ModalLanc titulo={modais.rec.id?"Editar Recebimento":"Novo Recebimento"} form={modais.rec} setForm={f=>setModais(m=>({...m,rec:f}))} cats={["Honorários","Entrada de honorários","Complemento de honorários","Diligência extra","Outros"]} onSave={()=>salvarRec(modais.rec)} onClose={()=>fecharModal("rec")} cor="#5a8f6e" showC/>}
-      {modais.pag&&<ModalLanc titulo={modais.pag.id?"Editar Pagamento":"Novo Pagamento"} form={modais.pag} setForm={f=>setModais(m=>({...m,pag:f}))} cats={["Taxa de cartório","ITBI","ITCMD","IR","Administrativa","Diligência","Material","Outros"]} onSave={()=>salvarPag(modais.pag)} onClose={()=>fecharModal("pag")} cor="#b46464"/>}
+      {modais.pag&&<ModalLanc titulo={modais.pag.id?"Editar Pagamento":"Novo Pagamento"} form={modais.pag} setForm={f=>setModais(m=>({...m,pag:f}))} cats={["Taxa de cartório","ITBI","ITCMD","IR","Administrativa","Diligência","Material","Outros"]} onSave={()=>salvarPag(modais.pag)} onClose={()=>fecharModal("pag")} cor="#b46464" colaboradores={colaboradores}/>}
       {modais.usuario&&<ModalUsuario inicial={modais.usuario} onSave={salvarUser} onClose={()=>fecharModal("usuario")}/>}
       {printData&&<PrintProtocolo servico={printData} cliente={clientes.find(c=>c.id===printData.clienteId)} onClose={()=>setPrintData(null)}/>}
       {reciboData&&<Recibo data={reciboData} onClose={()=>setReciboData(null)} clientes={clientes}/>}
@@ -2601,13 +2603,15 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
   );
 };
 
-const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPagamentos,totRec,totPag,lucro,dadosMensais,melhorMes,anoFin,setAnoFin,abrirModal,setReciboData,sb})=>{
+const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPagamentos,totRec,totPag,lucro,dadosMensais,melhorMes,anoFin,setAnoFin,abrirModal,setReciboData,sb,colaboradores,setColaboradores})=>{
   // Hooks do DRE — declarados no topo do componente (sempre executados, conforme Rules of Hooks)
   const dreRef=useRef(null);
   const dreAnualRef=useRef(null);
   const [abaDRE,setAbaDRE]=useState("mensal");
   const [anoDRE,setAnoDRE]=useState(String(anoFin));
   const [mesDRE,setMesDRE]=useState(new Date().getMonth());
+  const [modalColab,setModalColab]=useState(null);
+  const [buscaColab,setBuscaColab]=useState("");
   const [dtIni,setDtIni]=useState("");
   const [dtFim,setDtFim]=useState("");
   const filtrar=(lista)=>{
@@ -2643,7 +2647,7 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
         <button style={{...S.btnSm,color:"#5a7aaa",borderColor:"#3b82f644"}} onClick={imprimir} className="bs">Extrato PDF</button>
       </PageHeader>
       <div style={{display:"flex",gap:4,padding:"8px 24px",background:"#1e2128",borderBottom:"1px solid #0f1f35"}}>
-        {[{k:"dashboard",l:"Visao Geral"},{k:"recebimentos",l:"Recebimentos"},{k:"pagamentos",l:"Pagamentos"},{k:"dre",l:"DRE"}].map(a=><button key={a.k} onClick={()=>setAba(a.k)} style={{...S.abaBtn,...(aba===a.k?S.abaBtnActive:{})}} className="ab">{a.l}</button>)}
+        {[{k:"dashboard",l:"Visao Geral"},{k:"recebimentos",l:"Recebimentos"},{k:"pagamentos",l:"Pagamentos"},{k:"dre",l:"DRE"},{k:"colaboradores",l:"Colaboradores"}].map(a=><button key={a.k} onClick={()=>setAba(a.k)} style={{...S.abaBtn,...(aba===a.k?S.abaBtnActive:{})}} className="ab">{a.l}</button>)}
       </div>
       <div style={S.body}>
         {aba==="dashboard"&&(
@@ -2675,11 +2679,12 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
         {aba==="recebimentos"&&(
           <div style={S.tableCard}>
             <table style={S.table}>
-              <thead><tr>{["Data","Descricao","Protocolo","Cliente","Categoria","Forma","Valor",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+              <thead><tr>{["Data","Descrição","Competência","Protocolo","Cliente","Categoria","Forma","Valor",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
               <tbody>{recF.sort((a,b)=>(b.data||"").localeCompare(a.data||"")).map(r=>(
                 <tr key={r.id} style={S.tr} className="tr">
                   <td style={S.td}>{r.data}</td>
                   <td style={S.td}>{r.descricao}</td>
+                  <td style={{...S.td,fontSize:11,color:"#5a5d66"}}>{r.competencia||(r.data||"").slice(0,7)}</td>
                   <td style={S.td}>{r.protocolo||"-"}</td>
                   <td style={S.td}>{r.cliente||"-"}</td>
                   <td style={S.td}><Tag label={r.categoria} color="#5a8f6e"/></td>
@@ -2698,11 +2703,12 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
         {aba==="pagamentos"&&(
           <div style={S.tableCard}>
             <table style={S.table}>
-              <thead><tr>{["Data","Descricao","Protocolo","Categoria","Forma","Valor",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+              <thead><tr>{["Data","Descrição","Competência","Protocolo","Categoria","Forma","Valor",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
               <tbody>{pagF.sort((a,b)=>(b.data||"").localeCompare(a.data||"")).map(p=>(
                 <tr key={p.id} style={S.tr} className="tr">
                   <td style={S.td}>{p.data}</td>
                   <td style={S.td}>{p.descricao}</td>
+                  <td style={{...S.td,fontSize:11,color:"#5a5d66"}}>{p.competencia||(p.data||"").slice(0,7)}</td>
                   <td style={S.td}>{p.protocolo||"-"}</td>
                   <td style={S.td}><Tag label={p.categoria} color="#b46464"/></td>
                   <td style={S.td}><Tag label={p.forma} color="#6a6aaa"/></td>
@@ -2875,6 +2881,154 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
 
               {abaDRE==="mensal"&&<div ref={dreRef} style={{background:'#1e2128',borderRadius:8,padding:'0 4px'}}/>}
               {abaDRE==="anual"&&<div ref={dreAnualRef} style={{background:'#1e2128',borderRadius:8,padding:'0 4px'}}/>}
+            </div>
+          );
+        })()}
+        {aba==="colaboradores"&&(()=>{
+          const listaFiltrada=colaboradores.filter(c=>(c.nome||"").toLowerCase().includes(buscaColab.toLowerCase()));
+
+          const salvarColab=async()=>{
+            if(!modalColab.nome||!modalColab.nome.trim()){alert("Informe o nome.");return;}
+            const pay={
+              nome:modalColab.nome,
+              documento:modalColab.documento||null,
+              tipo_doc:modalColab.tipo_doc||"cpf",
+              pix:modalColab.pix||null,
+              tipo_parceria:modalColab.tipo_parceria||null,
+              telefone:modalColab.telefone||null,
+              obs:modalColab.obs||null
+            };
+            if(modalColab.id){
+              await sb.from("colaboradores").update(pay).eq("id",modalColab.id);
+              setColaboradores(prev=>prev.map(c=>c.id===modalColab.id?{...c,...pay}:c));
+            }else{
+              const{data}=await sb.from("colaboradores").insert(pay).select().single();
+              if(data)setColaboradores(prev=>[...prev,data].sort((a,b)=>(a.nome||"").localeCompare(b.nome||"")));
+            }
+            setModalColab(null);
+          };
+
+          const excluirColab=async(id)=>{
+            if(!window.confirm("Excluir este colaborador? Pagamentos já vinculados a ele permanecerão no histórico, apenas sem o vínculo."))return;
+            await sb.from("colaboradores").delete().eq("id",id);
+            setColaboradores(prev=>prev.filter(c=>c.id!==id));
+          };
+
+          // Extrato: somar pagamentos por colaborador no ano selecionado
+          const extratoPorColab=colaboradores.map(c=>{
+            const pagsColab=pagamentos.filter(p=>p.colaborador_id===c.id&&(p.data||"").startsWith(String(anoFin)));
+            const total=pagsColab.reduce((a,p)=>a+Number(p.valor||0),0);
+            return{...c,pagamentos:pagsColab,total};
+          }).sort((a,b)=>b.total-a.total);
+          const totalGeralColab=extratoPorColab.reduce((a,c)=>a+c.total,0);
+
+          return(
+            <div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
+                <input style={{...S.search}} placeholder="Buscar colaborador..." value={buscaColab} onChange={e=>setBusca(e.target.value)}/>
+                <button style={S.btnPrimary} onClick={()=>setModalColab({})} className="bp">+ Novo Colaborador</button>
+              </div>
+
+              {/* Cards resumo */}
+              <div style={S.sg4}>
+                <div style={{...S.card,borderLeft:"2px solid #5a7aaa77"}}><div style={S.cardTitle}>Colaboradores</div><div style={{fontSize:18,fontWeight:400,color:"#5a7aaa",opacity:.85}}>{colaboradores.length}</div></div>
+                <div style={{...S.card,borderLeft:"2px solid #b4646477"}}><div style={S.cardTitle}>Pago em {anoFin}</div><div style={{fontSize:18,fontWeight:400,color:"#b46464",opacity:.85}}>R$ {fmt(totalGeralColab)}</div></div>
+              </div>
+
+              {/* Cadastro - lista */}
+              <div style={{...S.card,marginBottom:14}}>
+                <div style={{...S.cardTitle,marginBottom:10}}>Cadastro de Colaboradores / Parceiros</div>
+                {listaFiltrada.length===0
+                  ?<div style={S.empty}>Nenhum colaborador cadastrado.</div>
+                  :<table style={S.table}>
+                    <thead><tr>{["Nome","Documento","PIX","Tipo de Parceria","Telefone",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                    <tbody>
+                      {listaFiltrada.map(c=>(
+                        <tr key={c.id} style={S.tr} className="tr">
+                          <td style={{...S.td,fontWeight:500,color:"#d6d3cc"}}>{c.nome}</td>
+                          <td style={{...S.td,fontFamily:"'IBM Plex Mono',monospace",fontSize:11}}>{c.documento||"-"}</td>
+                          <td style={S.td}>{c.pix||"-"}</td>
+                          <td style={S.td}>{c.tipo_parceria||"-"}</td>
+                          <td style={S.td}>{c.telefone||"-"}</td>
+                          <td style={S.td}>
+                            <button style={S.btnSm} onClick={()=>setModalColab({...c})} className="bs">Ed</button>
+                            <button style={{...S.btnSm,...S.btnDang}} onClick={()=>excluirColab(c.id)} className="bs">✕</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                }
+              </div>
+
+              {/* Extrato por colaborador */}
+              <div style={S.card}>
+                <div style={{...S.cardTitle,marginBottom:10}}>Extrato — pagamentos por colaborador em {anoFin}</div>
+                {extratoPorColab.filter(c=>c.total>0).length===0
+                  ?<div style={S.empty}>Nenhum pagamento vinculado a colaboradores em {anoFin}.</div>
+                  :<table style={S.table}>
+                    <thead><tr>{["Colaborador","Tipo de Parceria","Qtd. Pagamentos","Total Pago"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                    <tbody>
+                      {extratoPorColab.filter(c=>c.total>0).map(c=>(
+                        <tr key={c.id} style={S.tr} className="tr">
+                          <td style={{...S.td,fontWeight:500,color:"#d6d3cc"}}>{c.nome}</td>
+                          <td style={S.td}>{c.tipo_parceria||"-"}</td>
+                          <td style={S.td}>{c.pagamentos.length}</td>
+                          <td style={{...S.td,fontWeight:500,color:"#b46464"}}>R$ {fmt(c.total)}</td>
+                        </tr>
+                      ))}
+                      <tr style={{background:"rgba(255,255,255,0.03)"}}>
+                        <td style={{...S.td,fontWeight:600,color:"#d6d3cc"}} colSpan={3}>TOTAL GERAL</td>
+                        <td style={{...S.td,fontWeight:600,color:"#b46464"}}>R$ {fmt(totalGeralColab)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                }
+              </div>
+
+              {/* Modal cadastro/edição */}
+              {modalColab&&(
+                <div style={S.overlay}>
+                  <div style={{...S.modal,maxWidth:480}} onClick={e=>e.stopPropagation()}>
+                    <div style={S.modalHeader}>
+                      <span style={S.modalTitle}>{modalColab.id?"Editar Colaborador":"Novo Colaborador"}</span>
+                      <button style={S.modalClose} onClick={()=>setModalColab(null)}>X</button>
+                    </div>
+                    <div style={S.modalBody}>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                        <div style={{gridColumn:"1/-1"}}><FI l="Nome completo / Razão social" v={modalColab.nome||""} set={v=>setModalColab({...modalColab,nome:v})} ph="Nome do colaborador ou parceiro"/></div>
+                        <div>
+                          <FL l="Tipo de documento"/>
+                          <select style={S.fi} value={modalColab.tipo_doc||"cpf"} onChange={e=>setModalColab({...modalColab,tipo_doc:e.target.value})}>
+                            <option value="cpf">CPF</option>
+                            <option value="cnpj">CNPJ</option>
+                          </select>
+                        </div>
+                        <FI l={modalColab.tipo_doc==="cnpj"?"CNPJ":"CPF"} v={modalColab.documento||""} set={v=>setModalColab({...modalColab,documento:v})} ph={modalColab.tipo_doc==="cnpj"?"00.000.000/0000-00":"000.000.000-00"}/>
+                        <FI l="Chave PIX" v={modalColab.pix||""} set={v=>setModalColab({...modalColab,pix:v})} ph="CPF, e-mail, telefone ou aleatória"/>
+                        <FI l="Telefone" v={modalColab.telefone||""} set={v=>setModalColab({...modalColab,telefone:fmtTel(v)})} ph="(75) 99999-9999"/>
+                        <div style={{gridColumn:"1/-1"}}>
+                          <FL l="Tipo de parceria"/>
+                          <select style={S.fi} value={modalColab.tipo_parceria||""} onChange={e=>setModalColab({...modalColab,tipo_parceria:e.target.value})}>
+                            <option value="">Selecione...</option>
+                            <option>Despachante</option>
+                            <option>Corretor</option>
+                            <option>Engenheiro/Topógrafo</option>
+                            <option>Indicação/Comissão</option>
+                            <option>Prestador de serviço</option>
+                            <option>Outros</option>
+                          </select>
+                        </div>
+                        <div style={{gridColumn:"1/-1"}}><FL l="Observações"/><textarea style={{...S.fi,minHeight:60}} value={modalColab.obs||""} onChange={e=>setModalColab({...modalColab,obs:e.target.value})}/></div>
+                      </div>
+                    </div>
+                    <div style={S.modalFooter}>
+                      <button style={S.btnSec} onClick={()=>setModalColab(null)} className="ab">Cancelar</button>
+                      <button style={S.btnPrimary} onClick={salvarColab} className="bp">Salvar</button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}
@@ -4106,7 +4260,7 @@ const ModalServico=({inicial,clientes,onSave,onClose})=>{
   );
 };
 
-const ModalLanc=({titulo,form,setForm,cats,onSave,onClose,cor,showC})=>{
+const ModalLanc=({titulo,form,setForm,cats,onSave,onClose,cor,showC,colaboradores})=>{
   const set=(k,v)=>setForm({...form,[k]:v});
   return(<Modal title={titulo} onClose={onClose} onSave={onSave} cor={cor}>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
@@ -4117,6 +4271,14 @@ const ModalLanc=({titulo,form,setForm,cats,onSave,onClose,cor,showC})=>{
       <div><FL l="Categoria"/><select style={S.fi} value={form.categoria||""} onChange={e=>set("categoria",e.target.value)}>{cats.map(c=><option key={c}>{c}</option>)}</select></div>
       <div><FL l="Forma"/><select style={S.fi} value={form.forma||"PIX"} onChange={e=>set("forma",e.target.value)}>{FORMAS.map(f=><option key={f}>{f}</option>)}</select></div>
       {showC&&<FI l="Cliente" v={form.cliente||""} set={v=>set("cliente",v)} ph="Nome do cliente..."/>}
+      {!showC&&colaboradores&&colaboradores.length>0&&(
+        <div><FL l="Colaborador / Parceiro (opcional)"/>
+          <select style={S.fi} value={form.colaborador_id||""} onChange={e=>set("colaborador_id",e.target.value||null)}>
+            <option value="">— Nenhum —</option>
+            {colaboradores.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
+        </div>
+      )}
       <FI l="Protocolo (opcional)" v={form.protocolo||""} set={v=>set("protocolo",v)} ph="PRO-..."/>
     </div>
   </Modal>);
