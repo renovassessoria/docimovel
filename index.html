@@ -151,7 +151,7 @@ input,select,textarea{font-family:'IBM Plex Sans',sans-serif;}
 })();
 </script>
 <script type="text/babel">
-const {useState,useEffect,useMemo} = React;
+const {useState,useEffect,useMemo,useRef} = React;
 const {createClient} = supabase;
 const sb = createClient("https://dnykryfwvylivzfetjko.supabase.co","sb_publishable_Ep1D6wtOw9z3GtEFc-4WiA_LhO_3aYn");
 const RENOV_LOGO = "";
@@ -684,14 +684,14 @@ const AppContent=({session})=>{
   };
 
   const salvarRec=async(form)=>{
-    const pay={descricao:form.descricao,categoria:form.categoria,valor:Number(form.valor),forma:form.forma,data:form.data,cliente:form.cliente,protocolo:form.protocolo};
+    const pay={descricao:form.descricao,categoria:form.categoria,valor:Number(form.valor),forma:form.forma,data:form.data,cliente:form.cliente,protocolo:form.protocolo,competencia:form.competencia||(form.data||"").slice(0,7)};
     if(form.id){await sb.from("recebimentos").update(pay).eq("id",form.id);setRecebimentos(prev=>prev.map(r=>r.id===form.id?{...r,...pay}:r));}
     else{const{data}=await sb.from("recebimentos").insert(pay).select().single();if(data)setRecebimentos(prev=>[data,...prev]);}
     fecharModal("rec");showToast("Recebimento salvo!");
   };
 
   const salvarPag=async(form)=>{
-    const pay={descricao:form.descricao,categoria:form.categoria,valor:Number(form.valor),forma:form.forma,data:form.data,protocolo:form.protocolo};
+    const pay={descricao:form.descricao,categoria:form.categoria,valor:Number(form.valor),forma:form.forma,data:form.data,protocolo:form.protocolo,competencia:form.competencia||(form.data||"").slice(0,7)};
     if(form.id){await sb.from("pagamentos").update(pay).eq("id",form.id);setPagamentos(prev=>prev.map(p=>p.id===form.id?{...p,...pay}:p));}
     else{const{data}=await sb.from("pagamentos").insert(pay).select().single();if(data)setPagamentos(prev=>[data,...prev]);}
     fecharModal("pag");showToast("Pagamento salvo!");
@@ -2602,6 +2602,12 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
 };
 
 const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPagamentos,totRec,totPag,lucro,dadosMensais,melhorMes,anoFin,setAnoFin,abrirModal,setReciboData,sb})=>{
+  // Hooks do DRE — declarados no topo do componente (sempre executados, conforme Rules of Hooks)
+  const dreRef=useRef(null);
+  const dreAnualRef=useRef(null);
+  const [abaDRE,setAbaDRE]=useState("mensal");
+  const [anoDRE,setAnoDRE]=useState(String(anoFin));
+  const [mesDRE,setMesDRE]=useState(new Date().getMonth());
   const [dtIni,setDtIni]=useState("");
   const [dtFim,setDtFim]=useState("");
   const filtrar=(lista)=>{
@@ -2637,7 +2643,7 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
         <button style={{...S.btnSm,color:"#5a7aaa",borderColor:"#3b82f644"}} onClick={imprimir} className="bs">Extrato PDF</button>
       </PageHeader>
       <div style={{display:"flex",gap:4,padding:"8px 24px",background:"#1e2128",borderBottom:"1px solid #0f1f35"}}>
-        {[{k:"dashboard",l:"Visao Geral"},{k:"recebimentos",l:"Recebimentos"},{k:"pagamentos",l:"Pagamentos"}].map(a=><button key={a.k} onClick={()=>setAba(a.k)} style={{...S.abaBtn,...(aba===a.k?S.abaBtnActive:{})}} className="ab">{a.l}</button>)}
+        {[{k:"dashboard",l:"Visao Geral"},{k:"recebimentos",l:"Recebimentos"},{k:"pagamentos",l:"Pagamentos"},{k:"dre",l:"DRE"}].map(a=><button key={a.k} onClick={()=>setAba(a.k)} style={{...S.abaBtn,...(aba===a.k?S.abaBtnActive:{})}} className="ab">{a.l}</button>)}
       </div>
       <div style={S.body}>
         {aba==="dashboard"&&(
@@ -2710,6 +2716,169 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
             </table>
           </div>
         )}
+        {aba==="dre"&&(()=>{
+          // ── DRE Original — usando lógica do DRE standalone ────────────────
+          const ML_dre=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+          const fmtD=v=>v===0?'—':'R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+          const fmtN=v=>(v<0?'– ':'')+fmtD(Math.abs(v));
+          const compLbl=c=>{const[y,m]=c.split('-');return ML_dre[parseInt(m)-1]+'/'+y.slice(2)};
+          const r2=v=>Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2});
+
+          const recsD=recebimentos.map(r=>({
+            id:r.id,data:r.data||'',
+            comp:r.competencia||(r.data||'').slice(0,7),
+            proto:r.protocolo||'—',
+            desc:r.descricao||'',
+            cliente:r.cliente||'',
+            cat:r.categoria||'Honorários',
+            val:Number(r.valor||0)
+          }));
+          const pagsD=pagamentos.map(p=>({
+            id:p.id,data:p.data||'',
+            comp:p.competencia||(p.data||'').slice(0,7),
+            desc:p.descricao||'',
+            cat:p.categoria||'Outros',
+            val:Number(p.valor||0)
+          }));
+
+          const getRecByComp=c=>recsD.filter(r=>r.comp===c);
+          const getPagByComp=c=>pagsD.filter(p=>p.comp===c);
+          const calcDRE=comp=>{
+            const recs=getRecByComp(comp),pags=getPagByComp(comp);
+            const recTotal=recs.reduce((a,r)=>a+r.val,0);
+            const despTotal=pags.reduce((a,p)=>a+p.val,0);
+            const lucro=recTotal-despTotal;
+            const margem=recTotal>0?Math.round(lucro/recTotal*100):0;
+            return{recs,pags,recTotal,despTotal,lucro,margem};
+          };
+
+          const renderMensal=()=>{
+            const comp=anoDRE+'-'+(mesDRE+1).toString().padStart(2,'0');
+            const{recs,pags,recTotal,despTotal,lucro,margem}=calcDRE(comp);
+            let h='<table style="width:100%;border-collapse:collapse">';
+            h+='<tr style="border-bottom:1px solid var(--border)"><td colspan="3" style="font-size:11px;font-weight:600;color:var(--text2);letter-spacing:.05em;text-transform:uppercase;padding:16px 8px 4px">Receitas brutas</td></tr>';
+            if(!recs.length) h+='<tr><td colspan="3" style="color:var(--text3);font-size:12px;padding:20px 8px;text-align:center">Nenhum recebimento neste mês.</td></tr>';
+            recs.forEach(r=>{
+              h+=`<tr><td style="padding:5px 8px"><span style="display:inline-block;padding:1px 7px;border-radius:3px;font-size:10px;font-family:monospace;background:var(--bg3);color:var(--text2)">${r.proto||'—'}</span></td><td style="padding:5px 8px;color:var(--text2)">${r.desc}${r.cliente?` <span style="font-size:11px;color:var(--text3)">· ${r.cliente}</span>`:''}</td><td style="padding:5px 8px;text-align:right;font-variant-numeric:tabular-nums;color:var(--green)">${fmtD(r.val)}</td></tr>`;
+            });
+            h+=`<tr style="border-top:1px solid var(--border)"><td colspan="2" style="padding:5px 8px;font-weight:500">( = ) Receita bruta total</td><td style="padding:5px 8px;text-align:right;font-weight:500;color:var(--green)">${fmtD(recTotal)}</td></tr>`;
+            h+=`<tr style="border-bottom:1px solid var(--border)"><td colspan="3" style="font-size:11px;font-weight:600;color:var(--text2);letter-spacing:.05em;text-transform:uppercase;padding:16px 8px 4px">Despesas — competência ${compLbl(comp)}</td></tr>`;
+            if(!pags.length) h+='<tr><td colspan="3" style="color:var(--text3);font-size:12px;padding:20px 8px;text-align:center">Nenhuma despesa neste mês.</td></tr>';
+            pags.forEach(p=>{
+              h+=`<tr><td style="padding:5px 8px"></td><td style="padding:5px 8px;color:var(--text2)">${p.desc} <span style="display:inline-block;padding:1px 7px;border-radius:3px;font-size:10px;background:var(--bg3);color:var(--text2)">${compLbl(p.comp)}</span></td><td style="padding:5px 8px;text-align:right;color:var(--red)">– ${fmtD(p.val)}</td></tr>`;
+            });
+            h+=`<tr style="border-top:1px solid var(--border)"><td colspan="2" style="padding:5px 8px;font-weight:500">( = ) Total despesas</td><td style="padding:5px 8px;text-align:right;font-weight:500;color:var(--red)">– ${fmtD(despTotal)}</td></tr>`;
+            const cls=lucro>=0?'var(--green)':'var(--red)';
+            const badge=lucro>=0?'<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:500;background:var(--green-lt);color:var(--green-dk)">Lucro</span>':'<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:500;background:var(--red-lt);color:var(--red-dk)">Prejuízo</span>';
+            h+=`<tr style="border-top:1.5px solid var(--border2)"><td colspan="2" style="padding:10px 8px;font-weight:600;font-size:14px">${badge}&ensp;Resultado do período</td><td style="padding:10px 8px;text-align:right;font-weight:600;font-size:14px;color:${cls}">${fmtN(lucro)}</td></tr>`;
+            h+='</table>';
+            const mw=Math.min(100,Math.abs(margem));
+            h+=`<div style="height:5px;border-radius:3px;background:var(--border);margin-top:12px;overflow:hidden"><div style="height:100%;border-radius:3px;width:${mw}%;background:${margem>=0?'var(--green)':'var(--red)'}"></div></div>`;
+            h+=`<div style="display:flex;justify-content:space-between;margin-top:5px;font-size:11px;color:var(--text2)"><span>Margem líquida</span><span>${margem}%</span></div>`;
+            if(dreRef.current) dreRef.current.innerHTML=h;
+          };
+
+          const renderAnual=()=>{
+            const dados=ML_dre.map((_,i)=>{const c=anoDRE+'-'+(i+1).toString().padStart(2,'0');return{comp:c,...calcDRE(c)};});
+            const tR=dados.reduce((a,d)=>a+d.recTotal,0);
+            const tD=dados.reduce((a,d)=>a+d.despTotal,0);
+            const tL=dados.reduce((a,d)=>a+d.lucro,0);
+            const mA=tR>0?Math.round(tL/tR*100):0;
+            let h=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">`;
+            [{l:'Receita total '+anoDRE,v:tR,c:'var(--green)'},{l:'Despesas totais',v:tD,c:'var(--red)'},{l:'Resultado líquido',v:tL,c:tL>=0?'var(--green)':'var(--red)'},{l:'Margem média',t:mA+'%',c:mA>=0?'var(--green)':'var(--red)'}].forEach(x=>{
+              h+=`<div style="background:var(--bg2);border-radius:8px;padding:12px 14px;border:0.5px solid var(--border)"><div style="font-size:11px;color:var(--text2);margin-bottom:5px">${x.l}</div><div style="font-size:16px;font-weight:600;color:${x.c}">${x.t||fmtN(x.v)}</div></div>`;
+            });
+            h+=`</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="text-align:left;font-size:11px;font-weight:500;color:var(--text2);padding:5px 8px;border-bottom:0.5px solid var(--border)">Indicador</th>`;
+            ML_dre.forEach(m=>h+=`<th style="font-size:11px;font-weight:500;color:var(--text2);padding:5px 8px;text-align:right;border-bottom:0.5px solid var(--border);white-space:nowrap">${m}</th>`);
+            h+=`<th style="font-size:11px;font-weight:500;color:var(--text2);padding:5px 8px;text-align:right;border-bottom:0.5px solid var(--border)">Total</th></tr></thead><tbody>`;
+            h+=`<tr><td colspan="14" style="font-size:11px;font-weight:600;color:var(--text2);letter-spacing:.05em;text-transform:uppercase;padding:14px 8px 3px">Receitas</td></tr>`;
+            h+=`<tr><td style="padding:4px 8px;color:var(--text);font-weight:500">Honorários</td>`;
+            dados.forEach(d=>h+=`<td style="padding:4px 8px;text-align:right;color:${d.recTotal>0?'var(--green)':'var(--text3)'}">${d.recTotal>0?fmtD(d.recTotal):'—'}</td>`);
+            h+=`<td style="padding:4px 8px;text-align:right;color:var(--green);font-weight:600">${fmtD(tR)}</td></tr>`;
+            h+=`<tr><td colspan="14" style="font-size:11px;font-weight:600;color:var(--text2);letter-spacing:.05em;text-transform:uppercase;padding:14px 8px 3px">Despesas</td></tr>`;
+            h+=`<tr><td style="padding:4px 8px;color:var(--text);font-weight:500">Total despesas</td>`;
+            dados.forEach(d=>h+=`<td style="padding:4px 8px;text-align:right;color:${d.despTotal>0?'var(--red)':'var(--text3)'}">${d.despTotal>0?'–'+fmtD(d.despTotal):'—'}</td>`);
+            h+=`<td style="padding:4px 8px;text-align:right;color:var(--red);font-weight:600">–${fmtD(tD)}</td></tr>`;
+            h+=`<tr><td style="padding:4px 8px;color:var(--text);font-weight:500">Resultado</td>`;
+            dados.forEach(d=>{const em=d.recTotal===0&&d.despTotal===0;h+=`<td style="padding:4px 8px;text-align:right;color:${em?'var(--text3)':d.lucro>=0?'var(--green)':'var(--red)'}">${em?'—':fmtN(d.lucro)}</td>`;});
+            h+=`<td style="padding:4px 8px;text-align:right;font-weight:600;color:${tL>=0?'var(--green)':'var(--red)'}">${fmtN(tL)}</td></tr>`;
+            h+=`<tr><td style="padding:4px 8px;color:var(--text);font-weight:500;border-top:1.5px solid var(--border2)">Margem %</td>`;
+            dados.forEach(d=>{const em=d.recTotal===0&&d.despTotal===0;h+=`<td style="padding:4px 8px;text-align:right;border-top:1.5px solid var(--border2);color:${em?'var(--text3)':d.margem>=0?'var(--green)':'var(--red)'}">${em?'—':d.margem+'%'}</td>`;});
+            h+=`<td style="padding:4px 8px;text-align:right;font-weight:600;border-top:1.5px solid var(--border2);color:${mA>=0?'var(--green)':'var(--red)'}">${mA}%</td></tr>`;
+            h+=`</tbody></table></div>`;
+            if(dreAnualRef.current) dreAnualRef.current.innerHTML=h;
+          };
+
+          // Renderiza direto após cálculo (sem useEffect, pois estamos dentro de IIFE)
+          if(abaDRE==="mensal")setTimeout(renderMensal,0);else setTimeout(renderAnual,0);
+
+          const imprimirDRE=()=>{
+            const dados=ML_dre.map((_,i)=>{const c=anoDRE+'-'+(i+1).toString().padStart(2,'0');return{comp:c,...calcDRE(c)};});
+            const tR=dados.reduce((a,d)=>a+d.recTotal,0);
+            const tD=dados.reduce((a,d)=>a+d.despTotal,0);
+            const tL=tR-tD;
+            const mA=tR>0?Math.round(tL/tR*100):0;
+            const hoje=new Date().toLocaleDateString('pt-BR');
+            let p=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>DRE ${anoDRE}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:9pt;color:#111;background:#fff;padding:15mm 18mm}.header{border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-end}.header h1{font-size:13pt;font-weight:bold;margin-bottom:3px}.header .sub{font-size:8pt;color:#444;line-height:1.7}.header .emissao{font-size:8pt;color:#666;text-align:right;line-height:1.7}.section{font-size:7.5pt;font-weight:bold;letter-spacing:.06em;text-transform:uppercase;color:#666;border-bottom:1px solid #ccc;padding-bottom:2px;margin:16px 0 6px}table{width:100%;border-collapse:collapse;margin-bottom:4px}th{font-size:8pt;font-weight:bold;padding:4px 6px;border-bottom:1.5px solid #999;text-align:right}th:first-child{text-align:left}td{font-size:8pt;padding:3px 6px;border-bottom:0.5px solid #eee}.sub-row td{font-weight:bold;border-top:1px solid #bbb;background:#f7f7f7}.total-row td{font-weight:bold;font-size:9.5pt;border-top:2px solid #555;padding:5px 6px}.pos{color:#0a6644}.neg{color:#8b2a0e}.resumo{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}.card{border:1px solid #ccc;border-radius:4px;padding:8px 10px}.card .lbl{font-size:7.5pt;color:#666;margin-bottom:3px}.card .num{font-size:11pt;font-weight:bold}.blank{display:inline-block;min-width:180px;border-bottom:1px solid #999;margin:0 4px;height:14px}.sign-area{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:28px}.sign-box{text-align:center}.sign-line{border-top:1px solid #999;padding-top:6px;font-size:8pt;color:#333}.sign-sub{font-size:7.5pt;color:#888;margin-top:2px}.footer{margin-top:20px;font-size:7.5pt;color:#888;border-top:0.5px solid #ccc;padding-top:8px;display:flex;justify-content:space-between}@media print{@page{margin:15mm 18mm}body{padding:0}}</style></head><body>`;
+            p+=`<div class="header"><div><h1>Demonstração do Resultado do Exercício</h1><div class="sub">Carlos Alberto Advocacia – Sociedade Individual de Advocacia<br>CNPJ 53.826.458/0001-60 &nbsp;|&nbsp; OAB/BA 77.882<br>Rua Barão do Cotegipe, nº 1.479 – Edf. Ferbel – Feira de Santana/BA</div></div><div class="emissao">Exercício: <strong>${anoDRE}</strong><br>Emitido em: ${hoje}<br>Regime de caixa</div></div>`;
+            p+=`<div class="resumo"><div class="card"><div class="lbl">Receita total ${anoDRE}</div><div class="num pos">R$ ${r2(tR)}</div></div><div class="card"><div class="lbl">Despesas totais</div><div class="num neg">R$ ${r2(tD)}</div></div><div class="card"><div class="lbl">Resultado líquido</div><div class="num ${tL>=0?'pos':'neg'}">${tL<0?'– ':''}R$ ${r2(Math.abs(tL))}</div></div><div class="card"><div class="lbl">Margem média anual</div><div class="num ${mA>=0?'pos':'neg'}">${mA}%</div></div></div>`;
+            p+=`<div class="section">Resultado consolidado – ${anoDRE}</div><table><thead><tr><th style="text-align:left">Mês</th><th>Receita bruta</th><th>Despesas</th><th>Resultado</th><th>Margem</th></tr></thead><tbody>`;
+            dados.forEach(d=>{
+              if(d.recTotal===0&&d.despTotal===0)return;
+              const lc=d.lucro>=0?'color:#0a6644':'color:#8b2a0e';
+              const comp=d.comp;const m=ML_dre[parseInt(comp.split('-')[1])-1];const y=comp.split('-')[0].slice(2);
+              p+=`<tr><td>${m}/${y}</td><td style="text-align:right;color:#0a6644">R$ ${r2(d.recTotal)}</td><td style="text-align:right;color:#8b2a0e">R$ ${r2(d.despTotal)}</td><td style="text-align:right;${lc}">${d.lucro<0?'– ':''}R$ ${r2(Math.abs(d.lucro))}</td><td style="text-align:right;${lc}">${d.margem}%</td></tr>`;
+            });
+            p+=`<tr class="total-row"><td>Total ${anoDRE}</td><td style="text-align:right;color:#0a6644">R$ ${r2(tR)}</td><td style="text-align:right;color:#8b2a0e">R$ ${r2(tD)}</td><td style="text-align:right;${tL>=0?'color:#0a6644':'color:#8b2a0e'}">${tL<0?'– ':''}R$ ${r2(Math.abs(tL))}</td><td style="text-align:right;${mA>=0?'color:#0a6644':'color:#8b2a0e'}">${mA}%</td></tr></tbody></table>`;
+            dados.forEach(d=>{
+              if(d.recTotal===0&&d.despTotal===0)return;
+              const comp=d.comp;const m=ML_dre[parseInt(comp.split('-')[1])-1];const y=comp.split('-')[0].slice(2);
+              p+=`<div class="section">Detalhamento – ${m}/${y}</div><table><thead><tr><th style="text-align:left;width:20%">Protocolo</th><th style="text-align:left">Descrição / Cliente</th><th>Valor</th></tr></thead><tbody>`;
+              d.recs.forEach(r=>{p+=`<tr><td style="font-family:monospace;font-size:7.5pt">${r.proto||'—'}</td><td>${r.desc}${r.cliente?' – '+r.cliente:''}</td><td style="text-align:right;color:#0a6644">R$ ${r2(r.val)}</td></tr>`;});
+              p+=`<tr class="sub-row"><td colspan="2">Receita bruta total</td><td style="text-align:right;color:#0a6644">R$ ${r2(d.recTotal)}</td></tr>`;
+              d.pags.forEach(pg=>{p+=`<tr><td style="color:#999;font-size:7.5pt">${pg.cat}</td><td>${pg.desc}</td><td style="text-align:right;color:#8b2a0e">– R$ ${r2(pg.val)}</td></tr>`;});
+              p+=`<tr class="sub-row"><td colspan="2">Total despesas</td><td style="text-align:right;color:#8b2a0e">– R$ ${r2(d.despTotal)}</td></tr>`;
+              const lc=d.lucro>=0?'color:#0a6644':'color:#8b2a0e';
+              p+=`<tr class="total-row"><td colspan="2">Resultado do período</td><td style="text-align:right;${lc}">${d.lucro<0?'– ':''}R$ ${r2(Math.abs(d.lucro))}</td></tr></tbody></table>`;
+            });
+            p+=`<div class="sign-area"><div class="sign-box"><div style="height:40px"></div><div class="sign-line">Carlos Alberto P. de Jesus Junior<div class="sign-sub">Advogado – OAB/BA 77.882</div></div></div><div class="sign-box"><div style="height:40px"></div><div class="sign-line"><span class="blank"></span><div class="sign-sub">Contador responsável / CRC</div></div></div><div class="sign-box"><div style="height:40px"></div><div class="sign-line"><span class="blank"></span><div class="sign-sub">Testemunha / Cargo</div></div></div></div><div class="footer"><span>Carlos Alberto Advocacia – CNPJ 53.826.458/0001-60</span><span>Emitido em ${hoje} · Regime de caixa</span></div></body></html>`;
+            const w=window.open('','_blank');w.document.write(p);w.document.close();setTimeout(()=>w.print(),400);
+          };
+
+          return(
+            <div>
+              <style>{`
+                :root{--green:#1D9E75;--green-lt:#E1F5EE;--green-dk:#0F6E56;--red:#D85A30;--red-lt:#FAECE7;--red-dk:#993C1D;--bg:#1e2128;--bg2:#22252e;--bg3:#2a2d36;--text:#d6d3cc;--text2:#8a8782;--text3:#4a4d56;--border:#2a2d36;--border2:#3a3d46}
+              `}</style>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap',gap:8}}>
+                <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                  <button onClick={()=>setAbaDRE("mensal")} style={{...S.abaBtn,...(abaDRE==="mensal"?S.abaBtnActive:{})}} className="ab">DRE Mensal</button>
+                  <button onClick={()=>setAbaDRE("anual")} style={{...S.abaBtn,...(abaDRE==="anual"?S.abaBtnActive:{})}} className="ab">DRE Anual</button>
+                </div>
+                <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                  <select style={S.selectSm} value={anoDRE} onChange={e=>setAnoDRE(e.target.value)}>
+                    {[2024,2025,2026,2027].map(a=><option key={a}>{a}</option>)}
+                  </select>
+                  <button style={S.btnPrimary} onClick={imprimirDRE} className="bp">Imprimir DRE</button>
+                </div>
+              </div>
+
+              {abaDRE==="mensal"&&(
+                <div style={{display:'flex',gap:4,marginBottom:16,flexWrap:'wrap'}}>
+                  {ML_dre.map((m,i)=>(
+                    <button key={i} onClick={()=>setMesDRE(i)}
+                      style={{...S.btnSm,...(mesDRE===i?{background:'rgba(29,158,117,0.12)',color:'#1D9E75',borderColor:'rgba(29,158,117,0.3)'}:{})}}
+                      className="bs">{m}</button>
+                  ))}
+                </div>
+              )}
+
+              {abaDRE==="mensal"&&<div ref={dreRef} style={{background:'#1e2128',borderRadius:8,padding:'0 4px'}}/>}
+              {abaDRE==="anual"&&<div ref={dreAnualRef} style={{background:'#1e2128',borderRadius:8,padding:'0 4px'}}/>}
+            </div>
+          );
+        })()}
+
       </div>
     </div>
   );
@@ -2752,7 +2921,7 @@ const GraficoPizza=({pago,resultado,total})=>{
               </div>
             </div>
           ))}
-        </div>
+                </div>
       </div>
     </div>
   );
@@ -3944,6 +4113,7 @@ const ModalLanc=({titulo,form,setForm,cats,onSave,onClose,cor,showC})=>{
       <div style={{gridColumn:"1/-1"}}><FI l="Descrição" v={form.descricao||""} set={v=>set("descricao",v)} ph="Descreva..."/></div>
       <FI l="Valor (R$)" v={form.valor||""} set={v=>set("valor",v)} type="number"/>
       <FI l="Data" v={form.data||""} set={v=>set("data",v)} type="date"/>
+      <div><FL l="Competência (mês/ano)"/><input type="month" style={S.fi} value={form.competencia||(form.data||"").slice(0,7)} onChange={e=>set("competencia",e.target.value)}/></div>
       <div><FL l="Categoria"/><select style={S.fi} value={form.categoria||""} onChange={e=>set("categoria",e.target.value)}>{cats.map(c=><option key={c}>{c}</option>)}</select></div>
       <div><FL l="Forma"/><select style={S.fi} value={form.forma||"PIX"} onChange={e=>set("forma",e.target.value)}>{FORMAS.map(f=><option key={f}>{f}</option>)}</select></div>
       {showC&&<FI l="Cliente" v={form.cliente||""} set={v=>set("cliente",v)} ph="Nome do cliente..."/>}
