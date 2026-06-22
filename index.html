@@ -542,7 +542,7 @@ const AppContent=({session})=>{
           tipoProcesso:sv.tipo_processo||sv.tipoProcesso||(sv.dados_judiciais&&Object.keys(sv.dados_judiciais||{}).length>0?"judicial":(sv.estagio==="Judiciário"||sv.estagio==="Judicial"?"judicial":"extrajudicial")),
           dadosJudiciais:sv.dados_judiciais||sv.dadosJudiciais||{},
           prazoConclusao:sv.prazo_conclusao||sv.prazoConclusao||null,
-          diligencias:sv.diligencias||[],
+          diligencias:(sv.diligencias||[]).map(d=>({...d,dataConclusao:d.data_conclusao||d.dataConclusao||null})),
           pagamentos:(sv.pagamentos_processo||[]).map(p=>({...p,
             parcelado:p.parcelado||false,
             status:p.status||"pendente",
@@ -3051,7 +3051,11 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
           const hoje=new Date().toISOString().slice(0,10);
 
           // ── Cálculo: recebido, a receber, potencial ───────────────────────
-          // Mesma lógica do Relatório Honorários — garante consistência
+          // Recebido = recebimentos financeiros já lançados no ano
+          const recebidoReal=recebimentos
+            .filter(r=>(r.data||"").startsWith(anoAtual)&&(r.data||"")<=hoje)
+            .reduce((a,r)=>a+Number(r.valor||0),0);
+          // A receber = saldo remanescente dos serviços fechados (lógica do Relatório Honorários)
           const saldosMeta=(servicos||[])
             .filter(s=>s.status!=="Orçamento"&&s.orcamento?.status!=="Orçamento")
             .map(s=>{
@@ -3059,11 +3063,9 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
               const pago=(s.pagamentos||[])
                 .filter(p=>p.status==="pago"||(p.data&&p.data<=hoje))
                 .reduce((a,p)=>a+Number(p.valor||0),0);
-              const saldo=valorLiq-pago;
-              return{valorLiq,pago,saldo};
+              return Math.max(0,valorLiq-pago);
             });
-          const recebidoReal=saldosMeta.reduce((a,s)=>a+s.pago,0);
-          const aReceber=saldosMeta.filter(s=>s.saldo>0).reduce((a,s)=>a+s.saldo,0);
+          const aReceber=saldosMeta.reduce((a,s)=>a+s,0);
 
           // Orçamentos em aberto (potencial extra, não entra no "a receber")
           const orcamentosAbertos=(servicos||[])
