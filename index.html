@@ -1321,7 +1321,7 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
                     <div style={{display:"flex",gap:4,flexShrink:0}}>
                       {d.status!=="Concluída"&&<>
                         <button style={{...S.btnSm,color:"#5a7aaa",borderColor:"#3b82f644"}} onClick={()=>atualizar({diligencias:(servico.diligencias||[]).map(x=>x.id===d.id?{...x,status:"Em andamento"}:x)})} className="bs">Em and.</button>
-                        <button style={{...S.btnSm,color:"#5a8f6e",borderColor:"#22c55e44"}} onClick={()=>atualizar({diligencias:(servico.diligencias||[]).map(x=>x.id===d.id?{...x,status:"Concluída",dataConclusao:td()}:x)})} className="bs">✓ Concluir</button>
+                        <button style={{...S.btnSm,color:"#5a8f6e",borderColor:"#22c55e44"}} onClick={()=>atualizar({diligencias:(servico.diligencias||[]).map(x=>x.id===d.id?{...x,status:"Concluída",dataConclusao:new Date().toISOString().slice(0,10)}:x)})} className="bs">✓ Concluir</button>
                       </>}
                       <button style={S.btnSm} onClick={()=>setModalDilig2({...d})} className="bs">Editar</button>
                       <button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir esta diligência?"))return;atualizar({diligencias:(servico.diligencias||[]).filter(x=>x.id!==d.id)});}} className="bs">✕</button>
@@ -2148,7 +2148,7 @@ const TelaProcessoDetalhe=({servico,aba,setAba,atualizar,voltar,cn})=>{
         <div style={S.card}><div style={S.cardTitle}>Resumo</div><InfoRow l="Tipo" v={servico.tipo}/><InfoRow l="Protocolo" v={servico.protocolo}/><InfoRow l="Abertura" v={(servico.created_at||"").slice(0,10)}/><InfoRow l="Estágio" v={servico.estagio}/><div style={{marginTop:12}}><FL l="Progresso"/><div style={{height:6,background:"#2a2d36",borderRadius:999,overflow:"hidden",marginBottom:4}}><div style={{width:Math.round(((servico.estagios||[]).filter(e=>e.concluido).length/Math.max((servico.estagios||[]).length,1))*100)+"%",height:"100%",background:"linear-gradient(90deg,#5a8f6e,#4a7a5e)",borderRadius:999}}/></div><span style={{fontSize:11,color:"#5a5d66"}}>{(servico.estagios||[]).filter(e=>e.concluido).length} de {(servico.estagios||[]).length} etapas</span></div></div>
       </div>}
       {aba==="diligencias"&&<div><div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}><button style={S.btnPrimary} onClick={()=>setModalDilig({status:"Pendente",prazo:""})} className="bp">+ Nova Diligência</button></div>
-        {grupos.map(g=>g.items.length>0&&<div key={g.l} style={{marginBottom:14}}><div style={{fontSize:11,fontWeight:800,color:g.c,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:8}}>{g.l}</div>{g.items.map(d=>{const dias=d.prazo?dd(d.prazo):99;const venc=dias<0&&d.status!=="Concluída";return(<div key={d.id} style={{...S.card,borderLeft:"3px solid "+g.c,marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}><div style={{flex:1}}><div style={{fontWeight:600,color:"#d6d3cc",fontSize:13,textDecoration:d.status==="Concluída"?"line-through":"none"}}>{d.descricao}</div><div style={{display:"flex",gap:10,marginTop:4,flexWrap:"wrap"}}>{d.orgao&&<span style={{fontSize:11,color:"#5a5d66"}}>📍 {d.orgao}</span>}{d.ref&&<span style={{fontSize:11,color:"#5a5d66"}}>🔖 {d.ref}</span>}{d.responsavel&&<span style={{fontSize:11,color:"#5a5d66"}}>👤 {d.responsavel}</span>}{d.prazo&&<span style={{fontSize:11,color:venc?"#b46464":dias<=1?"#a87840":"#5a5d66",fontWeight:venc||dias<=1?700:400}}>📅 {d.prazo}{d.status!=="Concluída"&&` (${venc?`venc.${Math.abs(dias)}d`:dias===0?"hoje":dias===1?"amanhã":`${dias}d`})`}</span>}<Tag label={d.status==="Concluída"&&d.dataConclusao?"Concluída em "+d.dataConclusao.split("-").reverse().join("/"):d.status} color={d.status==="Concluída"?"#5a8f6e":d.status==="Em andamento"?"#5a7aaa":d.status==="Aguardando Órgão"?"#7a6aaa":"#a87840"}/></div></div><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{d.status!=="Concluída"&&<><button style={S.btnSm} onClick={()=>{atualizar({diligencias:(servico.diligencias||[]).map(x=>x.id===d.id?{...x,status:"Em andamento"}:x)});}} className="bs">Em and.</button><button style={{...S.btnSm,background:"#22c55e22",color:"#5a8f6e",borderColor:"#22c55e44"}} onClick={()=>{atualizar({diligencias:(servico.diligencias||[]).map(x=>x.id===d.id?{...x,status:"Concluída",dataConclusao:td()}:x)});}} className="bs">✓</button></>}<button style={S.btnSm} onClick={()=>setModalDilig({...d})} className="bs">Ed.</button><button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir esta diligência?"))return;atualizar({diligencias:(servico.diligencias||[]).filter(x=>x.id!==d.id)});}} className="bs">✕</button></div></div></div>);})}</div>)}
+        {grupos.map(g=>g.items.length>0&&<div key={g.l} style={{marginBottom:14}}><div style={{fontSize:11,fontWeight:800,color:g.c,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:8}}>{g.l}</div>{g.items.map(d=>{const dias=d.prazo?dd(d.prazo):99;const venc=dias<0&&d.status!=="Concluída";return(<div key={d.id} style={{...S.card,borderLeft:"3px solid "+g.c,marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}><div style={{flex:1}}><div style={{fontWeight:600,color:"#d6d3cc",fontSize:13,textDecoration:d.status==="Concluída"?"line-through":"none"}}>{d.descricao}</div><div style={{display:"flex",gap:10,marginTop:4,flexWrap:"wrap"}}>{d.orgao&&<span style={{fontSize:11,color:"#5a5d66"}}>📍 {d.orgao}</span>}{d.ref&&<span style={{fontSize:11,color:"#5a5d66"}}>🔖 {d.ref}</span>}{d.responsavel&&<span style={{fontSize:11,color:"#5a5d66"}}>👤 {d.responsavel}</span>}{d.prazo&&<span style={{fontSize:11,color:venc?"#b46464":dias<=1?"#a87840":"#5a5d66",fontWeight:venc||dias<=1?700:400}}>📅 {d.prazo}{d.status!=="Concluída"&&` (${venc?`venc.${Math.abs(dias)}d`:dias===0?"hoje":dias===1?"amanhã":`${dias}d`})`}</span>}<Tag label={d.status==="Concluída"&&d.dataConclusao?"Concluída em "+d.dataConclusao.split("-").reverse().join("/"):d.status} color={d.status==="Concluída"?"#5a8f6e":d.status==="Em andamento"?"#5a7aaa":d.status==="Aguardando Órgão"?"#7a6aaa":"#a87840"}/></div></div><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{d.status!=="Concluída"&&<><button style={S.btnSm} onClick={()=>{atualizar({diligencias:(servico.diligencias||[]).map(x=>x.id===d.id?{...x,status:"Em andamento"}:x)});}} className="bs">Em and.</button><button style={{...S.btnSm,background:"#22c55e22",color:"#5a8f6e",borderColor:"#22c55e44"}} onClick={()=>{atualizar({diligencias:(servico.diligencias||[]).map(x=>x.id===d.id?{...x,status:"Concluída",dataConclusao:new Date().toISOString().slice(0,10)}:x)});}} className="bs">✓</button></>}<button style={S.btnSm} onClick={()=>setModalDilig({...d})} className="bs">Ed.</button><button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir esta diligência?"))return;atualizar({diligencias:(servico.diligencias||[]).filter(x=>x.id!==d.id)});}} className="bs">✕</button></div></div></div>);})}</div>)}
         {(servico.diligencias||[]).length===0&&<div style={S.empty}>Nenhuma diligência registrada.</div>}
       </div>}
     </div>
@@ -3051,23 +3051,26 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
           const hoje=new Date().toISOString().slice(0,10);
 
           // ── Cálculo: recebido, a receber, potencial ───────────────────────
-          const pagsAno=pagamentos.filter(p=>false); // placeholder, não usado aqui
-          const recsAno=recebimentos.filter(r=>(r.data||"").startsWith(anoAtual));
-          const recebidoReal=recsAno.filter(r=>(r.data||"")<=hoje).reduce((a,r)=>a+Number(r.valor||0),0);
-
-          // Parcelas futuras já cadastradas nos serviços (status pendente, data futura, no ano)
-          const parcelasFuturas=(servicos||[]).flatMap(s=>(s.pagamentos||[])
-            .filter(p=>p.status!=="pago"&&p.data&&p.data>hoje&&p.data.startsWith(anoAtual))
-          ).reduce((a,p)=>a+Number(p.valor||0),0);
+          // Mesma lógica do Relatório Honorários — garante consistência
+          const saldosMeta=(servicos||[])
+            .filter(s=>s.status!=="Orçamento"&&s.orcamento?.status!=="Orçamento")
+            .map(s=>{
+              const valorLiq=Number(s.orcamento?.valor||0)-Number(s.orcamento?.desconto||0);
+              const pago=(s.pagamentos||[])
+                .filter(p=>p.status==="pago"||(p.data&&p.data<=hoje))
+                .reduce((a,p)=>a+Number(p.valor||0),0);
+              const saldo=valorLiq-pago;
+              return{valorLiq,pago,saldo};
+            });
+          const recebidoReal=saldosMeta.reduce((a,s)=>a+s.pago,0);
+          const aReceber=saldosMeta.filter(s=>s.saldo>0).reduce((a,s)=>a+s.saldo,0);
 
           // Orçamentos em aberto (potencial extra, não entra no "a receber")
           const orcamentosAbertos=(servicos||[])
             .filter(s=>s.orcamento?.status==="Orçamento"||s.status==="Orçamento")
             .reduce((a,s)=>a+Number(s.orcamento?.valor||0),0);
 
-          const aReceber=parcelasFuturas;
           const potencialTotal=recebidoReal+aReceber;
-          const potencialMaximo=potencialTotal+orcamentosAbertos;
 
           // ── Meta do ano ─────────────────────────────────────────────────
           const metaAnoAtual=metas[anoAtual];
