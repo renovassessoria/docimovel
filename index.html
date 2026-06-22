@@ -438,6 +438,7 @@ const AppContent=({session})=>{
   const [tela,setTela]=useState("dashboard");
   const [clientes,setClientes]=useState([]);
   const [colaboradores,setColaboradores]=useState([]);
+  const [metas,setMetas]=useState({});
   const [servicos,setServicos]=useState([]);
   const [recebimentos,setRecebimentos]=useState([]);
   const [pagamentos,setPagamentos]=useState([]);
@@ -477,8 +478,9 @@ const AppContent=({session})=>{
         sb.from("leads").select("*").order("created_at",{ascending:false}),
       ]);
       try{const{data:colData}=await sb.from("colaboradores").select("*").order("nome",{ascending:true});if(colData)setColaboradores(colData);}catch(e){}
+      try{const{data:metaData}=await sb.from("configuracoes").select("dados").eq("id","metas").single();if(metaData?.dados)setMetas(metaData.dados);}catch(e){}
       if(c.data)setClientes(c.data.map(x=>({...x,estadoCivil:x.estado_civil||"",profissao:x.profissao||"",naturalidade:x.naturalidade||"",filiacao:x.filiacao||"",dataNascimento:x.data_nascimento||"",cnh:x.cnh||"",conjugeNome:x.conjuge_nome||"",conjugeCpf:x.conjuge_cpf||"",conjugeRg:x.conjuge_rg||"",conjugeProfissao:x.conjuge_profissao||"",conjugeNaturalidade:x.conjuge_naturalidade||"",conjugeFiliacao:x.conjuge_filiacao||"",regimeBens:x.regime_bens||"",dataCasamento:x.data_casamento||"",cartorioCasamento:x.cartorio_casamento||"",casamentoLivro:x.casamento_livro||"",casamentoFolha:x.casamento_folha||"",matriculaCasamento:x.casamento_matricula||""})));
-      if(s.data)setServicos(s.data.map(sv=>({...sv,clienteId:sv.cliente_id,tipoProcesso:sv.tipo_processo||sv.tipoProcesso||(sv.dados_judiciais&&Object.keys(sv.dados_judiciais||{}).length>0?"judicial":(sv.estagio==="Judiciário"||sv.estagio==="Judicial"?"judicial":"extrajudicial")),dadosJudiciais:sv.dados_judiciais||sv.dadosJudiciais||{},prazoConclusao:sv.prazo_conclusao||sv.prazoConclusao||null,diligencias:sv.diligencias||[],pagamentos:(sv.pagamentos_processo||[]).map(p=>({...p,parcelado:p.parcelado||false,status:p.status||"pendente",dataPagamento:p.data_pagamento||null,grupoParcela:p.grupo_parcela||null,parcelaNumero:p.parcela_numero||null,totalParcelas:p.total_parcelas||null,notaFiscal:p.nota_fiscal||false})),estagios:sv.estagios||[],checklist:sv.checklist||{},outrosDesc:sv.outros_desc||"",orcamento:sv.orcamento||{valor:0,desconto:0,obs:"",status:"Orçamento"}})));
+      if(s.data)setServicos(s.data.map(sv=>({...sv,clienteId:sv.cliente_id,tipoProcesso:sv.tipo_processo||sv.tipoProcesso||(sv.dados_judiciais&&Object.keys(sv.dados_judiciais||{}).length>0?"judicial":(sv.estagio==="Judiciário"||sv.estagio==="Judicial"?"judicial":"extrajudicial")),dadosJudiciais:sv.dados_judiciais||sv.dadosJudiciais||{},prazoConclusao:sv.prazo_conclusao||sv.prazoConclusao||null,diligencias:(sv.diligencias||[]).map(d=>({...d,dataConclusao:d.data_conclusao||d.dataConclusao||null})),pagamentos:(sv.pagamentos_processo||[]).map(p=>({...p,parcelado:p.parcelado||false,status:p.status||"pendente",dataPagamento:p.data_pagamento||null,grupoParcela:p.grupo_parcela||null,parcelaNumero:p.parcela_numero||null,totalParcelas:p.total_parcelas||null,notaFiscal:p.nota_fiscal||false})),estagios:sv.estagios||[],checklist:sv.checklist||{},outrosDesc:sv.outros_desc||"",orcamento:sv.orcamento||{valor:0,desconto:0,obs:"",status:"Orçamento"}})));
       if(r.data)setRecebimentos(r.data);
       if(p.data)setPagamentos(p.data);
       if(u.data)setUsuarios(u.data);
@@ -611,8 +613,8 @@ const AppContent=({session})=>{
       const sv=servicos.find(s=>s.id===id);
       const antigas=(sv?.diligencias||[]).map(d=>d.id);
       for(const d of patch.diligencias){
-        if(!d.id||String(d.id).length<20){const{data}=await sb.from("diligencias").insert({servico_id:id,descricao:d.descricao,orgao:d.orgao,prazo:d.prazo||null,status:d.status,obs:d.obs,ref:d.ref||null,responsavel:d.responsavel||null}).select().single();if(data)d.id=data.id;}
-        else await sb.from("diligencias").update({descricao:d.descricao,orgao:d.orgao,prazo:d.prazo||null,status:d.status,obs:d.obs,ref:d.ref||null,responsavel:d.responsavel||null}).eq("id",d.id);
+        if(!d.id||String(d.id).length<20){const{data}=await sb.from("diligencias").insert({servico_id:id,descricao:d.descricao,orgao:d.orgao,prazo:d.prazo||null,status:d.status,obs:d.obs,ref:d.ref||null,responsavel:d.responsavel||null,data_conclusao:d.dataConclusao||null}).select().single();if(data)d.id=data.id;}
+        else await sb.from("diligencias").update({descricao:d.descricao,orgao:d.orgao,prazo:d.prazo||null,status:d.status,obs:d.obs,ref:d.ref||null,responsavel:d.responsavel||null,data_conclusao:d.dataConclusao||null}).eq("id",d.id);
       }
       const novosIds=patch.diligencias.map(d=>d.id).filter(Boolean);
       for(const oid of antigas)if(!novosIds.includes(oid))await sb.from("diligencias").delete().eq("id",oid);
@@ -818,7 +820,7 @@ const AppContent=({session})=>{
         {tela==="judicial"&&<TelaJudicial servicos={servicos} setServicos={setServicos} clientes={clientes} cn={cn} irPara={setTela} sb={sb} showToast={showToast} abrirServico={s=>{setServicoAberto(s);setAbaServico("visao");setTela("servicos");}}/>}
         {tela==="andamento"&&!processoAberto&&<TelaAndamento servicos={servicos} cn={cn} diligVenc={diligVenc} diligHoje={diligHoje} abrirProcesso={s=>{setProcessoAberto(s);setAbaProcesso("timeline");}}/>}
         {tela==="andamento"&&processoAberto&&<TelaProcessoDetalhe servico={processoAberto} aba={abaProcesso} setAba={setAbaProcesso} atualizar={p=>atualizarServico(processoAberto.id,p)} voltar={()=>setProcessoAberto(null)} cn={cn}/>}
-        {tela==="financeiro"&&<TelaFinanceiro aba={abaFin} setAba={setAbaFin} recebimentos={recebimentos} pagamentos={pagamentos} setRecebimentos={setRecebimentos} setPagamentos={setPagamentos} totRec={totRec} totPag={totPag} lucro={lucro} dadosMensais={dadosMensais} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} abrirModal={abrirModal} setReciboData={setReciboData} sb={sb} colaboradores={colaboradores} setColaboradores={setColaboradores}/>}
+        {tela==="financeiro"&&<TelaFinanceiro aba={abaFin} setAba={setAbaFin} recebimentos={recebimentos} pagamentos={pagamentos} setRecebimentos={setRecebimentos} setPagamentos={setPagamentos} totRec={totRec} totPag={totPag} lucro={lucro} dadosMensais={dadosMensais} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} abrirModal={abrirModal} setReciboData={setReciboData} sb={sb} colaboradores={colaboradores} setColaboradores={setColaboradores} metas={metas} setMetas={setMetas} servicos={servicos}/>}
         {tela==="relatorios"&&<TelaRelatorios dadosMensais={dadosMensais} totRec={totRec} totPag={totPag} lucro={lucro} recAno={recAno} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} recebimentos={recebimentos} pagamentos={pagamentos} servicos={servicos} cn={cn} clientes={clientes}/>}
         {tela==="custos"&&<TelaCustos showToast={showToast} custos={custos} setCustos={v=>{setCustos(v);sb.from("configuracoes").upsert({id:"custos",dados:v,updated_at:new Date().toISOString()}).then(()=>{}).catch(()=>{});}} sb={sb}/>}
         {tela==="captacao"&&<TelaCaptacao leads={leads} setLeads={setLeads} atualizarLead={atualizarLead} showToast={showToast} sb={sb}/>}
@@ -889,7 +891,7 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
     const pr=new Date(p+"T12:00:00");
     return Math.round((pr-hj)/(864e5));
   };
-  const diligVencDash=todasDilig.filter(d=>d.status!=="Concluída"&&d.prazo&&ddiff(d.prazo)<0);
+  const diligVencDash=todasDilig.filter(d=>d.status!=="Concluída"&&d.status!=="Aguardando Órgão"&&d.prazo&&ddiff(d.prazo)<0);
   const diligHojeDash=todasDilig.filter(d=>d.status!=="Concluída"&&d.prazo&&ddiff(d.prazo)===0);
   const diligAmanha=todasDilig.filter(d=>d.status!=="Concluída"&&d.prazo&&ddiff(d.prazo)===1);
   const diligProx=todasDilig.filter(d=>d.status!=="Concluída"&&d.prazo&&ddiff(d.prazo)>1&&ddiff(d.prazo)<=7);
@@ -1265,7 +1267,7 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
   };
   const dd2=(p)=>{if(!p)return 99;const t=new Date(p+"T12:00:00"),h=new Date(new Date().toDateString());return Math.ceil((t-h)/864e5);};
   const grupos2=[
-    {l:"Vencidas",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.prazo&&dd2(d.prazo)<0),c:"#b46464"},
+    {l:"Vencidas",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.status!=="Aguardando Órgão"&&d.prazo&&dd2(d.prazo)<0),c:"#b46464"},
     {l:"Hoje / Amanhã",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.prazo&&dd2(d.prazo)>=0&&dd2(d.prazo)<=1),c:"#a06832"},
     {l:"Próximas",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&(!d.prazo||dd2(d.prazo)>1)),c:"#5a7aaa"},
     {l:"Concluídas",items:(servico.diligencias||[]).filter(d=>d.status==="Concluída"),c:"#5a8f6e"},
@@ -1312,14 +1314,14 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
                           ◷ {new Date(d.prazo+"T12:00:00").toLocaleDateString("pt-BR")}
                           {d.status!=="Concluída"&&" ("+(venc?"venc."+Math.abs(dias)+"d":dias===0?"hoje":dias===1?"amanhã":dias+"d")+")"}
                         </span>}
-                        <Tag label={d.status} color={d.status==="Concluída"?"#5a8f6e":d.status==="Em andamento"?"#5a7aaa":"#a87840"}/>
+                        <Tag label={d.status==="Concluída"&&d.dataConclusao?"Concluída em "+d.dataConclusao.split("-").reverse().join("/"):d.status} color={d.status==="Concluída"?"#5a8f6e":d.status==="Em andamento"?"#5a7aaa":d.status==="Aguardando Órgão"?"#7a6aaa":"#a87840"}/>
                       </div>
                       {d.obs&&<div style={{fontSize:11,color:"#4a4d56",marginTop:4,fontStyle:"italic"}}>{d.obs}</div>}
                     </div>
                     <div style={{display:"flex",gap:4,flexShrink:0}}>
                       {d.status!=="Concluída"&&<>
                         <button style={{...S.btnSm,color:"#5a7aaa",borderColor:"#3b82f644"}} onClick={()=>atualizar({diligencias:(servico.diligencias||[]).map(x=>x.id===d.id?{...x,status:"Em andamento"}:x)})} className="bs">Em and.</button>
-                        <button style={{...S.btnSm,color:"#5a8f6e",borderColor:"#22c55e44"}} onClick={()=>atualizar({diligencias:(servico.diligencias||[]).map(x=>x.id===d.id?{...x,status:"Concluída"}:x)})} className="bs">✓ Concluir</button>
+                        <button style={{...S.btnSm,color:"#5a8f6e",borderColor:"#22c55e44"}} onClick={()=>atualizar({diligencias:(servico.diligencias||[]).map(x=>x.id===d.id?{...x,status:"Concluída",dataConclusao:td()}:x)})} className="bs">✓ Concluir</button>
                       </>}
                       <button style={S.btnSm} onClick={()=>setModalDilig2({...d})} className="bs">Editar</button>
                       <button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir esta diligência?"))return;atualizar({diligencias:(servico.diligencias||[]).filter(x=>x.id!==d.id)});}} className="bs">✕</button>
@@ -1357,7 +1359,7 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
                   </div>
                   <div><FL l="Status"/>
                     <select style={S.fi} value={modalDilig2.status||"Pendente"} onChange={e=>setModalDilig2(m=>({...m,status:e.target.value}))}>
-                      {["Pendente","Em andamento","Concluída"].map(s=><option key={s}>{s}</option>)}
+                      {["Pendente","Aguardando Órgão","Em andamento","Concluída"].map(s=><option key={s}>{s}</option>)}
                     </select>
                   </div>
                 </div>
@@ -2146,11 +2148,11 @@ const TelaProcessoDetalhe=({servico,aba,setAba,atualizar,voltar,cn})=>{
         <div style={S.card}><div style={S.cardTitle}>Resumo</div><InfoRow l="Tipo" v={servico.tipo}/><InfoRow l="Protocolo" v={servico.protocolo}/><InfoRow l="Abertura" v={(servico.created_at||"").slice(0,10)}/><InfoRow l="Estágio" v={servico.estagio}/><div style={{marginTop:12}}><FL l="Progresso"/><div style={{height:6,background:"#2a2d36",borderRadius:999,overflow:"hidden",marginBottom:4}}><div style={{width:Math.round(((servico.estagios||[]).filter(e=>e.concluido).length/Math.max((servico.estagios||[]).length,1))*100)+"%",height:"100%",background:"linear-gradient(90deg,#5a8f6e,#4a7a5e)",borderRadius:999}}/></div><span style={{fontSize:11,color:"#5a5d66"}}>{(servico.estagios||[]).filter(e=>e.concluido).length} de {(servico.estagios||[]).length} etapas</span></div></div>
       </div>}
       {aba==="diligencias"&&<div><div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}><button style={S.btnPrimary} onClick={()=>setModalDilig({status:"Pendente",prazo:""})} className="bp">+ Nova Diligência</button></div>
-        {grupos.map(g=>g.items.length>0&&<div key={g.l} style={{marginBottom:14}}><div style={{fontSize:11,fontWeight:800,color:g.c,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:8}}>{g.l}</div>{g.items.map(d=>{const dias=d.prazo?dd(d.prazo):99;const venc=dias<0&&d.status!=="Concluída";return(<div key={d.id} style={{...S.card,borderLeft:"3px solid "+g.c,marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}><div style={{flex:1}}><div style={{fontWeight:600,color:"#d6d3cc",fontSize:13,textDecoration:d.status==="Concluída"?"line-through":"none"}}>{d.descricao}</div><div style={{display:"flex",gap:10,marginTop:4,flexWrap:"wrap"}}>{d.orgao&&<span style={{fontSize:11,color:"#5a5d66"}}>📍 {d.orgao}</span>}{d.ref&&<span style={{fontSize:11,color:"#5a5d66"}}>🔖 {d.ref}</span>}{d.responsavel&&<span style={{fontSize:11,color:"#5a5d66"}}>👤 {d.responsavel}</span>}{d.prazo&&<span style={{fontSize:11,color:venc?"#b46464":dias<=1?"#a87840":"#5a5d66",fontWeight:venc||dias<=1?700:400}}>📅 {d.prazo}{d.status!=="Concluída"&&` (${venc?`venc.${Math.abs(dias)}d`:dias===0?"hoje":dias===1?"amanhã":`${dias}d`})`}</span>}<Tag label={d.status} color={d.status==="Concluída"?"#5a8f6e":d.status==="Em andamento"?"#5a7aaa":"#a87840"}/></div></div><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{d.status!=="Concluída"&&<><button style={S.btnSm} onClick={()=>{atualizar({diligencias:(servico.diligencias||[]).map(x=>x.id===d.id?{...x,status:"Em andamento"}:x)});}} className="bs">Em and.</button><button style={{...S.btnSm,background:"#22c55e22",color:"#5a8f6e",borderColor:"#22c55e44"}} onClick={()=>{atualizar({diligencias:(servico.diligencias||[]).map(x=>x.id===d.id?{...x,status:"Concluída"}:x)});}} className="bs">✓</button></>}<button style={S.btnSm} onClick={()=>setModalDilig({...d})} className="bs">Ed.</button><button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir esta diligência?"))return;atualizar({diligencias:(servico.diligencias||[]).filter(x=>x.id!==d.id)});}} className="bs">✕</button></div></div></div>);})}</div>)}
+        {grupos.map(g=>g.items.length>0&&<div key={g.l} style={{marginBottom:14}}><div style={{fontSize:11,fontWeight:800,color:g.c,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:8}}>{g.l}</div>{g.items.map(d=>{const dias=d.prazo?dd(d.prazo):99;const venc=dias<0&&d.status!=="Concluída";return(<div key={d.id} style={{...S.card,borderLeft:"3px solid "+g.c,marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}><div style={{flex:1}}><div style={{fontWeight:600,color:"#d6d3cc",fontSize:13,textDecoration:d.status==="Concluída"?"line-through":"none"}}>{d.descricao}</div><div style={{display:"flex",gap:10,marginTop:4,flexWrap:"wrap"}}>{d.orgao&&<span style={{fontSize:11,color:"#5a5d66"}}>📍 {d.orgao}</span>}{d.ref&&<span style={{fontSize:11,color:"#5a5d66"}}>🔖 {d.ref}</span>}{d.responsavel&&<span style={{fontSize:11,color:"#5a5d66"}}>👤 {d.responsavel}</span>}{d.prazo&&<span style={{fontSize:11,color:venc?"#b46464":dias<=1?"#a87840":"#5a5d66",fontWeight:venc||dias<=1?700:400}}>📅 {d.prazo}{d.status!=="Concluída"&&` (${venc?`venc.${Math.abs(dias)}d`:dias===0?"hoje":dias===1?"amanhã":`${dias}d`})`}</span>}<Tag label={d.status==="Concluída"&&d.dataConclusao?"Concluída em "+d.dataConclusao.split("-").reverse().join("/"):d.status} color={d.status==="Concluída"?"#5a8f6e":d.status==="Em andamento"?"#5a7aaa":d.status==="Aguardando Órgão"?"#7a6aaa":"#a87840"}/></div></div><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{d.status!=="Concluída"&&<><button style={S.btnSm} onClick={()=>{atualizar({diligencias:(servico.diligencias||[]).map(x=>x.id===d.id?{...x,status:"Em andamento"}:x)});}} className="bs">Em and.</button><button style={{...S.btnSm,background:"#22c55e22",color:"#5a8f6e",borderColor:"#22c55e44"}} onClick={()=>{atualizar({diligencias:(servico.diligencias||[]).map(x=>x.id===d.id?{...x,status:"Concluída",dataConclusao:td()}:x)});}} className="bs">✓</button></>}<button style={S.btnSm} onClick={()=>setModalDilig({...d})} className="bs">Ed.</button><button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir esta diligência?"))return;atualizar({diligencias:(servico.diligencias||[]).filter(x=>x.id!==d.id)});}} className="bs">✕</button></div></div></div>);})}</div>)}
         {(servico.diligencias||[]).length===0&&<div style={S.empty}>Nenhuma diligência registrada.</div>}
       </div>}
     </div>
-    {modalDilig&&<Modal title={modalDilig.id?"Editar Diligência":"Nova Diligência"} onClose={()=>setModalDilig(null)} onSave={()=>salvarDilig(modalDilig)}><FI l="Descrição *" v={modalDilig.descricao||""} set={v=>setModalDilig({...modalDilig,descricao:v})} ph="Ex: Certidão de ônus reais"/><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:10}}><div><FL l="Órgão / Local *"/><select style={S.fi} value={modalDilig.orgao||""} onChange={e=>setModalDilig({...modalDilig,orgao:e.target.value})}><option value="">Selecione...</option>{ORGAOS.map(o=><option key={o}>{o}</option>)}</select></div><FI l="Prazo" type="date" v={modalDilig.prazo||""} set={v=>setModalDilig({...modalDilig,prazo:v})}/></div><div style={{marginTop:10}}><FI l="Nº Protocolo / Referência" v={modalDilig.ref||""} set={v=>setModalDilig({...modalDilig,ref:v})} ph="Ex: 2026.001.12345-0"/></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:10}}><div><FL l="Responsável"/><input style={S.fi} value={modalDilig.responsavel||""} onChange={e=>setModalDilig({...modalDilig,responsavel:e.target.value})} placeholder="Quem vai executar"/></div><div><FL l="Status"/><select style={S.fi} value={modalDilig.status||"Pendente"} onChange={e=>setModalDilig({...modalDilig,status:e.target.value})}>{["Pendente","Em andamento","Concluída"].map(s=><option key={s}>{s}</option>)}</select></div></div><div style={{marginTop:10}}><FI l="Observações" v={modalDilig.obs||""} set={v=>setModalDilig({...modalDilig,obs:v})} ph="Detalhes, número de protocolo no órgão..."/></div></Modal>}
+    {modalDilig&&<Modal title={modalDilig.id?"Editar Diligência":"Nova Diligência"} onClose={()=>setModalDilig(null)} onSave={()=>salvarDilig(modalDilig)}><FI l="Descrição *" v={modalDilig.descricao||""} set={v=>setModalDilig({...modalDilig,descricao:v})} ph="Ex: Certidão de ônus reais"/><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:10}}><div><FL l="Órgão / Local *"/><select style={S.fi} value={modalDilig.orgao||""} onChange={e=>setModalDilig({...modalDilig,orgao:e.target.value})}><option value="">Selecione...</option>{ORGAOS.map(o=><option key={o}>{o}</option>)}</select></div><FI l="Prazo" type="date" v={modalDilig.prazo||""} set={v=>setModalDilig({...modalDilig,prazo:v})}/></div><div style={{marginTop:10}}><FI l="Nº Protocolo / Referência" v={modalDilig.ref||""} set={v=>setModalDilig({...modalDilig,ref:v})} ph="Ex: 2026.001.12345-0"/></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:10}}><div><FL l="Responsável"/><input style={S.fi} value={modalDilig.responsavel||""} onChange={e=>setModalDilig({...modalDilig,responsavel:e.target.value})} placeholder="Quem vai executar"/></div><div><FL l="Status"/><select style={S.fi} value={modalDilig.status||"Pendente"} onChange={e=>setModalDilig({...modalDilig,status:e.target.value})}>{["Pendente","Aguardando Órgão","Em andamento","Concluída"].map(s=><option key={s}>{s}</option>)}</select></div></div><div style={{marginTop:10}}><FI l="Observações" v={modalDilig.obs||""} set={v=>setModalDilig({...modalDilig,obs:v})} ph="Detalhes, número de protocolo no órgão..."/></div></Modal>}
   </div>);
 };
 
@@ -2166,6 +2168,12 @@ const TelaDiligencias=({servicos,cn,abrirServico})=>{
     if(d.status==="Concluída")return"concluida";
     if(!d.prazo)return"proxima";
     const diff=ddiff(d.prazo);
+    // "Aguardando Órgão" nunca conta como vencida — depende de terceiros, fora do controle do escritório
+    if(d.status==="Aguardando Órgão"){
+      if(diff===0)return"hoje";
+      if(diff===1)return"amanha";
+      return"proxima";
+    }
     if(diff<0)return"vencida";
     if(diff===0)return"hoje";
     if(diff===1)return"amanha";
@@ -2395,8 +2403,9 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
   };
 
   const marcarRealizado=async(id)=>{
-    await sb.from("agenda").update({status:"realizado"}).eq("id",id);
-    setAgenda(prev=>prev.map(a=>a.id===id?{...a,status:"realizado"}:a));
+    const hoje=new Date().toISOString().slice(0,10);
+    await sb.from("agenda").update({status:"realizado",data_conclusao:hoje}).eq("id",id);
+    setAgenda(prev=>prev.map(a=>a.id===id?{...a,status:"realizado",data_conclusao:hoje}:a));
     showToast("Marcado como realizado!");
   };
 
@@ -2577,7 +2586,7 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
                         <Tag label={tipos.find(t=>t.k===a.tipo)?.l||a.tipo} color={cor}/>
                         {venc&&<Tag label="VENCIDO" color="#b46464"/>}
                         {ehHoje&&a.status==="pendente"&&<Tag label="HOJE" color="#a87840"/>}
-                        {a.status==="realizado"&&<Tag label="Realizado" color="#5a8f6e"/>}
+                        {a.status==="realizado"&&<Tag label={a.data_conclusao?"Realizado em "+a.data_conclusao.split("-").reverse().join("/"):"Realizado"} color="#5a8f6e"/>}
                       </div>
                       <div style={{fontWeight:700,color:"#d6d3cc",fontSize:13}}>{a.titulo}</div>
                       <div style={{fontSize:11,color:"#4a4d56",marginTop:2}}>
@@ -2603,7 +2612,7 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
   );
 };
 
-const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPagamentos,totRec,totPag,lucro,dadosMensais,melhorMes,anoFin,setAnoFin,abrirModal,setReciboData,sb,colaboradores,setColaboradores})=>{
+const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPagamentos,totRec,totPag,lucro,dadosMensais,melhorMes,anoFin,setAnoFin,abrirModal,setReciboData,sb,colaboradores,setColaboradores,metas,setMetas,servicos})=>{
   // Hooks do DRE — declarados no topo do componente (sempre executados, conforme Rules of Hooks)
   const dreRef=useRef(null);
   const dreAnualRef=useRef(null);
@@ -2612,6 +2621,8 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
   const [mesDRE,setMesDRE]=useState(new Date().getMonth());
   const [modalColab,setModalColab]=useState(null);
   const [buscaColab,setBuscaColab]=useState("");
+  const [editandoMeta,setEditandoMeta]=useState(false);
+  const [valorMetaInput,setValorMetaInput]=useState("");
   const [dtIni,setDtIni]=useState("");
   const [dtFim,setDtFim]=useState("");
   const filtrar=(lista)=>{
@@ -2647,7 +2658,7 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
         <button style={{...S.btnSm,color:"#5a7aaa",borderColor:"#3b82f644"}} onClick={imprimir} className="bs">Extrato PDF</button>
       </PageHeader>
       <div style={{display:"flex",gap:4,padding:"8px 24px",background:"#1e2128",borderBottom:"1px solid #0f1f35"}}>
-        {[{k:"dashboard",l:"Visao Geral"},{k:"recebimentos",l:"Recebimentos"},{k:"pagamentos",l:"Pagamentos"},{k:"dre",l:"DRE"},{k:"colaboradores",l:"Colaboradores"}].map(a=><button key={a.k} onClick={()=>setAba(a.k)} style={{...S.abaBtn,...(aba===a.k?S.abaBtnActive:{})}} className="ab">{a.l}</button>)}
+        {[{k:"dashboard",l:"Visao Geral"},{k:"recebimentos",l:"Recebimentos"},{k:"pagamentos",l:"Pagamentos"},{k:"dre",l:"DRE"},{k:"colaboradores",l:"Colaboradores"},{k:"meta",l:"Meta"}].map(a=><button key={a.k} onClick={()=>setAba(a.k)} style={{...S.abaBtn,...(aba===a.k?S.abaBtnActive:{})}} className="ab">{a.l}</button>)}
       </div>
       <div style={S.body}>
         {aba==="dashboard"&&(
@@ -3031,6 +3042,156 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
                   </div>
                 </div>
               )}
+            </div>
+          );
+        })()}
+        {aba==="meta"&&(()=>{
+          const anoAtual=String(anoFin);
+          const anoAnterior=String(Number(anoFin)-1);
+          const hoje=new Date().toISOString().slice(0,10);
+
+          // ── Cálculo: recebido, a receber, potencial ───────────────────────
+          const pagsAno=pagamentos.filter(p=>false); // placeholder, não usado aqui
+          const recsAno=recebimentos.filter(r=>(r.data||"").startsWith(anoAtual));
+          const recebidoReal=recsAno.filter(r=>(r.data||"")<=hoje).reduce((a,r)=>a+Number(r.valor||0),0);
+
+          // Parcelas futuras já cadastradas nos serviços (status pendente, data futura, no ano)
+          const parcelasFuturas=(servicos||[]).flatMap(s=>(s.pagamentos||[])
+            .filter(p=>p.status!=="pago"&&p.data&&p.data>hoje&&p.data.startsWith(anoAtual))
+          ).reduce((a,p)=>a+Number(p.valor||0),0);
+
+          // Orçamentos em aberto (potencial extra, não entra no "a receber")
+          const orcamentosAbertos=(servicos||[])
+            .filter(s=>s.orcamento?.status==="Orçamento"||s.status==="Orçamento")
+            .reduce((a,s)=>a+Number(s.orcamento?.valor||0),0);
+
+          const aReceber=parcelasFuturas;
+          const potencialTotal=recebidoReal+aReceber;
+          const potencialMaximo=potencialTotal+orcamentosAbertos;
+
+          // ── Meta do ano ─────────────────────────────────────────────────
+          const metaAnoAtual=metas[anoAtual];
+          const metaAnoAnt=metas[anoAnterior];
+          const metaSugerida=metaAnoAnt?Math.round(metaAnoAnt*1.175):Math.round(potencialTotal*1.15)||50000;
+          const metaDefinida=metaAnoAtual||null;
+          const metaUsada=metaDefinida||metaSugerida;
+
+          const pctRecebido=metaUsada>0?Math.min(100,Math.round(recebidoReal/metaUsada*100)):0;
+          const pctReceber=metaUsada>0?Math.min(100-pctRecebido,Math.round(aReceber/metaUsada*100)):0;
+          const pctFaltante=Math.max(0,100-pctRecebido-pctReceber);
+          const faltaParaMeta=Math.max(0,metaUsada-potencialTotal);
+
+          const salvarMeta=async()=>{
+            const v=Number(valorMetaInput.replace(/\./g,"").replace(",","."));
+            if(!v||v<=0){alert("Informe um valor válido.");return;}
+            const novasMetas={...metas,[anoAtual]:v};
+            await sb.from("configuracoes").upsert({id:"metas",dados:novasMetas,updated_at:new Date().toISOString()});
+            setMetas(novasMetas);
+            setEditandoMeta(false);
+          };
+
+          return(
+            <div>
+              {/* Cabeçalho com meta */}
+              <div style={{...S.card,marginBottom:14}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+                  <div>
+                    <div style={S.cardTitle}>Meta de faturamento — {anoAtual}</div>
+                    {!editandoMeta?(
+                      <div style={{display:"flex",alignItems:"baseline",gap:10,marginTop:4}}>
+                        <span style={{fontSize:24,fontWeight:400,color:"#b8965a"}}>R$ {fmt(metaUsada)}</span>
+                        {!metaDefinida&&<span style={{fontSize:10,color:"#4a4d56",background:"rgba(184,150,90,0.08)",border:"1px solid rgba(184,150,90,0.2)",borderRadius:3,padding:"2px 7px"}}>sugerida +17,5%</span>}
+                        <button style={S.btnSm} onClick={()=>{setValorMetaInput(String(metaUsada));setEditandoMeta(true);}} className="bs">Editar meta</button>
+                      </div>
+                    ):(
+                      <div style={{display:"flex",gap:8,alignItems:"center",marginTop:6}}>
+                        <input style={{...S.fi,width:160}} value={valorMetaInput} onChange={e=>setValorMetaInput(e.target.value)} placeholder="Ex: 180000"/>
+                        <button style={S.btnPrimary} onClick={salvarMeta} className="bp">Salvar</button>
+                        <button style={S.btnSec} onClick={()=>setEditandoMeta(false)} className="ab">Cancelar</button>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontSize:9,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"1px",marginBottom:4}}>Projeção atual</div>
+                    <div style={{fontSize:18,fontWeight:400,color:potencialTotal>=metaUsada?"#5a8f6e":"#a87840"}}>R$ {fmt(potencialTotal)}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cards resumo */}
+              <div style={S.sg4}>
+                <div style={{...S.card,borderLeft:"2px solid #5a8f6e77"}}><div style={S.cardTitle}>Recebido (caixa)</div><div style={{fontSize:17,fontWeight:400,color:"#5a8f6e",opacity:.85}}>R$ {fmt(recebidoReal)}</div></div>
+                <div style={{...S.card,borderLeft:"2px solid #5a7aaa77"}}><div style={S.cardTitle}>A receber (cadastrado)</div><div style={{fontSize:17,fontWeight:400,color:"#5a7aaa",opacity:.85}}>R$ {fmt(aReceber)}</div></div>
+                <div style={{...S.card,borderLeft:"2px solid #b8965a77"}}><div style={S.cardTitle}>Falta para a meta</div><div style={{fontSize:17,fontWeight:400,color:"#b8965a",opacity:.85}}>R$ {fmt(faltaParaMeta)}</div></div>
+                <div style={{...S.card,borderLeft:"2px solid #7a6aaa77"}}><div style={S.cardTitle}>+ Orçamentos em aberto</div><div style={{fontSize:17,fontWeight:400,color:"#7a6aaa",opacity:.85}}>R$ {fmt(orcamentosAbertos)}</div></div>
+              </div>
+
+              {/* Termômetro / barra de progresso em camadas */}
+              <div style={{...S.card,marginTop:14}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                  <div style={S.cardTitle}>Progresso da meta — {anoAtual}</div>
+                  <div style={{fontSize:13,color:"#8a8782"}}>{pctRecebido+pctReceber}% projetado da meta</div>
+                </div>
+
+                {/* Barra empilhada */}
+                <div style={{position:"relative",height:32,background:"rgba(255,255,255,0.04)",borderRadius:6,overflow:"hidden",display:"flex"}}>
+                  <div style={{width:pctRecebido+"%",background:"#5a8f6e",opacity:.75,transition:"width 0.3s"}} title={"Recebido: R$ "+fmt(recebidoReal)}/>
+                  <div style={{width:pctReceber+"%",background:"#5a7aaa",opacity:.6,transition:"width 0.3s"}} title={"A receber: R$ "+fmt(aReceber)}/>
+                  {potencialTotal>=metaUsada&&(
+                    <div style={{position:"absolute",right:0,top:0,bottom:0,display:"flex",alignItems:"center",paddingRight:10}}>
+                      <span style={{fontSize:11,color:"#5a8f6e",fontWeight:500}}>Meta atingida ✓</span>
+                    </div>
+                  )}
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:10,color:"#4a4d56"}}>
+                  <span>R$ 0</span>
+                  <span>Meta: R$ {fmt(metaUsada)}</span>
+                </div>
+
+                {/* Legenda das camadas */}
+                <div style={{display:"flex",gap:18,marginTop:16,flexWrap:"wrap"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <div style={{width:9,height:9,borderRadius:2,background:"#5a8f6e",opacity:.75}}/>
+                    <span style={{fontSize:11,color:"#8a8782"}}>Recebido — R$ {fmt(recebidoReal)} ({pctRecebido}%)</span>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <div style={{width:9,height:9,borderRadius:2,background:"#5a7aaa",opacity:.6}}/>
+                    <span style={{fontSize:11,color:"#8a8782"}}>A receber — R$ {fmt(aReceber)} ({pctReceber}%)</span>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <div style={{width:9,height:9,borderRadius:2,background:"rgba(255,255,255,0.08)"}}/>
+                    <span style={{fontSize:11,color:"#4a4d56"}}>Restante — R$ {fmt(faltaParaMeta)} ({pctFaltante}%)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Histórico de metas por ano */}
+              {Object.keys(metas).length>0&&(
+                <div style={{...S.card,marginTop:14}}>
+                  <div style={{...S.cardTitle,marginBottom:10}}>Histórico de metas</div>
+                  <table style={S.table}>
+                    <thead><tr>{["Ano","Meta definida","Crescimento vs. ano anterior"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                    <tbody>
+                      {Object.keys(metas).sort().map(ano=>{
+                        const anoAntStr=String(Number(ano)-1);
+                        const metaAnt=metas[anoAntStr];
+                        const cresc=metaAnt?Math.round((metas[ano]/metaAnt-1)*100):null;
+                        return(
+                          <tr key={ano} style={S.tr} className="tr">
+                            <td style={{...S.td,fontWeight:ano===anoAtual?500:400,color:ano===anoAtual?"#b8965a":"#d6d3cc"}}>{ano}</td>
+                            <td style={S.td}>R$ {fmt(metas[ano])}</td>
+                            <td style={S.td}>{cresc!==null?(cresc>=0?"+":"")+cresc+"%":"-"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div style={{marginTop:10,fontSize:10,color:"#4a4d56",textAlign:"right"}}>
+                * Cálculo: Recebido = pagamentos já confirmados até hoje · A receber = parcelas futuras já cadastradas nos serviços · Não inclui orçamentos ainda não fechados.
+              </div>
             </div>
           );
         })()}
