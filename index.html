@@ -1270,11 +1270,11 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
   };
   const dd2=(p)=>{if(!p)return 99;const t=new Date(p+"T12:00:00"),h=new Date(new Date().toDateString());return Math.ceil((t-h)/864e5);};
   const grupos2=[
-    {l:"Vencidas",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.status!=="Aguardando Órgão"&&d.prazo&&dd2(d.prazo)<0),c:"#b46464"},
-    {l:"Hoje / Amanhã",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.status!=="Aguardando Órgão"&&d.prazo&&dd2(d.prazo)>=0&&dd2(d.prazo)<=1),c:"#a06832"},
-    {l:"Próximas",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.status!=="Aguardando Órgão"&&(!d.prazo||dd2(d.prazo)>1)),c:"#5a7aaa"},
-    {l:"Aguardando Órgão",items:(servico.diligencias||[]).filter(d=>d.status==="Aguardando Órgão"),c:"#7a6aaa"},
-    {l:"Concluídas",items:(servico.diligencias||[]).filter(d=>d.status==="Concluída"),c:"#5a8f6e"},
+    {l:"Vencidas",items:(servico.diligencias||[]).filter(d=>(d.status||"").trim()!=="Concluída"&&(d.status||"").trim()!=="Aguardando Órgão"&&d.prazo&&dd2(d.prazo)<0),c:"#b46464"},
+    {l:"Hoje / Amanhã",items:(servico.diligencias||[]).filter(d=>(d.status||"").trim()!=="Concluída"&&(d.status||"").trim()!=="Aguardando Órgão"&&d.prazo&&dd2(d.prazo)>=0&&dd2(d.prazo)<=1),c:"#a06832"},
+    {l:"Próximas",items:(servico.diligencias||[]).filter(d=>(d.status||"").trim()!=="Concluída"&&(d.status||"").trim()!=="Aguardando Órgão"&&(!d.prazo||dd2(d.prazo)>1)),c:"#5a7aaa"},
+    {l:"Aguardando Órgão",items:(servico.diligencias||[]).filter(d=>(d.status||"").trim()==="Aguardando Órgão"),c:"#7a6aaa"},
+    {l:"Concluídas",items:(servico.diligencias||[]).filter(d=>(d.status||"").trim()==="Concluída"),c:"#5a8f6e"},
   ];
   return(<div style={S.tela}>
     <PageHeader title={<span style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}><button onClick={voltar} style={S.backBtn} className="back">← Serviços</button><span style={S.proto}>{servico.protocolo}</span><Tag label={servico.estagio} color={ECOR[servico.estagio]||"#5a5d66"}/></span>} sub={servico.tipo+" - "+cliente?.nome||"-"}><button style={{...S.btnSm,color:"#5a7aaa",borderColor:"#3b82f644"}} onClick={()=>abrirModal&&abrirModal("servico",{...servico,tipoProcesso:servico.tipoProcesso||"extrajudicial",dadosJudiciais:servico.dadosJudiciais||{}})} className="bs">✏ Editar</button><button style={{...S.btnSm,color:"#a87840",borderColor:"#f59e0b44"}} onClick={()=>setPrintData(servico)} className="bs">🖨 Protocolo</button><button style={{...S.btnSm,color:"#a87840",borderColor:"#f59e0b44"}} onClick={()=>setPrintData({...servico,_via:true})} className="bs">🖨 Via Cliente</button></PageHeader>
