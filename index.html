@@ -613,11 +613,14 @@ const AppContent=({session})=>{
       const sv=servicos.find(s=>s.id===id);
       const antigas=(sv?.diligencias||[]).map(d=>d.id);
       for(const d of patch.diligencias){
-        if(!d.id||String(d.id).length<20){const{data}=await sb.from("diligencias").insert({servico_id:id,descricao:d.descricao,orgao:d.orgao,prazo:d.prazo||null,status:d.status,obs:d.obs,ref:d.ref||null,responsavel:d.responsavel||null,data_conclusao:d.dataConclusao||null}).select().single();if(data)d.id=data.id;}
+        const dIsNew=!d.id||!String(d.id).includes("-");if(dIsNew){const{data}=await sb.from("diligencias").insert({servico_id:id,descricao:d.descricao,orgao:d.orgao,prazo:d.prazo||null,status:d.status,obs:d.obs,ref:d.ref||null,responsavel:d.responsavel||null,data_conclusao:d.dataConclusao||null}).select().single();if(data)d.id=data.id;}
         else await sb.from("diligencias").update({descricao:d.descricao,orgao:d.orgao,prazo:d.prazo||null,status:d.status,obs:d.obs,ref:d.ref||null,responsavel:d.responsavel||null,data_conclusao:d.dataConclusao||null}).eq("id",d.id);
       }
-      const novosIds=patch.diligencias.map(d=>d.id).filter(Boolean);
-      for(const oid of antigas)if(!novosIds.includes(oid))await sb.from("diligencias").delete().eq("id",oid);
+      const novosIds=patch.diligencias.map(d=>d.id).filter(id=>id&&String(id).includes("-"));
+      for(const oid of antigas){
+        if(!oid||!String(oid).includes("-"))continue; // ignora IDs temporários
+        if(!novosIds.includes(oid))await sb.from("diligencias").delete().eq("id",oid);
+      }
     }
     if(patch.pagamentos){
       const sv=servicos.find(s=>s.id===id);
@@ -1268,8 +1271,9 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
   const dd2=(p)=>{if(!p)return 99;const t=new Date(p+"T12:00:00"),h=new Date(new Date().toDateString());return Math.ceil((t-h)/864e5);};
   const grupos2=[
     {l:"Vencidas",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.status!=="Aguardando Órgão"&&d.prazo&&dd2(d.prazo)<0),c:"#b46464"},
-    {l:"Hoje / Amanhã",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.prazo&&dd2(d.prazo)>=0&&dd2(d.prazo)<=1),c:"#a06832"},
-    {l:"Próximas",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&(!d.prazo||dd2(d.prazo)>1)),c:"#5a7aaa"},
+    {l:"Hoje / Amanhã",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.status!=="Aguardando Órgão"&&d.prazo&&dd2(d.prazo)>=0&&dd2(d.prazo)<=1),c:"#a06832"},
+    {l:"Próximas",items:(servico.diligencias||[]).filter(d=>d.status!=="Concluída"&&d.status!=="Aguardando Órgão"&&(!d.prazo||dd2(d.prazo)>1)),c:"#5a7aaa"},
+    {l:"Aguardando Órgão",items:(servico.diligencias||[]).filter(d=>d.status==="Aguardando Órgão"),c:"#7a6aaa"},
     {l:"Concluídas",items:(servico.diligencias||[]).filter(d=>d.status==="Concluída"),c:"#5a8f6e"},
   ];
   return(<div style={S.tela}>
@@ -3051,9 +3055,9 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
           const hoje=new Date().toISOString().slice(0,10);
 
           // ── Cálculo: recebido, a receber, potencial ───────────────────────
-          // Recebido = recebimentos financeiros já lançados no ano
+          // Recebido = todos os recebimentos lançados no ano (igual ao Relatório Financeiro)
           const recebidoReal=recebimentos
-            .filter(r=>(r.data||"").startsWith(anoAtual)&&(r.data||"")<=hoje)
+            .filter(r=>(r.data||"").startsWith(anoAtual))
             .reduce((a,r)=>a+Number(r.valor||0),0);
           // A receber = saldo remanescente dos serviços fechados (lógica do Relatório Honorários)
           const saldosMeta=(servicos||[])
