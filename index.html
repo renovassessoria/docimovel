@@ -989,7 +989,7 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
           </div>
         </div>
         {todasDilig.filter(d=>d.status!=="Concluída").length===0&&<div style={S.empty}>Nenhuma diligência pendente.</div>}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,maxHeight:320,overflowY:"auto",paddingRight:4}}>
           {[
             {grupo:"Vencidas",items:[...diligVencDash].sort((a,b)=>(a.prazo||"").localeCompare(b.prazo||"")),cor:"#b46464"},
             {grupo:"Hoje",items:[...diligHojeDash].sort((a,b)=>(a.prazo||"").localeCompare(b.prazo||"")),cor:"#a87840"},
@@ -1031,7 +1031,7 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
               {parcelasCard.length>0&&<span style={{fontSize:11,color:"#b8965a"}}>R$ {fmt(totalCard)}</span>}
             </div>
             {parcelasCard.length===0&&<div style={{fontSize:11,color:"#5a8f6e",opacity:.6,padding:"6px 0"}}>Nenhuma parcela pendente.</div>}
-            <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:280,overflowY:"auto"}}>
+            <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:320,overflowY:"auto"}}>
               {parcelasCard.map((p,i)=>{
                 const diff=Math.ceil((new Date(p.data+"T12:00:00")-new Date(_hj+"T12:00:00"))/(864e5));
                 const cor=diff<0?"#b46464":diff===0?"#a87840":diff<=3?"#a87840":"#3e4048";
@@ -2980,26 +2980,71 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
 
               {/* Extrato por colaborador */}
               <div style={S.card}>
-                <div style={{...S.cardTitle,marginBottom:10}}>Extrato — pagamentos por colaborador em {anoFin}</div>
+                <div style={{...S.cardTitle,marginBottom:14}}>Extrato — pagamentos por colaborador em {anoFin}</div>
                 {extratoPorColab.filter(c=>c.total>0).length===0
                   ?<div style={S.empty}>Nenhum pagamento vinculado a colaboradores em {anoFin}.</div>
-                  :<table style={S.table}>
-                    <thead><tr>{["Colaborador","Tipo de Parceria","Qtd. Pagamentos","Total Pago"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
-                    <tbody>
-                      {extratoPorColab.filter(c=>c.total>0).map(c=>(
-                        <tr key={c.id} style={S.tr} className="tr">
-                          <td style={{...S.td,fontWeight:500,color:"#d6d3cc"}}>{c.nome}</td>
-                          <td style={S.td}>{c.tipo_parceria||"-"}</td>
-                          <td style={S.td}>{c.pagamentos.length}</td>
-                          <td style={{...S.td,fontWeight:500,color:"#b46464"}}>R$ {fmt(c.total)}</td>
-                        </tr>
-                      ))}
-                      <tr style={{background:"rgba(255,255,255,0.03)"}}>
-                        <td style={{...S.td,fontWeight:600,color:"#d6d3cc"}} colSpan={3}>TOTAL GERAL</td>
-                        <td style={{...S.td,fontWeight:600,color:"#b46464"}}>R$ {fmt(totalGeralColab)}</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                  :<div>
+                    {extratoPorColab.filter(c=>c.total>0).map(function(c){
+                      var pgs=c.pagamentos||[];
+                      var expandido=buscaColab===c.id;
+                      return(
+                        <div key={c.id} style={{marginBottom:8,border:"0.5px solid #2a2d36",borderRadius:8,overflow:"hidden"}}>
+                          <div onClick={function(){setBuscaColab(expandido?"":c.id);}} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:"rgba(255,255,255,0.02)",cursor:"pointer"}}>
+                            <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                              <span style={{fontWeight:500,color:"#d6d3cc",fontSize:13}}>{c.nome}</span>
+                              <span style={{fontSize:11,color:"#5a7aaa",background:"rgba(90,122,170,0.1)",borderRadius:3,padding:"2px 7px"}}>{c.tipo_parceria||"—"}</span>
+                              <span style={{fontSize:11,color:"#8a8782"}}>{pgs.length} pgto{pgs.length!==1?"s":""}</span>
+                            </div>
+                            <div style={{display:"flex",alignItems:"center",gap:10}}>
+                              <span style={{fontWeight:500,color:"#b46464",fontSize:14}}>R$ {fmt(c.total)}</span>
+                              <span style={{fontSize:10,color:"#4a4d56"}}>{expandido?"▲":"▼"}</span>
+                            </div>
+                          </div>
+                          {expandido?(
+                            <div style={{padding:"4px 14px 12px"}}>
+                              <table style={S.table}>
+                                <thead><tr>
+                                  <th style={S.th}>Data</th>
+                                  <th style={S.th}>Protocolo</th>
+                                  <th style={S.th}>Descrição</th>
+                                  <th style={S.th}>Valor</th>
+                                </tr></thead>
+                                <tbody>
+                                  {pgs.map(function(p,i){
+                                    var svEncontrado=null;
+                                    for(var si=0;si<(servicos||[]).length;si++){
+                                      var s=(servicos||[])[si];
+                                      for(var pi=0;pi<(s.pagamentos||[]).length;pi++){
+                                        if((s.pagamentos||[])[pi].id===p.id){svEncontrado=s;break;}
+                                      }
+                                      if(svEncontrado)break;
+                                    }
+                                    var proto=svEncontrado?svEncontrado.protocolo:(p.protocolo||"—");
+                                    return(
+                                      <tr key={i} style={S.tr} className="tr">
+                                        <td style={{...S.td,fontFamily:"monospace",fontSize:11,whiteSpace:"nowrap"}}>{p.data||"—"}</td>
+                                        <td style={{...S.td,fontSize:11}}>{proto}</td>
+                                        <td style={S.td}>{p.descricao||"—"}</td>
+                                        <td style={{...S.td,fontWeight:500,color:"#b46464",textAlign:"right"}}>R$ {fmt(Number(p.valor||0))}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                  <tr style={{background:"rgba(180,100,100,0.04)"}}>
+                                    <td style={{...S.td,fontWeight:600,color:"#d6d3cc"}} colSpan={3}>Subtotal</td>
+                                    <td style={{...S.td,fontWeight:600,color:"#b46464",textAlign:"right"}}>R$ {fmt(c.total)}</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          ):null}
+                        </div>
+                      );
+                    })}
+                    <div style={{display:"flex",justifyContent:"space-between",padding:"10px 14px",background:"rgba(255,255,255,0.03)",borderRadius:6,marginTop:4}}>
+                      <span style={{fontWeight:600,color:"#d6d3cc"}}>TOTAL GERAL</span>
+                      <span style={{fontWeight:600,color:"#b46464"}}>R$ {fmt(totalGeralColab)}</span>
+                    </div>
+                  </div>
                 }
               </div>
 
