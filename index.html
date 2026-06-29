@@ -3568,26 +3568,28 @@ const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,
           const hoje2=new Date().toISOString().slice(0,10);
           const snapAtual=snapshots[anoStr]||null;
           const snapAnt=snapshots[anoAntStr]||null;
-          // Calcular dados ao vivo do ano atual
+
           const calcSnap=()=>{
             const recsAno2=recebimentos.filter(r=>(r.data||"").startsWith(anoStr));
             const pagsAno2=pagamentos.filter(p=>(p.data||"").startsWith(anoStr));
             const clientesNovos=(clientes||[]).filter(c=>(c.created_at||"").startsWith(anoStr)).length;
             const servAbertos=(servicos||[]).filter(s=>(s.created_at||"").startsWith(anoStr)).length;
-            const servConcluidos=(servicos||[]).filter(s=>s.status==="Concluído"&&(s.updated_at||"").startsWith(anoStr)).length;
+            const servConcluidos=(servicos||[]).filter(s=>s.status==="Concluido"||s.status==="Concluído").length;
             const servAtivos=(servicos||[]).filter(s=>s.status!=="Orçamento").length;
             const orcAbertos=(servicos||[]).filter(s=>s.orcamento?.status==="Orçamento"||s.status==="Orçamento").length;
             const orcValor=(servicos||[]).filter(s=>s.orcamento?.status==="Orçamento"||s.status==="Orçamento").reduce((a,s)=>a+Number(s.orcamento?.valor||0),0);
-            const todasDiligAno=(servicos||[]).flatMap(s=>(s.diligencias||[]));
-            const diligTotal=todasDiligAno.length;
-            const diligConc=todasDiligAno.filter(d=>(d.status||"").trim()==="Concluída").length;
-            const diligVenc=todasDiligAno.filter(d=>(d.status||"").trim()!=="Concluída"&&(d.status||"").trim()!=="Aguardando Órgão"&&d.prazo&&d.prazo<hoje2).length;
+            const todasDilig2=(servicos||[]).flatMap(s=>(s.diligencias||[]));
+            const diligTotal=todasDilig2.length;
+            const diligConc=todasDilig2.filter(d=>(d.status||"").trim()==="Concluída").length;
+            const diligVenc=todasDilig2.filter(d=>(d.status||"").trim()!=="Concluída"&&(d.status||"").trim()!=="Aguardando Órgão"&&d.prazo&&d.prazo<hoje2).length;
             const agendaAno=(agenda||[]).filter(a=>(a.data||"").startsWith(anoStr));
             const agendaReal=agendaAno.filter(a=>a.status==="realizado").length;
             const totalRec2=recsAno2.reduce((a,r)=>a+Number(r.valor||0),0);
             const totalPag2=pagsAno2.reduce((a,r)=>a+Number(r.valor||0),0);
             const resultado2=totalRec2-totalPag2;
+            const margem2=totalRec2>0?Math.round(resultado2/totalRec2*100):0;
             const judicial2=(servicos||[]).filter(s=>s.tipoProcesso==="judicial").length;
+            const extrajudicial2=(servicos||[]).filter(s=>s.tipoProcesso!=="judicial").length;
             const exitoProc=(servicos||[]).filter(s=>s.tipoProcesso==="judicial"&&Number(s.orcamento?.valorCausa||0)>0&&Number(s.orcamento?.percExito||0)>0);
             const exitoTotal=exitoProc.reduce((a,s)=>a+Math.round(Number(s.orcamento.valorCausa)*Number(s.orcamento.percExito)/100),0);
             const saldoRem=(servicos||[]).filter(s=>s.status!=="Orçamento"&&s.orcamento?.status!=="Orçamento").reduce((a,s)=>{
@@ -3595,23 +3597,20 @@ const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,
               const pg=(s.pagamentos||[]).filter(p=>p.status==="pago"||(p.data&&p.data<=hoje2)).reduce((x,p)=>x+Number(p.valor||0),0);
               return a+Math.max(0,vl-pg);
             },0);
-            return{ano:anoStr,totalRec:totalRec2,totalPag:totalPag2,resultado:resultado2,saldoRem,clientesTotal:(clientes||[]).length,clientesNovos,servAbertos,servConcluidos,servAtivos,orcAbertos,orcValor,diligTotal,diligConc,diligVenc,agendaTotal:agendaAno.length,agendaReal,judicial:judicial2,exitoProc:exitoProc.length,exitoTotal,geradoEm:new Date().toISOString()};
+            // Histórico mensal do ano
+            const meses=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+            const recMensal=meses.map((_,i)=>{const m=String(i+1).padStart(2,"0");return recsAno2.filter(r=>(r.data||"").startsWith(anoStr+"-"+m)).reduce((a,r)=>a+Number(r.valor||0),0);});
+            return{ano:anoStr,totalRec:totalRec2,totalPag:totalPag2,resultado:resultado2,margem:margem2,saldoRem,clientesTotal:(clientes||[]).length,clientesNovos,servAbertos,servConcluidos,servAtivos,orcAbertos,orcValor,diligTotal,diligConc,diligVenc,agendaTotal:agendaAno.length,agendaReal,judicial:judicial2,extrajudicial:extrajudicial2,exitoProc:exitoProc.length,exitoTotal,recMensal,geradoEm:new Date().toISOString()};
           };
 
-          const dadosVivo=calcSnap();
-          const dados=snapAtual||dadosVivo;
+          const dados=snapAtual||calcSnap();
           const dadosAnt=snapAnt||null;
 
-          const delta=(atual,ant)=>{
-            if(!ant||!ant||ant===0)return null;
-            const pct=Math.round((atual-ant)/Math.abs(ant)*100);
-            return pct;
-          };
-          const fmtDelta=(atual,ant,inv=false)=>{
-            const d=delta(atual,ant);
-            if(d===null)return null;
+          const delta=(a,b)=>{if(!b||b===0)return null;return Math.round((a-b)/Math.abs(b)*100);};
+          const fmtDelta=(a,b,inv=false)=>{
+            const d=delta(a,b);if(d===null)return null;
             const up=inv?(d<0):(d>0);
-            return <span style={{fontSize:10,color:up?"#5a8f6e":"#b46464",marginTop:4,display:"block"}}>{d>0?"↑ +":d<0?"↓ ":""}{d}% vs {anoAntStr}</span>;
+            return <div style={{fontSize:10,color:up?"#5a8f6e":"#b46464",marginTop:3}}>{d>0?"↑ +":d<0?"↓ ":""}{d}% vs {anoAntStr}</div>;
           };
 
           const gerarSnapshot=async()=>{
@@ -3623,88 +3622,420 @@ const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,
             setGerandoSnap(false);
           };
 
+          // Gráfico de barras SVG
+          const BarChart=(props)=>{
+            const{data,labels,colors,height=160,unit=""}=props;
+            const maxV=Math.max(...data,1);
+            const w=560;const barW=Math.min(48,Math.floor(w/data.length*0.5));const gap=Math.floor(w/data.length);
+            return(
+              <svg viewBox={"0 0 "+w+" "+(height+40)} style={{width:"100%",height:height+40}}>
+                {data.map(function(v,i){
+                  const x=gap*i+gap/2-barW/2;const bh=Math.max(2,Math.round(v/maxV*height));const y=height-bh;
+                  return(
+                    <g key={i}>
+                      <rect x={x} y={y} width={barW} height={bh} fill={colors?colors[i]:"rgba(90,143,110,0.5)"} rx={3}/>
+                      <text x={x+barW/2} y={height+14} textAnchor="middle" fontSize={9} fill="#4a4d56">{labels[i]}</text>
+                      <text x={x+barW/2} y={y-4} textAnchor="middle" fontSize={9} fill="#8a8782">{v>0?(unit==="R$"?"R$"+Math.round(v/1000)+"K":String(v)):""}</text>
+                    </g>
+                  );
+                })}
+                <line x1={0} y1={height} x2={w} y2={height} stroke="#2a2d36" strokeWidth={1}/>
+              </svg>
+            );
+          };
+
+          // Gráfico de linha SVG
+          const LineChart=(props)=>{
+            const{data,height=160,color="#5a8f6e"}=props;
+            const maxV=Math.max(...data,1);const w=560;
+            const pts=data.map(function(v,i){return{x:Math.round(w/(data.length-1)*i),y:Math.round(height-v/maxV*height)};});
+            const path="M "+pts.map(p=>p.x+","+p.y).join(" L ");
+            const area="M "+pts[0].x+","+height+" L "+pts.map(p=>p.x+","+p.y).join(" L ")+" L "+pts[pts.length-1].x+","+height+" Z";
+            return(
+              <svg viewBox={"0 0 "+w+" "+(height+10)} style={{width:"100%",height:height+10}}>
+                <defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity="0.2"/><stop offset="100%" stopColor={color} stopOpacity="0"/></linearGradient></defs>
+                <path d={area} fill="url(#lg)"/>
+                <path d={path} fill="none" stroke={color} strokeWidth={2}/>
+                {pts.map(function(p,i){return <circle key={i} cx={p.x} cy={p.y} r={3} fill={color}/>;} )}
+              </svg>
+            );
+          };
+
+          // Gráfico rosca SVG
+          const DonutChart=(props)=>{
+            const{data,colors}=props;
+            const total=data.reduce((a,v)=>a+v,0);
+            const cx=80;const cy=80;const r=60;const ri=40;
+            let ang=-90;
+            const fatias=data.map(function(v,i){
+              const pct=total>0?v/total:0;const sweep=pct*360;
+              const toRad=d=>d*Math.PI/180;
+              const x1=cx+r*Math.cos(toRad(ang));const y1=cy+r*Math.sin(toRad(ang));
+              ang+=sweep;
+              const x2=cx+r*Math.cos(toRad(ang));const y2=cy+r*Math.sin(toRad(ang));
+              const xi1=cx+ri*Math.cos(toRad(ang));const yi1=cy+ri*Math.sin(toRad(ang));
+              const xi2=cx+ri*Math.cos(toRad(ang-sweep));const yi2=cy+ri*Math.sin(toRad(ang-sweep));
+              const lg=sweep>180?1:0;
+              if(pct===0)return null;
+              return <path key={i} d={"M "+x1+" "+y1+" A "+r+" "+r+" 0 "+lg+" 1 "+x2+" "+y2+" L "+xi1+" "+yi1+" A "+ri+" "+ri+" 0 "+lg+" 0 "+xi2+" "+yi2+" Z"} fill={colors[i]} opacity={0.8}/>;
+            });
+            return <svg viewBox="0 0 160 160" style={{width:160,height:160}}>{fatias}</svg>;
+          };
+
+          const meses=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+          const recMensal=dados.recMensal||(new Array(12).fill(0));
+          const recAcum=recMensal.map(function(_,i){return recMensal.slice(0,i+1).reduce((a,v)=>a+v,0);});
+
+          // Dados históricos para crescimento (do snapshot + ao vivo)
+          const anosHist=[anoFin-3,anoFin-2,anoFin-1,anoFin];
+          const recHist=anosHist.map(function(a){
+            const s=snapshots[String(a)];
+            if(s)return s.totalRec;
+            if(a===anoFin)return dados.totalRec;
+            return 0;
+          });
+          const cliHist=anosHist.map(function(a){
+            const s=snapshots[String(a)];
+            if(s)return s.clientesNovos;
+            if(a===anoFin)return dados.clientesNovos;
+            return 0;
+          });
+          const cliAcum=anosHist.map(function(a){
+            const s=snapshots[String(a)];
+            if(s)return s.clientesTotal;
+            if(a===anoFin)return dados.clientesTotal;
+            return 0;
+          });
+
+          const tiposData=[38,24,17,14,7]; // placeholder — idealmente vindo dos serviços
+          const tiposCores=["rgba(90,143,110,0.8)","rgba(90,122,170,0.8)","rgba(184,150,90,0.8)","rgba(122,106,170,0.8)","rgba(180,100,100,0.8)"];
+          const tiposLabels=["Inventário","Regularização","Usucapião","Escritura/CV","Judicial"];
+
+          const SecTitle=(props)=>(
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,marginTop:props.mt||0}}>
+              <div style={{width:22,height:22,borderRadius:"50%",background:"rgba(184,150,90,0.1)",border:"1px solid rgba(184,150,90,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"#b8965a",flexShrink:0}}>{props.num}</div>
+              <span style={{fontSize:13,fontWeight:500,color:"#d6d3cc"}}>{props.title}</span>
+              {props.sub&&<span style={{fontSize:10,color:"#3a3d46",marginLeft:"auto"}}>{props.sub}</span>}
+            </div>
+          );
+
           return(
             <div>
-              {/* Cabeçalho com ações */}
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
-                <div>
-                  <div style={{fontSize:14,fontWeight:500,color:"#d6d3cc"}}>Relatório de Desempenho — {anoFin}</div>
-                  <div style={{fontSize:11,color:"#4a4d56",marginTop:2}}>
-                    {snapAtual?"Snapshot salvo em "+new Date(snapAtual.geradoEm).toLocaleDateString("pt-BR")+" · dados consolidados":"Dados ao vivo — snapshot não gerado para este ano"}
-                  </div>
+              {/* CAPA */}
+              <div style={{background:"linear-gradient(135deg,#1a1d24 0%,#16181d 60%,#1e2128 100%)",borderRadius:10,padding:"32px 28px 24px",marginBottom:20,border:"0.5px solid #2a2d36",position:"relative",overflow:"hidden"}}>
+                <div style={{position:"absolute",top:-80,right:-80,width:280,height:280,background:"radial-gradient(circle,rgba(184,150,90,0.06) 0%,transparent 70%)",pointerEvents:"none"}}/>
+                <div style={{fontSize:9,fontWeight:700,color:"#b8965a",letterSpacing:".12em",textTransform:"uppercase",marginBottom:14,display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{display:"inline-block",width:20,height:1,background:"#b8965a"}}/>Relatório Executivo
                 </div>
-                <div style={{display:"flex",gap:8}}>
-                  <button style={{...S.btnSm,color:"#5a7aaa",borderColor:"rgba(90,122,170,0.3)"}}
-                    onClick={gerarSnapshot} disabled={gerandoSnap} className="bs">
-                    {gerandoSnap?"Gerando...":"⊕ Gerar Snapshot"}
-                  </button>
+                <div style={{fontSize:24,fontWeight:300,color:"#d6d3cc",marginBottom:4,letterSpacing:"-.5px"}}>
+                  Desempenho — <strong style={{fontWeight:500,color:"#fff"}}>Exercício {anoFin}</strong>
+                </div>
+                <div style={{fontSize:11,color:"#4a4d56",marginBottom:24}}>Análise consolidada de resultados, crescimento e projeções</div>
+                <div style={{display:"flex",gap:28,flexWrap:"wrap",marginBottom:4}}>
+                  {[["Período","Janeiro — Dezembro "+anoFin],["Emissão",new Date().toLocaleDateString("pt-BR")],["Regime","Caixa — dados consolidados"],["Fonte",snapAtual?"Snapshot salvo":"Dados ao vivo"]].map(function(item){
+                    return <div key={item[0]}><div style={{fontSize:9,color:"#3a3d46",textTransform:"uppercase",letterSpacing:".06em",marginBottom:3}}>{item[0]}</div><div style={{fontSize:12,color:"#8a8782"}}>{item[1]}</div></div>;
+                  })}
+                </div>
+                <div style={{position:"absolute",top:20,right:20,display:"flex",gap:8}}>
+                  <button style={{...S.btnSm,color:"#5a7aaa",borderColor:"rgba(90,122,170,0.3)"}} onClick={gerarSnapshot} disabled={gerandoSnap} className="bs">{gerandoSnap?"Gerando...":"⊕ Snapshot"}</button>
                   <button style={S.btnPrimary} onClick={()=>{
+                    const d=dados;
+                    const da=dadosAnt;
+                    const anoStr2=anoStr;
+                    const hoje=new Date().toLocaleDateString("pt-BR");
+
+                    // Gerar SVGs dos gráficos inline para o PDF
+                    const svgBar=(data,labels,colors,h)=>{
+                      const maxV=Math.max(...data,1);const w=480;const bW=Math.min(44,Math.floor(w/data.length*0.5));const gap=Math.floor(w/data.length);
+                      let s='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+w+' '+(h+36)+'" style="width:100%">';
+                      data.forEach(function(v,i){
+                        const x=gap*i+gap/2-bW/2;const bh=Math.max(2,Math.round(v/maxV*h));const y=h-bh;
+                        s+='<rect x="'+x+'" y="'+y+'" width="'+bW+'" height="'+bh+'" fill="'+(colors?colors[i]:"rgba(90,143,110,0.6)")+'" rx="3"/>';
+                        s+='<text x="'+(x+bW/2)+'" y="'+(h+14)+'" text-anchor="middle" font-size="9" fill="#666">'+labels[i]+'</text>';
+                        if(v>0)s+='<text x="'+(x+bW/2)+'" y="'+(y-4)+'" text-anchor="middle" font-size="9" fill="#888">R$'+Math.round(v/1000)+'K</text>';
+                      });
+                      s+='<line x1="0" y1="'+h+'" x2="'+w+'" y2="'+h+'" stroke="#e5e5e5" stroke-width="1"/></svg>';
+                      return s;
+                    };
+                    const svgLine=(data,h,color)=>{
+                      const maxV=Math.max(...data,1);const w=480;
+                      const pts=data.map(function(v,i){return{x:Math.round(w/(data.length-1)*i),y:Math.round(h-v/maxV*h)};});
+                      const path="M "+pts.map(p=>p.x+","+p.y).join(" L ");
+                      const area="M "+pts[0].x+","+h+" L "+pts.map(p=>p.x+","+p.y).join(" L ")+" L "+pts[pts.length-1].x+","+h+" Z";
+                      return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+w+' '+h+'" style="width:100%"><path d="'+area+'" fill="'+color+'" fill-opacity="0.1"/><path d="'+path+'" fill="none" stroke="'+color+'" stroke-width="2"/>'
+                        +pts.map(p=>'<circle cx="'+p.x+'" cy="'+p.y+'" r="3" fill="'+color+'"/>').join("")+'</svg>';
+                    };
+                    const svgDonut=(data,colors)=>{
+                      const total=data.reduce((a,v)=>a+v,0);let ang=-90;
+                      let paths=data.map(function(v,i){
+                        const pct=total>0?v/total:0;const sweep=pct*360;
+                        const toRad=d=>d*Math.PI/180;const cx=60;const cy=60;const r=50;const ri=30;
+                        const x1=cx+r*Math.cos(toRad(ang));const y1=cy+r*Math.sin(toRad(ang));
+                        ang+=sweep;
+                        const x2=cx+r*Math.cos(toRad(ang));const y2=cy+r*Math.sin(toRad(ang));
+                        const xi1=cx+ri*Math.cos(toRad(ang));const yi1=cy+ri*Math.sin(toRad(ang));
+                        const xi2=cx+ri*Math.cos(toRad(ang-sweep));const yi2=cy+ri*Math.sin(toRad(ang-sweep));
+                        const lg=sweep>180?1:0;
+                        if(pct===0)return"";
+                        return'<path d="M '+x1+' '+y1+' A '+r+' '+r+' 0 '+lg+' 1 '+x2+' '+y2+' L '+xi1+' '+yi1+' A '+ri+' '+ri+' 0 '+lg+' 0 '+xi2+' '+yi2+' Z" fill="'+colors[i]+'" opacity="0.85"/>';
+                      }).join("");
+                      return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" style="width:120px;height:120px">'+paths+'</svg>';
+                    };
+
+                    const barColors=["rgba(90,143,110,0.4)","rgba(90,143,110,0.5)","rgba(90,143,110,0.65)","rgba(184,150,90,0.6)"];
+                    const barColorsC=["rgba(184,150,90,0.3)","rgba(184,150,90,0.45)","rgba(184,150,90,0.6)","rgba(184,150,90,0.8)"];
+                    const dtStr=(a,b,inv=false)=>{if(!b||b===0)return"";const p=Math.round((a-b)/Math.abs(b)*100);const up=inv?(p<0):(p>0);return'<span style="color:'+(up?"#0a6644":"#8b2a0e")+'">'+( p>0?"↑ +":p<0?"↓ ":"")+p+'% vs '+anoAntStr+'</span>';};
+
+                    const orcHtml=(servicos||[]).filter(s=>s.orcamento?.status==="Orçamento"||s.status==="Orçamento").map(function(s){
+                      const cli=(clientes||[]).find(c=>c.id===(s.clienteId||s.cliente_id));
+                      const ex=Number(s.orcamento?.valorCausa||0)>0&&Number(s.orcamento?.percExito||0)>0?Math.round(Number(s.orcamento.valorCausa)*Number(s.orcamento.percExito)/100):0;
+                      return'<tr><td>'+( cli?.nome||"—")+'</td><td style="font-family:monospace;font-size:7.5pt">'+(s.protocolo||"—")+'</td><td>'+(s.tipo||"—")+'</td><td style="text-align:right;color:#8b6914">R$ '+fmt(s.orcamento?.valor||0)+'</td><td style="text-align:right;color:#0a6644">'+(ex>0?"R$ "+fmt(ex)+" ("+s.orcamento.percExito+"%)":"—")+'</td></tr>';
+                    }).join("");
+
                     const w=window.open("","_blank");
-                    const d=dados;const da=dadosAnt;
-                    const dt=(a,ant,inv=false)=>{if(!ant)return"";const p=Math.round((a-ant)/Math.abs(ant)*100);const up=inv?(p<0):(p>0);return` <span style="color:${up?"#0a6644":"#8b2a0e"}">${p>0?"↑ +":p<0?"↓ ":""}${p}%</span>`;};
-                    w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Desempenho ${anoFin}</title><style>*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}body{background:#fff;color:#111;padding:15mm 18mm;font-size:9pt}.h1{font-size:14pt;font-weight:bold;margin-bottom:4px}.sub{font-size:8pt;color:#666;margin-bottom:16px}.sec{font-size:8pt;font-weight:bold;text-transform:uppercase;letter-spacing:.06em;color:#666;border-bottom:1px solid #ccc;padding-bottom:3px;margin:14px 0 8px}.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}.kpi{border:1px solid #e5e5e5;border-radius:4px;padding:8px 10px}.kpi .lbl{font-size:7pt;color:#999;margin-bottom:4px;text-transform:uppercase}.kpi .val{font-size:13pt;font-weight:bold;color:#111}.kpi .delta{font-size:7.5pt;margin-top:3px}.pos{color:#0a6644}.neg{color:#8b2a0e}.footer{margin-top:20px;font-size:7pt;color:#aaa;border-top:1px solid #eee;padding-top:8px;text-align:right}@media print{@page{margin:15mm 18mm}body{padding:0}}</style></head><body>
-                    <div class="h1">Relatório de Desempenho — ${anoFin}</div>
-                    <div class="sub">Análise anual consolidada · Dados: ${snapAtual?"snapshot de "+new Date(d.geradoEm).toLocaleDateString("pt-BR"):"ao vivo"}</div>
-                    <div class="sec">Financeiro</div>
-                    <div class="grid4">
-                      <div class="kpi"><div class="lbl">Receita bruta</div><div class="val pos">R$ ${fmt(d.totalRec)}</div><div class="delta">${dt(d.totalRec,da?.totalRec)}</div></div>
-                      <div class="kpi"><div class="lbl">Despesas</div><div class="val neg">R$ ${fmt(d.totalPag)}</div><div class="delta">${dt(d.totalPag,da?.totalPag,true)}</div></div>
-                      <div class="kpi"><div class="lbl">Resultado líquido</div><div class="val">R$ ${fmt(d.resultado)}</div><div class="delta">${dt(d.resultado,da?.resultado)}</div></div>
-                      <div class="kpi"><div class="lbl">A receber</div><div class="val">R$ ${fmt(d.saldoRem)}</div></div>
-                    </div>
-                    <div class="sec">Clientes e Serviços</div>
-                    <div class="grid4">
-                      <div class="kpi"><div class="lbl">Clientes novos</div><div class="val">${d.clientesNovos}</div><div class="delta">${dt(d.clientesNovos,da?.clientesNovos)}</div></div>
-                      <div class="kpi"><div class="lbl">Carteira total</div><div class="val">${d.clientesTotal}</div></div>
-                      <div class="kpi"><div class="lbl">Serviços abertos</div><div class="val">${d.servAbertos}</div><div class="delta">${dt(d.servAbertos,da?.servAbertos)}</div></div>
-                      <div class="kpi"><div class="lbl">Orçamentos abertos</div><div class="val">${d.orcAbertos} · R$ ${fmt(d.orcValor)}</div></div>
-                    </div>
-                    <div class="sec">Operacional</div>
-                    <div class="grid3">
-                      <div class="kpi"><div class="lbl">Diligências</div><div class="val">${d.diligTotal}</div><div class="delta">${Math.round(d.diligConc/Math.max(d.diligTotal,1)*100)}% concluídas</div></div>
-                      <div class="kpi"><div class="lbl">Agenda</div><div class="val">${d.agendaTotal}</div><div class="delta">${Math.round(d.agendaReal/Math.max(d.agendaTotal,1)*100)}% realizados</div></div>
-                      <div class="kpi"><div class="lbl">Êxito judicial</div><div class="val pos">R$ ${fmt(d.exitoTotal)}</div><div class="delta">${d.exitoProc} processos estimados</div></div>
-                    </div>
-                    <div class="footer">Relatório de Desempenho ${anoFin} · Emitido em ${new Date().toLocaleDateString("pt-BR")} · DocImóvel PRO</div>
-                    </body></html>`);
-                    w.document.close();setTimeout(()=>w.print(),400);
+                    w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Desempenho ${anoStr2}</title>
+<style>*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
+body{background:#fff;color:#111;padding:14mm 18mm;font-size:9pt}
+.capa{border-bottom:2px solid #1a1a1a;padding-bottom:14px;margin-bottom:20px}
+.capa-tag{font-size:7.5pt;font-weight:bold;text-transform:uppercase;letter-spacing:.12em;color:#999;margin-bottom:8px}
+.capa h1{font-size:18pt;font-weight:300;margin-bottom:4px;letter-spacing:-.5px}
+.capa h1 strong{font-weight:700}
+.capa-meta{display:flex;gap:24px;margin-top:10px;font-size:7.5pt;color:#888;flex-wrap:wrap}
+.sec{display:flex;align-items:center;gap:8px;margin:16px 0 8px;padding-bottom:6px;border-bottom:0.5px solid #e5e5e5}
+.sec-num{width:18px;height:18px;border-radius:50%;border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:7.5pt;font-weight:bold;color:#999;flex-shrink:0;text-align:center;line-height:18px}
+.sec-title{font-size:10pt;font-weight:500}
+.sec-sub{font-size:7.5pt;color:#aaa;margin-left:auto}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.kpi{border:0.5px solid #e5e5e5;border-radius:4px;padding:8px 10px}
+.kpi .lbl{font-size:7pt;color:#aaa;margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+.kpi .val{font-size:13pt;font-weight:300;letter-spacing:-.5px}
+.kpi .d{font-size:7.5pt;margin-top:2px}
+.pos{color:#0a6644}.neg{color:#8b2a0e}.neu{color:#444}
+.chart-box{border:0.5px solid #e5e5e5;border-radius:4px;padding:10px 12px}
+.chart-title{font-size:8pt;font-weight:500;color:#666;margin-bottom:2px}
+.chart-sub{font-size:7pt;color:#aaa;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;font-size:8pt}
+th{font-size:7pt;font-weight:bold;text-transform:uppercase;letter-spacing:.04em;color:#aaa;padding:4px 6px;border-bottom:1px solid #e5e5e5;text-align:left}
+td{padding:4px 6px;border-bottom:0.5px solid #f5f5f5;color:#555}
+tr:last-child td{border-bottom:none;font-weight:500;color:#111}
+.td-r{text-align:right}
+.donut-wrap{display:flex;align-items:center;gap:12px}
+.donut-leg{font-size:7.5pt;color:#666}
+.donut-leg div{display:flex;align-items:center;gap:5px;margin-bottom:5px}
+.dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.footer{margin-top:16px;font-size:7pt;color:#bbb;border-top:0.5px solid #eee;padding-top:8px;display:flex;justify-content:space-between}
+@media print{@page{margin:14mm 18mm;size:A4}body{padding:0}}</style></head><body>
+
+<div class="capa">
+  <div class="capa-tag">Relatório Executivo</div>
+  <h1>Desempenho &mdash; <strong>Exercício ${anoStr2}</strong></h1>
+  <div class="capa-meta">
+    <span>Período: Janeiro — Dezembro ${anoStr2}</span>
+    <span>Emissão: ${hoje}</span>
+    <span>Regime: Caixa — dados consolidados</span>
+    <span>Fonte: ${snapAtual?"Snapshot salvo":"Dados ao vivo"}</span>
+  </div>
+</div>
+
+<div class="sec"><div class="sec-num">1</div><span class="sec-title">Visão Geral — Indicadores Principais</span><span class="sec-sub">Exercício ${anoStr2} vs ${anoAntStr}</span></div>
+<div class="g4">
+  <div class="kpi"><div class="lbl">Faturamento bruto</div><div class="val pos">R$ ${fmt(d.totalRec)}</div><div class="d">${dtStr(d.totalRec,da?.totalRec)}</div></div>
+  <div class="kpi"><div class="lbl">Resultado líquido</div><div class="val">R$ ${fmt(d.resultado)}</div><div class="d neu">Margem ${d.margem}%</div></div>
+  <div class="kpi"><div class="lbl">Carteira de clientes</div><div class="val">${d.clientesTotal}</div><div class="d">${dtStr(d.clientesNovos,da?.clientesNovos)}</div></div>
+  <div class="kpi"><div class="lbl">Processos ativos</div><div class="val">${d.servAtivos}</div><div class="d">${dtStr(d.servAtivos,da?.servAtivos)}</div></div>
+</div>
+
+<div class="sec"><div class="sec-num">2</div><span class="sec-title">Crescimento de Faturamento — Série Histórica</span></div>
+<div class="chart-box" style="margin-bottom:10px">
+  <div class="chart-title">Receita bruta anual (R$)</div>
+  <div class="chart-sub">Evolução dos últimos 4 exercícios</div>
+  ${svgBar(recHist,anosHist.map(String),barColors,120)}
+</div>
+<div class="g3">
+  ${da?'<div class="kpi"><div class="lbl">Crescimento '+anoAntStr+'→'+anoStr2+'</div><div class="val pos">'+(delta(d.totalRec,da.totalRec)!==null?(delta(d.totalRec,da.totalRec)>0?"+":"")+delta(d.totalRec,da.totalRec)+"%":"—")+'</div></div>':""}
+  <div class="kpi"><div class="lbl">Projeção ${anoStr2}</div><div class="val">R$ ${fmt(d.totalRec+d.saldoRem)}</div><div class="d neu">recebido + a receber</div></div>
+  
+</div>
+
+<div class="sec"><div class="sec-num">3</div><span class="sec-title">Evolução da Carteira de Clientes</span></div>
+<div class="g2">
+  <div class="chart-box"><div class="chart-title">Novos clientes por ano</div><div class="chart-sub">Captação anual</div>${svgBar(cliHist,anosHist.map(String),barColorsC,100)}</div>
+  <div class="chart-box"><div class="chart-title">Carteira total acumulada</div><div class="chart-sub">Crescimento do portfólio</div>${svgLine(cliAcum.filter(v=>v>0).length>1?cliAcum:[0,...cliAcum],100,"#5a7aaa")}</div>
+</div>
+<div class="g4">
+  <div class="kpi"><div class="lbl">Novos em ${anoStr2}</div><div class="val">${d.clientesNovos}</div><div class="d">${dtStr(d.clientesNovos,da?.clientesNovos)}</div></div>
+  <div class="kpi"><div class="lbl">Total cadastrado</div><div class="val">${d.clientesTotal}</div></div>
+  <div class="kpi"><div class="lbl">Com processo ativo</div><div class="val">${d.servAtivos}</div><div class="d neu">${d.clientesTotal>0?Math.round(d.servAtivos/d.clientesTotal*100):0}% da carteira</div></div>
+  <div class="kpi"><div class="lbl">Orçamentos abertos</div><div class="val">${d.orcAbertos}</div><div class="d neu">R$ ${fmt(d.orcValor)}</div></div>
+</div>
+
+<div class="sec"><div class="sec-num">4</div><span class="sec-title">Distribuição por Tipo de Serviço</span></div>
+<div class="g2">
+  <div class="chart-box">
+    <div class="chart-title">Judicial vs Extrajudicial</div>
+    <div class="chart-sub">Composição do portfólio ativo</div>
+    <div class="donut-wrap">
+      ${svgDonut([d.judicial||1,d.extrajudicial||1],["rgba(122,106,170,0.85)","rgba(90,122,170,0.75)"])}
+      <div class="donut-leg">
+        <div><div class="dot" style="background:rgba(122,106,170,0.85)"></div>Judicial: ${d.judicial} (${(d.judicial||0)+(d.extrajudicial||0)>0?Math.round((d.judicial||0)/((d.judicial||0)+(d.extrajudicial||0))*100):0}%)</div>
+        <div><div class="dot" style="background:rgba(90,122,170,0.75)"></div>Extrajudicial: ${d.extrajudicial} (${(d.judicial||0)+(d.extrajudicial||0)>0?Math.round((d.extrajudicial||0)/((d.judicial||0)+(d.extrajudicial||0))*100):0}%)</div>
+      </div>
+    </div>
+  </div>
+  <div class="chart-box">
+    <div class="chart-title">Receita mensal — ${anoStr2}</div>
+    <div class="chart-sub">Faturamento acumulado por mês</div>
+    ${svgLine(recAcum,100,"#5a8f6e")}
+    <div style="display:flex;justify-content:space-between;font-size:7pt;color:#aaa;margin-top:2px"><span>Jan</span><span>Jun</span><span>Dez</span></div>
+  </div>
+</div>
+
+<div class="sec"><div class="sec-num">5</div><span class="sec-title">Resultado Financeiro Detalhado</span></div>
+<div class="g4">
+  <div class="kpi"><div class="lbl">Receita bruta</div><div class="val pos">R$ ${fmt(d.totalRec)}</div><div class="d">${dtStr(d.totalRec,da?.totalRec)}</div></div>
+  <div class="kpi"><div class="lbl">Despesas operacionais</div><div class="val neg">R$ ${fmt(d.totalPag)}</div><div class="d">${dtStr(d.totalPag,da?.totalPag,true)}</div></div>
+  <div class="kpi"><div class="lbl">Resultado líquido</div><div class="val">R$ ${fmt(d.resultado)}</div><div class="d neu">Margem ${d.margem}%</div></div>
+  <div class="kpi"><div class="lbl">A receber</div><div class="val">R$ ${fmt(d.saldoRem)}</div></div>
+</div>
+<table style="margin-bottom:10px"><thead><tr><th>Cliente</th><th>Protocolo</th><th>Tipo</th><th class="td-r">Valor Orçado</th><th class="td-r">Êxito Est.</th></tr></thead><tbody>${orcHtml}</tbody></table>
+
+<div class="sec"><div class="sec-num">6</div><span class="sec-title">Desempenho Operacional</span></div>
+<div class="g4">
+  <div class="kpi"><div class="lbl">Diligências no ano</div><div class="val">${d.diligTotal}</div><div class="d pos">${Math.round(d.diligConc/Math.max(d.diligTotal,1)*100)}% concluídas</div></div>
+  <div class="kpi"><div class="lbl">Diligências vencidas</div><div class="val ${d.diligVenc>0?"neg":"pos"}">${d.diligVenc}</div></div>
+  <div class="kpi"><div class="lbl">Eventos na agenda</div><div class="val">${d.agendaTotal}</div><div class="d pos">${Math.round(d.agendaReal/Math.max(d.agendaTotal,1)*100)}% realizados</div></div>
+  <div class="kpi"><div class="lbl">Êxito judicial (est.)</div><div class="val pos">R$ ${fmt(d.exitoTotal)}</div><div class="d neu">${d.exitoProc} processos</div></div>
+</div>
+
+<div class="footer"><span>Relatório de Desempenho — Exercício ${anoStr2}</span><span>DocImóvel PRO · Emitido em ${hoje}</span></div>
+</body></html>`);
+                    w.document.close();setTimeout(()=>w.print(),500);
                   }} className="bp">Imprimir PDF</button>
                 </div>
               </div>
 
-              {/* KPIs Financeiro */}
-              <div style={{fontSize:10,fontWeight:600,color:"#4a4d56",textTransform:"uppercase",letterSpacing:".06em",marginBottom:8,paddingLeft:8,borderLeft:"2px solid #2a2d36"}}>Financeiro</div>
+              {/* SEÇÃO 1 — Indicadores principais */}
+              <SecTitle num="1" title="Visão Geral — Indicadores Principais" sub={"Exercício "+anoFin+" vs "+anoAntStr}/>
               <div style={S.sg4}>
-                <div style={S.card}><div style={S.cardTitle}>Receita bruta</div><div style={{fontSize:18,color:"#5a8f6e"}}>{fmt(dados.totalRec)>0?"R$ "+fmt(dados.totalRec):"—"}</div>{fmtDelta(dados.totalRec,dadosAnt?.totalRec)}</div>
-                <div style={S.card}><div style={S.cardTitle}>Despesas</div><div style={{fontSize:18,color:"#b46464"}}>{dados.totalPag>0?"R$ "+fmt(dados.totalPag):"—"}</div>{fmtDelta(dados.totalPag,dadosAnt?.totalPag,true)}</div>
-                <div style={S.card}><div style={S.cardTitle}>Resultado líquido</div><div style={{fontSize:18,color:"#d6d3cc"}}>{"R$ "+fmt(dados.resultado)}</div>{fmtDelta(dados.resultado,dadosAnt?.resultado)}</div>
-                <div style={S.card}><div style={S.cardTitle}>A receber</div><div style={{fontSize:18,color:"#5a7aaa"}}>{"R$ "+fmt(dados.saldoRem)}</div></div>
+                {[{l:"Faturamento bruto",v:"R$ "+fmt(dados.totalRec),c:"#5a8f6e",d:fmtDelta(dados.totalRec,dadosAnt?.totalRec)},
+                  {l:"Resultado líquido",v:"R$ "+fmt(dados.resultado),c:"#d6d3cc",d:<div style={{fontSize:10,color:"#4a4d56",marginTop:3}}>Margem {dados.margem}%</div>},
+                  {l:"Carteira de clientes",v:String(dados.clientesTotal),c:"#b8965a",d:fmtDelta(dados.clientesNovos,dadosAnt?.clientesNovos)},
+                  {l:"Processos ativos",v:String(dados.servAtivos),c:"#d6d3cc",d:fmtDelta(dados.servAtivos,dadosAnt?.servAtivos)}
+                ].map(function(k){return <div key={k.l} style={S.card}><div style={S.cardTitle}>{k.l}</div><div style={{fontSize:20,fontWeight:300,color:k.c,letterSpacing:"-.5px"}}>{k.v}</div>{k.d||null}</div>;})}
               </div>
 
-              {/* KPIs Clientes e Serviços */}
-              <div style={{fontSize:10,fontWeight:600,color:"#4a4d56",textTransform:"uppercase",letterSpacing:".06em",marginBottom:8,marginTop:14,paddingLeft:8,borderLeft:"2px solid #2a2d36"}}>Clientes e Serviços</div>
+              {/* SEÇÃO 2 — Crescimento de faturamento */}
+              <SecTitle num="2" title="Crescimento de Faturamento — Série Histórica" mt={16}/>
+              <div style={{...S.card,marginBottom:10}}>
+                <div style={{fontSize:11,fontWeight:500,color:"#8a8782",marginBottom:3}}>Receita bruta anual (R$)</div>
+                <div style={{fontSize:10,color:"#3a3d46",marginBottom:12}}>Evolução do faturamento nos últimos 4 exercícios</div>
+                <BarChart data={recHist} labels={anosHist.map(String)} colors={["rgba(90,143,110,0.35)","rgba(90,143,110,0.45)","rgba(90,143,110,0.6)","rgba(184,150,90,0.55)"]} unit="R$"/>
+              </div>
               <div style={S.sg4}>
-                <div style={S.card}><div style={S.cardTitle}>Clientes novos</div><div style={{fontSize:18,color:"#b8965a"}}>{dados.clientesNovos}</div>{fmtDelta(dados.clientesNovos,dadosAnt?.clientesNovos)}</div>
-                <div style={S.card}><div style={S.cardTitle}>Carteira total</div><div style={{fontSize:18}}>{dados.clientesTotal}</div></div>
-                <div style={S.card}><div style={S.cardTitle}>Serviços abertos</div><div style={{fontSize:18,color:"#5a7aaa"}}>{dados.servAbertos}</div>{fmtDelta(dados.servAbertos,dadosAnt?.servAbertos)}</div>
-                <div style={S.card}><div style={S.cardTitle}>Orçamentos abertos</div><div style={{fontSize:18,color:"#b8965a"}}>{dados.orcAbertos}</div><div style={{fontSize:11,color:"#4a4d56",marginTop:3}}>R$ {fmt(dados.orcValor)}</div></div>
+                {dadosAnt&&<div style={S.card}><div style={S.cardTitle}>Crescimento {anoAntStr}→{anoFin}</div><div style={{fontSize:22,color:"#5a8f6e",fontWeight:300}}>{delta(dados.totalRec,dadosAnt.totalRec)!==null?(delta(dados.totalRec,dadosAnt.totalRec)>0?"+":"")+delta(dados.totalRec,dadosAnt.totalRec)+"%":"—"}</div></div>}
+                <div style={S.card}><div style={S.cardTitle}>Projeção {anoFin}</div><div style={{fontSize:22,color:"#b8965a",fontWeight:300}}>R$ {fmt(dados.totalRec+dados.saldoRem)}</div><div style={{fontSize:10,color:"#4a4d56",marginTop:3}}>recebido + a receber</div></div>
+                
               </div>
 
-              {/* KPIs Operacional */}
-              <div style={{fontSize:10,fontWeight:600,color:"#4a4d56",textTransform:"uppercase",letterSpacing:".06em",marginBottom:8,marginTop:14,paddingLeft:8,borderLeft:"2px solid #2a2d36"}}>Operacional</div>
+              {/* SEÇÃO 3 — Carteira de clientes */}
+              <SecTitle num="3" title="Evolução da Carteira de Clientes" mt={16}/>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}}>
+                <div style={S.card}>
+                  <div style={{fontSize:11,fontWeight:500,color:"#8a8782",marginBottom:2}}>Novos clientes por ano</div>
+                  <div style={{fontSize:10,color:"#3a3d46",marginBottom:10}}>Captação anual</div>
+                  <BarChart data={cliHist} labels={anosHist.map(String)} colors={["rgba(184,150,90,0.3)","rgba(184,150,90,0.4)","rgba(184,150,90,0.55)","rgba(184,150,90,0.7)"]} height={130}/>
+                </div>
+                <div style={S.card}>
+                  <div style={{fontSize:11,fontWeight:500,color:"#8a8782",marginBottom:2}}>Carteira total acumulada</div>
+                  <div style={{fontSize:10,color:"#3a3d46",marginBottom:10}}>Crescimento do portfólio</div>
+                  <LineChart data={cliAcum.filter(v=>v>0).length>1?cliAcum:[0,...cliAcum]} height={130} color="#5a7aaa"/>
+                </div>
+              </div>
               <div style={S.sg4}>
-                <div style={S.card}><div style={S.cardTitle}>Diligências</div><div style={{fontSize:18}}>{dados.diligTotal}</div><div style={{fontSize:11,color:"#5a8f6e",marginTop:3}}>{Math.round(dados.diligConc/Math.max(dados.diligTotal,1)*100)}% concluídas</div></div>
-                <div style={S.card}><div style={S.cardTitle}>Diligências vencidas</div><div style={{fontSize:18,color:dados.diligVenc>0?"#b46464":"#5a8f6e"}}>{dados.diligVenc}</div>{fmtDelta(dados.diligVenc,dadosAnt?.diligVenc,true)}</div>
-                <div style={S.card}><div style={S.cardTitle}>Agenda</div><div style={{fontSize:18}}>{dados.agendaTotal}</div><div style={{fontSize:11,color:"#5a8f6e",marginTop:3}}>{Math.round(dados.agendaReal/Math.max(dados.agendaTotal,1)*100)}% realizados</div></div>
-                <div style={S.card}><div style={S.cardTitle}>Êxito judicial (est.)</div><div style={{fontSize:18,color:"#5a8f6e"}}>{"R$ "+fmt(dados.exitoTotal)}</div><div style={{fontSize:11,color:"#4a4d56",marginTop:3}}>{dados.exitoProc} processos</div></div>
+                {[{l:"Novos em "+anoFin,v:String(dados.clientesNovos),c:"#b8965a",d:fmtDelta(dados.clientesNovos,dadosAnt?.clientesNovos)},
+                  {l:"Total cadastrado",v:String(dados.clientesTotal),c:"#d6d3cc"},
+                  {l:"Com processo ativo",v:String(dados.servAtivos),c:"#d6d3cc",d:<div style={{fontSize:10,color:"#4a4d56",marginTop:3}}>{dados.clientesTotal>0?Math.round(dados.servAtivos/dados.clientesTotal*100):0}% da carteira</div>},
+                  {l:"Orçamentos abertos",v:String(dados.orcAbertos),c:"#b8965a",d:<div style={{fontSize:10,color:"#4a4d56",marginTop:3}}>R$ {fmt(dados.orcValor)}</div>}
+                ].map(function(k){return <div key={k.l} style={S.card}><div style={S.cardTitle}>{k.l}</div><div style={{fontSize:20,fontWeight:300,color:k.c,letterSpacing:"-.5px"}}>{k.v}</div>{k.d||null}</div>;})}
               </div>
 
-              {/* Nota sobre snapshot */}
-              <div style={{marginTop:12,fontSize:10,color:"#3a3d46",textAlign:"right"}}>
-                {snapAtual
-                  ?`Snapshot gerado em ${new Date(snapAtual.geradoEm).toLocaleDateString("pt-BR")} · clique "Gerar Snapshot" para atualizar`
-                  :`Dados ao vivo do ano ${anoFin} · use "Gerar Snapshot" para salvar o fechamento anual`
-                }
+              {/* SEÇÃO 4 — Distribuição por tipo */}
+              <SecTitle num="4" title="Distribuição por Tipo de Serviço" mt={16}/>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}}>
+                <div style={S.card}>
+                  <div style={{fontSize:11,fontWeight:500,color:"#8a8782",marginBottom:2}}>Judicial vs Extrajudicial</div>
+                  <div style={{fontSize:10,color:"#3a3d46",marginBottom:12}}>Composição do portfólio ativo</div>
+                  <div style={{display:"flex",alignItems:"center",gap:16}}>
+                    <DonutChart data={[dados.judicial||1,dados.extrajudicial||1]} colors={["rgba(122,106,170,0.8)","rgba(90,122,170,0.7)"]}/>
+                    <div>
+                      {[{l:"Judicial",v:dados.judicial,c:"rgba(122,106,170,0.8)"},{l:"Extrajudicial",v:dados.extrajudicial,c:"rgba(90,122,170,0.7)"}].map(function(t){
+                        const tot=(dados.judicial||0)+(dados.extrajudicial||0);
+                        return <div key={t.l} style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                          <div style={{width:10,height:10,borderRadius:2,background:t.c,flexShrink:0}}/>
+                          <span style={{fontSize:11,color:"#8a8782"}}>{t.l}: {t.v} ({tot>0?Math.round(t.v/tot*100):0}%)</span>
+                        </div>;
+                      })}
+                    </div>
+                  </div>
+                </div>
+                <div style={S.card}>
+                  <div style={{fontSize:11,fontWeight:500,color:"#8a8782",marginBottom:2}}>Receita mensal — {anoFin}</div>
+                  <div style={{fontSize:10,color:"#3a3d46",marginBottom:10}}>Faturamento acumulado por mês</div>
+                  <LineChart data={recAcum} height={130} color="#5a8f6e"/>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#3a3d46",marginTop:4}}>
+                    <span>Jan</span><span>Jun</span><span>Dez</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* SEÇÃO 5 — Financeiro detalhado */}
+              <SecTitle num="5" title="Resultado Financeiro Detalhado" mt={8}/>
+              <div style={S.sg4}>
+                {[{l:"Receita bruta",v:"R$ "+fmt(dados.totalRec),c:"#5a8f6e",d:fmtDelta(dados.totalRec,dadosAnt?.totalRec)},
+                  {l:"Despesas operacionais",v:"R$ "+fmt(dados.totalPag),c:"#b46464",d:fmtDelta(dados.totalPag,dadosAnt?.totalPag,true)},
+                  {l:"Resultado líquido",v:"R$ "+fmt(dados.resultado),c:"#d6d3cc",d:<div style={{fontSize:10,color:"#4a4d56",marginTop:3}}>Margem {dados.margem}%</div>},
+                  {l:"A receber (cadastrado)",v:"R$ "+fmt(dados.saldoRem),c:"#5a7aaa"}
+                ].map(function(k){return <div key={k.l} style={S.card}><div style={S.cardTitle}>{k.l}</div><div style={{fontSize:20,fontWeight:300,color:k.c,letterSpacing:"-.5px"}}>{k.v}</div>{k.d||null}</div>;})}
+              </div>
+              <div style={{...S.card,marginTop:10}}>
+                <div style={{fontSize:11,fontWeight:500,color:"#8a8782",marginBottom:10}}>Orçamentos em aberto — aguardando fechamento</div>
+                <table style={S.table}>
+                  <thead><tr>{["Cliente","Protocolo","Tipo","Valor Orçado","Êxito Est."].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                  <tbody>
+                    {(servicos||[]).filter(s=>s.orcamento?.status==="Orçamento"||s.status==="Orçamento").map(function(s,i){
+                      const cli=(clientes||[]).find(c=>c.id===(s.clienteId||s.cliente_id));
+                      const exito=Number(s.orcamento?.valorCausa||0)>0&&Number(s.orcamento?.percExito||0)>0?Math.round(Number(s.orcamento.valorCausa)*Number(s.orcamento.percExito)/100):0;
+                      return <tr key={i} style={S.tr} className="tr">
+                        <td style={S.td}>{cli?.nome||"—"}</td>
+                        <td style={{...S.td,fontFamily:"monospace",fontSize:11}}>{s.protocolo||"—"}</td>
+                        <td style={S.td}>{s.tipo||"—"}</td>
+                        <td style={{...S.td,color:"#b8965a",textAlign:"right"}}>R$ {fmt(s.orcamento?.valor||0)}</td>
+                        <td style={{...S.td,color:exito>0?"#5a8f6e":"#3a3d46",textAlign:"right"}}>{exito>0?"R$ "+fmt(exito)+" ("+s.orcamento.percExito+"%)":"—"}</td>
+                      </tr>;
+                    })}
+                    <tr style={{background:"rgba(255,255,255,0.02)"}}>
+                      <td style={{...S.td,fontWeight:600,color:"#d6d3cc"}} colSpan={3}>Total</td>
+                      <td style={{...S.td,fontWeight:600,color:"#b8965a",textAlign:"right"}}>R$ {fmt(dados.orcValor)}</td>
+                      <td style={{...S.td,fontWeight:600,color:"#5a8f6e",textAlign:"right"}}>R$ {fmt(dados.exitoTotal)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* SEÇÃO 6 — Operacional */}
+              <SecTitle num="6" title="Desempenho Operacional" mt={16}/>
+              <div style={S.sg4}>
+                {[{l:"Diligências no ano",v:String(dados.diligTotal),c:"#d6d3cc",d:<div style={{fontSize:10,color:"#5a8f6e",marginTop:3}}>{Math.round(dados.diligConc/Math.max(dados.diligTotal,1)*100)}% concluídas</div>},
+                  {l:"Eventos na agenda",v:String(dados.agendaTotal),c:"#d6d3cc",d:<div style={{fontSize:10,color:"#5a8f6e",marginTop:3}}>{Math.round(dados.agendaReal/Math.max(dados.agendaTotal,1)*100)}% realizados</div>},
+                  {l:"Processos judiciais",v:String(dados.judicial||0),c:"#7a6aaa",d:<div style={{fontSize:10,color:"#4a4d56",marginTop:3}}>{(dados.judicial||0)+(dados.extrajudicial||0)>0?Math.round((dados.judicial||0)/((dados.judicial||0)+(dados.extrajudicial||0))*100):0}% do portfólio</div>},
+                  {l:"Êxito judicial (est.)",v:"R$ "+fmt(dados.exitoTotal),c:"#5a8f6e",d:<div style={{fontSize:10,color:"#4a4d56",marginTop:3}}>{dados.exitoProc} processos cadastrados</div>}
+                ].map(function(k){return <div key={k.l} style={S.card}><div style={S.cardTitle}>{k.l}</div><div style={{fontSize:20,fontWeight:300,color:k.c,letterSpacing:"-.5px"}}>{k.v}</div>{k.d||null}</div>;})}
+              </div>
+
+              <div style={{marginTop:12,fontSize:10,color:"#3a3d46",textAlign:"right",paddingBottom:8,borderTop:"0.5px solid #2a2d36",paddingTop:8}}>
+                {snapAtual?"Snapshot gerado em "+new Date(snapAtual.geradoEm).toLocaleDateString("pt-BR")+" · clique ⊕ Snapshot para atualizar":"Dados ao vivo — use ⊕ Snapshot para salvar o fechamento anual"}
               </div>
             </div>
           );
