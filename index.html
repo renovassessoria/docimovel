@@ -2631,7 +2631,6 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
   const [valorMetaInput,setValorMetaInput]=useState("");
   const [dtIni,setDtIni]=useState("");
   const [dtFim,setDtFim]=useState("");
-  const [gerandoSnap,setGerandoSnap]=useState(false);
   const filtrar=(lista)=>{
     if(!dtIni&&!dtFim)return lista.filter(r=>r.data&&r.data.startsWith(String(anoFin)));
     return lista.filter(r=>{
@@ -3303,6 +3302,7 @@ const GraficoPizza=({pago,resultado,total})=>{
 
 const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,setAnoFin,recebimentos,pagamentos,servicos,cn,clientes,snapshots,setSnapshots,agenda,sb})=>{
   const [abaRel,setAbaRel]=useState("financeiro");
+  const [gerandoSnap,setGerandoSnap]=useState(false);
   const [dtIni,setDtIni]=useState("");
   const [dtFim,setDtFim]=useState("");
   const recF=recebimentos.filter(r=>{
