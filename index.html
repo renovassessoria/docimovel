@@ -439,6 +439,7 @@ const AppContent=({session})=>{
   const [clientes,setClientes]=useState([]);
   const [colaboradores,setColaboradores]=useState([]);
   const [metas,setMetas]=useState({});
+  const [snapshots,setSnapshots]=useState({});
   const [servicos,setServicos]=useState([]);
   const [recebimentos,setRecebimentos]=useState([]);
   const [pagamentos,setPagamentos]=useState([]);
@@ -479,6 +480,7 @@ const AppContent=({session})=>{
       ]);
       try{const{data:colData}=await sb.from("colaboradores").select("*").order("nome",{ascending:true});if(colData)setColaboradores(colData);}catch(e){}
       try{const{data:metaData}=await sb.from("configuracoes").select("dados").eq("id","metas").single();if(metaData?.dados)setMetas(metaData.dados);}catch(e){}
+      try{const{data:snapData}=await sb.from("configuracoes").select("dados").eq("id","snapshots").single();if(snapData?.dados)setSnapshots(snapData.dados);}catch(e){}
       if(c.data)setClientes(c.data.map(x=>({...x,estadoCivil:x.estado_civil||"",profissao:x.profissao||"",naturalidade:x.naturalidade||"",filiacao:x.filiacao||"",dataNascimento:x.data_nascimento||"",cnh:x.cnh||"",conjugeNome:x.conjuge_nome||"",conjugeCpf:x.conjuge_cpf||"",conjugeRg:x.conjuge_rg||"",conjugeProfissao:x.conjuge_profissao||"",conjugeNaturalidade:x.conjuge_naturalidade||"",conjugeFiliacao:x.conjuge_filiacao||"",regimeBens:x.regime_bens||"",dataCasamento:x.data_casamento||"",cartorioCasamento:x.cartorio_casamento||"",casamentoLivro:x.casamento_livro||"",casamentoFolha:x.casamento_folha||"",matriculaCasamento:x.casamento_matricula||""})));
       if(s.data)setServicos(s.data.map(sv=>({...sv,clienteId:sv.cliente_id,tipoProcesso:sv.tipo_processo||sv.tipoProcesso||(sv.dados_judiciais&&Object.keys(sv.dados_judiciais||{}).length>0?"judicial":(sv.estagio==="Judiciário"||sv.estagio==="Judicial"?"judicial":"extrajudicial")),dadosJudiciais:sv.dados_judiciais||sv.dadosJudiciais||{},prazoConclusao:sv.prazo_conclusao||sv.prazoConclusao||null,diligencias:(sv.diligencias||[]).map(d=>({...d,dataConclusao:d.data_conclusao||d.dataConclusao||null})),pagamentos:(sv.pagamentos_processo||[]).map(p=>({...p,parcelado:p.parcelado||false,status:p.status||"pendente",dataPagamento:p.data_pagamento||null,grupoParcela:p.grupo_parcela||null,parcelaNumero:p.parcela_numero||null,totalParcelas:p.total_parcelas||null,notaFiscal:p.nota_fiscal||false})),estagios:sv.estagios||[],checklist:sv.checklist||{},outrosDesc:sv.outros_desc||"",orcamento:sv.orcamento||{valor:0,desconto:0,obs:"",status:"Orçamento"}})));
       if(r.data)setRecebimentos(r.data);
@@ -824,7 +826,7 @@ const AppContent=({session})=>{
         {tela==="andamento"&&!processoAberto&&<TelaAndamento servicos={servicos} cn={cn} diligVenc={diligVenc} diligHoje={diligHoje} abrirProcesso={s=>{setProcessoAberto(s);setAbaProcesso("timeline");}}/>}
         {tela==="andamento"&&processoAberto&&<TelaProcessoDetalhe servico={processoAberto} aba={abaProcesso} setAba={setAbaProcesso} atualizar={p=>atualizarServico(processoAberto.id,p)} voltar={()=>setProcessoAberto(null)} cn={cn}/>}
         {tela==="financeiro"&&<TelaFinanceiro aba={abaFin} setAba={setAbaFin} recebimentos={recebimentos} pagamentos={pagamentos} setRecebimentos={setRecebimentos} setPagamentos={setPagamentos} totRec={totRec} totPag={totPag} lucro={lucro} dadosMensais={dadosMensais} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} abrirModal={abrirModal} setReciboData={setReciboData} sb={sb} colaboradores={colaboradores} setColaboradores={setColaboradores} metas={metas} setMetas={setMetas} servicos={servicos}/>}
-        {tela==="relatorios"&&<TelaRelatorios dadosMensais={dadosMensais} totRec={totRec} totPag={totPag} lucro={lucro} recAno={recAno} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} recebimentos={recebimentos} pagamentos={pagamentos} servicos={servicos} cn={cn} clientes={clientes}/>}
+        {tela==="relatorios"&&<TelaRelatorios dadosMensais={dadosMensais} totRec={totRec} totPag={totPag} lucro={lucro} recAno={recAno} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} recebimentos={recebimentos} pagamentos={pagamentos} servicos={servicos} cn={cn} clientes={clientes} snapshots={snapshots} setSnapshots={setSnapshots} agenda={agenda} sb={sb}/>}
         {tela==="custos"&&<TelaCustos showToast={showToast} custos={custos} setCustos={v=>{setCustos(v);sb.from("configuracoes").upsert({id:"custos",dados:v,updated_at:new Date().toISOString()}).then(()=>{}).catch(()=>{});}} sb={sb}/>}
         {tela==="captacao"&&<TelaCaptacao leads={leads} setLeads={setLeads} atualizarLead={atualizarLead} showToast={showToast} sb={sb}/>}
         {tela==="usuarios"&&<TelaUsuarios usuarios={usuarios} setUsuarios={setUsuarios} abrirModal={abrirModal} session={session}/>}
@@ -2629,6 +2631,7 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
   const [valorMetaInput,setValorMetaInput]=useState("");
   const [dtIni,setDtIni]=useState("");
   const [dtFim,setDtFim]=useState("");
+  const [gerandoSnap,setGerandoSnap]=useState(false);
   const filtrar=(lista)=>{
     if(!dtIni&&!dtFim)return lista.filter(r=>r.data&&r.data.startsWith(String(anoFin)));
     return lista.filter(r=>{
@@ -3298,7 +3301,7 @@ const GraficoPizza=({pago,resultado,total})=>{
   );
 };
 
-const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,setAnoFin,recebimentos,pagamentos,servicos,cn,clientes})=>{
+const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,setAnoFin,recebimentos,pagamentos,servicos,cn,clientes,snapshots,setSnapshots,agenda,sb})=>{
   const [abaRel,setAbaRel]=useState("financeiro");
   const [dtIni,setDtIni]=useState("");
   const [dtFim,setDtFim]=useState("");
@@ -3403,7 +3406,7 @@ const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,
 
       {/* Abas internas */}
       <div style={{display:"flex",gap:0,padding:"0 24px",background:"#1e2128",borderBottom:"1px solid #0f1f35"}}>
-        {[{k:"financeiro",l:"◉ Financeiro"},{k:"honorarios",l:"▣ Honorários"},{k:"irpf",l:"◈ IRPF"}].map(a=>(
+        {[{k:"financeiro",l:"◉ Financeiro"},{k:"honorarios",l:"▣ Honorários"},{k:"irpf",l:"◈ IRPF"},{k:"desempenho",l:"◆ Desempenho"}].map(a=>(
           <button key={a.k} onClick={()=>setAbaRel(a.k)} style={{...S.abaBtn,...(abaRel===a.k?S.abaBtnActive:{})}} className="ab">{a.l}</button>
         ))}
       </div>
@@ -3554,6 +3557,153 @@ const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,
                       </tr>
                     </tbody>
                   </table>
+                }
+              </div>
+            </div>
+          );
+        })()}
+        {abaRel==="desempenho"&&(()=>{
+          const anoStr=String(anoFin);
+          const anoAntStr=String(anoFin-1);
+          const hoje2=new Date().toISOString().slice(0,10);
+          const snapAtual=snapshots[anoStr]||null;
+          const snapAnt=snapshots[anoAntStr]||null;
+          // Calcular dados ao vivo do ano atual
+          const calcSnap=()=>{
+            const recsAno2=recebimentos.filter(r=>(r.data||"").startsWith(anoStr));
+            const pagsAno2=pagamentos.filter(p=>(p.data||"").startsWith(anoStr));
+            const clientesNovos=(clientes||[]).filter(c=>(c.created_at||"").startsWith(anoStr)).length;
+            const servAbertos=(servicos||[]).filter(s=>(s.created_at||"").startsWith(anoStr)).length;
+            const servConcluidos=(servicos||[]).filter(s=>s.status==="Concluído"&&(s.updated_at||"").startsWith(anoStr)).length;
+            const servAtivos=(servicos||[]).filter(s=>s.status!=="Orçamento").length;
+            const orcAbertos=(servicos||[]).filter(s=>s.orcamento?.status==="Orçamento"||s.status==="Orçamento").length;
+            const orcValor=(servicos||[]).filter(s=>s.orcamento?.status==="Orçamento"||s.status==="Orçamento").reduce((a,s)=>a+Number(s.orcamento?.valor||0),0);
+            const todasDiligAno=(servicos||[]).flatMap(s=>(s.diligencias||[]));
+            const diligTotal=todasDiligAno.length;
+            const diligConc=todasDiligAno.filter(d=>(d.status||"").trim()==="Concluída").length;
+            const diligVenc=todasDiligAno.filter(d=>(d.status||"").trim()!=="Concluída"&&(d.status||"").trim()!=="Aguardando Órgão"&&d.prazo&&d.prazo<hoje2).length;
+            const agendaAno=(agenda||[]).filter(a=>(a.data||"").startsWith(anoStr));
+            const agendaReal=agendaAno.filter(a=>a.status==="realizado").length;
+            const totalRec2=recsAno2.reduce((a,r)=>a+Number(r.valor||0),0);
+            const totalPag2=pagsAno2.reduce((a,r)=>a+Number(r.valor||0),0);
+            const resultado2=totalRec2-totalPag2;
+            const judicial2=(servicos||[]).filter(s=>s.tipoProcesso==="judicial").length;
+            const exitoProc=(servicos||[]).filter(s=>s.tipoProcesso==="judicial"&&Number(s.orcamento?.valorCausa||0)>0&&Number(s.orcamento?.percExito||0)>0);
+            const exitoTotal=exitoProc.reduce((a,s)=>a+Math.round(Number(s.orcamento.valorCausa)*Number(s.orcamento.percExito)/100),0);
+            const saldoRem=(servicos||[]).filter(s=>s.status!=="Orçamento"&&s.orcamento?.status!=="Orçamento").reduce((a,s)=>{
+              const vl=Number(s.orcamento?.valor||0)-Number(s.orcamento?.desconto||0);
+              const pg=(s.pagamentos||[]).filter(p=>p.status==="pago"||(p.data&&p.data<=hoje2)).reduce((x,p)=>x+Number(p.valor||0),0);
+              return a+Math.max(0,vl-pg);
+            },0);
+            return{ano:anoStr,totalRec:totalRec2,totalPag:totalPag2,resultado:resultado2,saldoRem,clientesTotal:(clientes||[]).length,clientesNovos,servAbertos,servConcluidos,servAtivos,orcAbertos,orcValor,diligTotal,diligConc,diligVenc,agendaTotal:agendaAno.length,agendaReal,judicial:judicial2,exitoProc:exitoProc.length,exitoTotal,geradoEm:new Date().toISOString()};
+          };
+
+          const dadosVivo=calcSnap();
+          const dados=snapAtual||dadosVivo;
+          const dadosAnt=snapAnt||null;
+
+          const delta=(atual,ant)=>{
+            if(!ant||!ant||ant===0)return null;
+            const pct=Math.round((atual-ant)/Math.abs(ant)*100);
+            return pct;
+          };
+          const fmtDelta=(atual,ant,inv=false)=>{
+            const d=delta(atual,ant);
+            if(d===null)return null;
+            const up=inv?(d<0):(d>0);
+            return <span style={{fontSize:10,color:up?"#5a8f6e":"#b46464",marginTop:4,display:"block"}}>{d>0?"↑ +":d<0?"↓ ":""}{d}% vs {anoAntStr}</span>;
+          };
+
+          const gerarSnapshot=async()=>{
+            setGerandoSnap(true);
+            const snap=calcSnap();
+            const novosSnaps={...snapshots,[anoStr]:snap};
+            await sb.from("configuracoes").upsert({id:"snapshots",dados:novosSnaps,updated_at:new Date().toISOString()});
+            setSnapshots(novosSnaps);
+            setGerandoSnap(false);
+          };
+
+          return(
+            <div>
+              {/* Cabeçalho com ações */}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
+                <div>
+                  <div style={{fontSize:14,fontWeight:500,color:"#d6d3cc"}}>Relatório de Desempenho — {anoFin}</div>
+                  <div style={{fontSize:11,color:"#4a4d56",marginTop:2}}>
+                    {snapAtual?"Snapshot salvo em "+new Date(snapAtual.geradoEm).toLocaleDateString("pt-BR")+" · dados consolidados":"Dados ao vivo — snapshot não gerado para este ano"}
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:8}}>
+                  <button style={{...S.btnSm,color:"#5a7aaa",borderColor:"rgba(90,122,170,0.3)"}}
+                    onClick={gerarSnapshot} disabled={gerandoSnap} className="bs">
+                    {gerandoSnap?"Gerando...":"⊕ Gerar Snapshot"}
+                  </button>
+                  <button style={S.btnPrimary} onClick={()=>{
+                    const w=window.open("","_blank");
+                    const d=dados;const da=dadosAnt;
+                    const dt=(a,ant,inv=false)=>{if(!ant)return"";const p=Math.round((a-ant)/Math.abs(ant)*100);const up=inv?(p<0):(p>0);return` <span style="color:${up?"#0a6644":"#8b2a0e"}">${p>0?"↑ +":p<0?"↓ ":""}${p}%</span>`;};
+                    w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Desempenho ${anoFin}</title><style>*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}body{background:#fff;color:#111;padding:15mm 18mm;font-size:9pt}.h1{font-size:14pt;font-weight:bold;margin-bottom:4px}.sub{font-size:8pt;color:#666;margin-bottom:16px}.sec{font-size:8pt;font-weight:bold;text-transform:uppercase;letter-spacing:.06em;color:#666;border-bottom:1px solid #ccc;padding-bottom:3px;margin:14px 0 8px}.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}.kpi{border:1px solid #e5e5e5;border-radius:4px;padding:8px 10px}.kpi .lbl{font-size:7pt;color:#999;margin-bottom:4px;text-transform:uppercase}.kpi .val{font-size:13pt;font-weight:bold;color:#111}.kpi .delta{font-size:7.5pt;margin-top:3px}.pos{color:#0a6644}.neg{color:#8b2a0e}.footer{margin-top:20px;font-size:7pt;color:#aaa;border-top:1px solid #eee;padding-top:8px;text-align:right}@media print{@page{margin:15mm 18mm}body{padding:0}}</style></head><body>
+                    <div class="h1">Relatório de Desempenho — ${anoFin}</div>
+                    <div class="sub">Análise anual consolidada · Dados: ${snapAtual?"snapshot de "+new Date(d.geradoEm).toLocaleDateString("pt-BR"):"ao vivo"}</div>
+                    <div class="sec">Financeiro</div>
+                    <div class="grid4">
+                      <div class="kpi"><div class="lbl">Receita bruta</div><div class="val pos">R$ ${fmt(d.totalRec)}</div><div class="delta">${dt(d.totalRec,da?.totalRec)}</div></div>
+                      <div class="kpi"><div class="lbl">Despesas</div><div class="val neg">R$ ${fmt(d.totalPag)}</div><div class="delta">${dt(d.totalPag,da?.totalPag,true)}</div></div>
+                      <div class="kpi"><div class="lbl">Resultado líquido</div><div class="val">R$ ${fmt(d.resultado)}</div><div class="delta">${dt(d.resultado,da?.resultado)}</div></div>
+                      <div class="kpi"><div class="lbl">A receber</div><div class="val">R$ ${fmt(d.saldoRem)}</div></div>
+                    </div>
+                    <div class="sec">Clientes e Serviços</div>
+                    <div class="grid4">
+                      <div class="kpi"><div class="lbl">Clientes novos</div><div class="val">${d.clientesNovos}</div><div class="delta">${dt(d.clientesNovos,da?.clientesNovos)}</div></div>
+                      <div class="kpi"><div class="lbl">Carteira total</div><div class="val">${d.clientesTotal}</div></div>
+                      <div class="kpi"><div class="lbl">Serviços abertos</div><div class="val">${d.servAbertos}</div><div class="delta">${dt(d.servAbertos,da?.servAbertos)}</div></div>
+                      <div class="kpi"><div class="lbl">Orçamentos abertos</div><div class="val">${d.orcAbertos} · R$ ${fmt(d.orcValor)}</div></div>
+                    </div>
+                    <div class="sec">Operacional</div>
+                    <div class="grid3">
+                      <div class="kpi"><div class="lbl">Diligências</div><div class="val">${d.diligTotal}</div><div class="delta">${Math.round(d.diligConc/Math.max(d.diligTotal,1)*100)}% concluídas</div></div>
+                      <div class="kpi"><div class="lbl">Agenda</div><div class="val">${d.agendaTotal}</div><div class="delta">${Math.round(d.agendaReal/Math.max(d.agendaTotal,1)*100)}% realizados</div></div>
+                      <div class="kpi"><div class="lbl">Êxito judicial</div><div class="val pos">R$ ${fmt(d.exitoTotal)}</div><div class="delta">${d.exitoProc} processos estimados</div></div>
+                    </div>
+                    <div class="footer">Relatório de Desempenho ${anoFin} · Emitido em ${new Date().toLocaleDateString("pt-BR")} · DocImóvel PRO</div>
+                    </body></html>`);
+                    w.document.close();setTimeout(()=>w.print(),400);
+                  }} className="bp">Imprimir PDF</button>
+                </div>
+              </div>
+
+              {/* KPIs Financeiro */}
+              <div style={{fontSize:10,fontWeight:600,color:"#4a4d56",textTransform:"uppercase",letterSpacing:".06em",marginBottom:8,paddingLeft:8,borderLeft:"2px solid #2a2d36"}}>Financeiro</div>
+              <div style={S.sg4}>
+                <div style={S.card}><div style={S.cardTitle}>Receita bruta</div><div style={{fontSize:18,color:"#5a8f6e"}}>{fmt(dados.totalRec)>0?"R$ "+fmt(dados.totalRec):"—"}</div>{fmtDelta(dados.totalRec,dadosAnt?.totalRec)}</div>
+                <div style={S.card}><div style={S.cardTitle}>Despesas</div><div style={{fontSize:18,color:"#b46464"}}>{dados.totalPag>0?"R$ "+fmt(dados.totalPag):"—"}</div>{fmtDelta(dados.totalPag,dadosAnt?.totalPag,true)}</div>
+                <div style={S.card}><div style={S.cardTitle}>Resultado líquido</div><div style={{fontSize:18,color:"#d6d3cc"}}>{"R$ "+fmt(dados.resultado)}</div>{fmtDelta(dados.resultado,dadosAnt?.resultado)}</div>
+                <div style={S.card}><div style={S.cardTitle}>A receber</div><div style={{fontSize:18,color:"#5a7aaa"}}>{"R$ "+fmt(dados.saldoRem)}</div></div>
+              </div>
+
+              {/* KPIs Clientes e Serviços */}
+              <div style={{fontSize:10,fontWeight:600,color:"#4a4d56",textTransform:"uppercase",letterSpacing:".06em",marginBottom:8,marginTop:14,paddingLeft:8,borderLeft:"2px solid #2a2d36"}}>Clientes e Serviços</div>
+              <div style={S.sg4}>
+                <div style={S.card}><div style={S.cardTitle}>Clientes novos</div><div style={{fontSize:18,color:"#b8965a"}}>{dados.clientesNovos}</div>{fmtDelta(dados.clientesNovos,dadosAnt?.clientesNovos)}</div>
+                <div style={S.card}><div style={S.cardTitle}>Carteira total</div><div style={{fontSize:18}}>{dados.clientesTotal}</div></div>
+                <div style={S.card}><div style={S.cardTitle}>Serviços abertos</div><div style={{fontSize:18,color:"#5a7aaa"}}>{dados.servAbertos}</div>{fmtDelta(dados.servAbertos,dadosAnt?.servAbertos)}</div>
+                <div style={S.card}><div style={S.cardTitle}>Orçamentos abertos</div><div style={{fontSize:18,color:"#b8965a"}}>{dados.orcAbertos}</div><div style={{fontSize:11,color:"#4a4d56",marginTop:3}}>R$ {fmt(dados.orcValor)}</div></div>
+              </div>
+
+              {/* KPIs Operacional */}
+              <div style={{fontSize:10,fontWeight:600,color:"#4a4d56",textTransform:"uppercase",letterSpacing:".06em",marginBottom:8,marginTop:14,paddingLeft:8,borderLeft:"2px solid #2a2d36"}}>Operacional</div>
+              <div style={S.sg4}>
+                <div style={S.card}><div style={S.cardTitle}>Diligências</div><div style={{fontSize:18}}>{dados.diligTotal}</div><div style={{fontSize:11,color:"#5a8f6e",marginTop:3}}>{Math.round(dados.diligConc/Math.max(dados.diligTotal,1)*100)}% concluídas</div></div>
+                <div style={S.card}><div style={S.cardTitle}>Diligências vencidas</div><div style={{fontSize:18,color:dados.diligVenc>0?"#b46464":"#5a8f6e"}}>{dados.diligVenc}</div>{fmtDelta(dados.diligVenc,dadosAnt?.diligVenc,true)}</div>
+                <div style={S.card}><div style={S.cardTitle}>Agenda</div><div style={{fontSize:18}}>{dados.agendaTotal}</div><div style={{fontSize:11,color:"#5a8f6e",marginTop:3}}>{Math.round(dados.agendaReal/Math.max(dados.agendaTotal,1)*100)}% realizados</div></div>
+                <div style={S.card}><div style={S.cardTitle}>Êxito judicial (est.)</div><div style={{fontSize:18,color:"#5a8f6e"}}>{"R$ "+fmt(dados.exitoTotal)}</div><div style={{fontSize:11,color:"#4a4d56",marginTop:3}}>{dados.exitoProc} processos</div></div>
+              </div>
+
+              {/* Nota sobre snapshot */}
+              <div style={{marginTop:12,fontSize:10,color:"#3a3d46",textAlign:"right"}}>
+                {snapAtual
+                  ?`Snapshot gerado em ${new Date(snapAtual.geradoEm).toLocaleDateString("pt-BR")} · clique "Gerar Snapshot" para atualizar`
+                  :`Dados ao vivo do ano ${anoFin} · use "Gerar Snapshot" para salvar o fechamento anual`
                 }
               </div>
             </div>
