@@ -3502,7 +3502,7 @@ const TelaRelatorios=({dadosMensais,totRec,totPag,lucro,recAno,melhorMes,anoFin,
                 valorTotal:valorLiq2,pago,saldo,exitoEstimado
               };
             })
-            .filter(s=>s.saldo>0)
+            .filter(s=>s.saldo>0||s.exitoEstimado>0)
             .sort((a,b)=>b.saldo-a.saldo);
           const totalSaldo=saldosPorServico.reduce((a,s)=>a+s.saldo,0);
 
