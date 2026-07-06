@@ -448,7 +448,7 @@ const TelaAlertas=({alertas,setAlertas,servicos,cn,sb,showToast})=>{
     if(a.numero_processo){
       const numA=a.numero_processo.replace(/\D/g,"");
       return servicos.find(s=>{
-        const numS=(s.dadosJudiciais?.numeroProcesso||"").replace(/\D/g,"");
+        const numS=(s.dadosJudiciais?.numeroProcesso||s.dadosJudiciais?.numero||"").replace(/\D/g,"");
         return numS.length>=15&&numA.length>=15&&numS.slice(-15)===numA.slice(-15);
       });
     }
