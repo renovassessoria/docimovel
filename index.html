@@ -172,6 +172,7 @@ const NAV_BASE=[
   {k:"clientes",i:"◈",l:"Clientes"},
   {k:"servicos",i:"◎",l:"Serviços"},
   {k:"judicial",i:"⚖",l:"Judicial"},
+  {k:"alertas",i:"🔔",l:"Alertas"},
   {k:"diligencias_all",i:"⊙",l:"Diligências"},
   {k:"agenda",i:"⊟",l:"Agenda"},
   {k:"financeiro",i:"◉",l:"Financeiro",restrito:true},
@@ -434,6 +435,156 @@ const App=()=>{
 };
 
 
+
+const TelaAlertas=({alertas,setAlertas,servicos,cn,sb,showToast})=>{
+  const [filtro,setFiltro]=React.useState("todos");
+  const TIPO_COR={despacho:"#e8a87c",intimacao:"#7ca8e8",decisao:"#b87ce8",citacao:"#7ce8a8",outro:"#8a8782"};
+  const TIPO_ICON={despacho:"⚖️",intimacao:"📬",decisao:"🏛️",citacao:"📋",outro:"📧"};
+
+  const getServico=(a)=>servicos.find(s=>
+    (a.servico_id&&s.id===a.servico_id)||
+    (a.numero_processo&&s.dadosJudiciais?.numeroProcesso&&
+     (s.dadosJudiciais.numeroProcesso.replace(/\D/g,"").includes(a.numero_processo.replace(/\D/g,"").slice(-10))||
+      a.numero_processo.replace(/\D/g,"").includes(s.dadosJudiciais.numeroProcesso.replace(/\D/g,"").slice(-10))))
+  );
+
+  const marcarLido=async(id)=>{
+    await sb.from("alertas").update({lido:true}).eq("id",id);
+    setAlertas(prev=>prev.map(a=>a.id===id?{...a,lido:true}:a));
+  };
+
+  const criarDiligencia=async(alerta)=>{
+    const serv=getServico(alerta);
+    if(!serv){showToast("Processo não encontrado no sistema","erro");return;}
+    const prazo=new Date();prazo.setDate(prazo.getDate()+5);
+    const{error}=await sb.from("diligencias").insert({
+      servico_id:serv.id,
+      descricao:"Movimentação processual: "+(alerta.assunto||alerta.tipo||"ver e-mail"),
+      status:"Pendente",
+      prazo:prazo.toISOString().slice(0,10),
+      responsavel:"Dr. Carlos"
+    });
+    if(!error){
+      await sb.from("alertas").update({diligencia_criada:true}).eq("id",alerta.id);
+      setAlertas(prev=>prev.map(a=>a.id===alerta.id?{...a,diligencia_criada:true}:a));
+      showToast("Diligência criada com prazo de 5 dias!");
+    }else{showToast("Erro ao criar diligência","erro");}
+  };
+
+  const adicionarAlertaManual=async()=>{
+    const assunto=window.prompt("Assunto / descrição da movimentação:");
+    if(!assunto)return;
+    const numProc=window.prompt("Número do processo:");
+    if(!numProc)return;
+    const tipo=window.prompt("Tipo: intimacao / despacho / decisao / citacao / outro")||"outro";
+    const serv=servicos.find(s=>s.dadosJudiciais?.numeroProcesso&&s.dadosJudiciais.numeroProcesso.replace(/\D/g,"").includes(numProc.replace(/\D/g,"").slice(-10)));
+    const{data,error}=await sb.from("alertas").insert({
+      tipo:tipo.toLowerCase().trim(),
+      numero_processo:numProc.trim(),
+      assunto,
+      servico_id:serv?.id||null,
+      email_remetente:"manual",
+      lido:false,
+      diligencia_criada:false
+    }).select().single();
+    if(data){setAlertas(prev=>[data,...prev]);showToast("Alerta registrado!");}
+    else showToast("Erro ao salvar","erro");
+  };
+
+  const naoLidos=alertas.filter(a=>!a.lido).length;
+  const semana=alertas.filter(a=>{const d=new Date(a.created_at||Date.now());const s=new Date();s.setDate(s.getDate()-7);return d>=s;}).length;
+  const monitorados=servicos.filter(s=>s.dadosJudiciais?.numeroProcesso).length;
+
+  const filtrados=alertas.filter(a=>{
+    if(filtro==="nao_lidos")return !a.lido;
+    if(["despacho","intimacao","decisao","citacao","outro"].includes(filtro))return a.tipo===filtro;
+    return true;
+  });
+
+  return(
+    <div style={{padding:24,display:"flex",flexDirection:"column",gap:14,overflowY:"auto",height:"100%"}}>
+      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+        <div>
+          <div style={{fontSize:16,fontWeight:700,color:"#d6d3cc"}}>Alertas de Movimentação Processual</div>
+          <div style={{fontSize:11,color:"#555",marginTop:2}}>Monitoramento automático via e-mail · 2× por dia (08:00 e 15:00)</div>
+        </div>
+      </div>
+
+      {/* Barra de status da integração */}
+      <div style={{background:"#1e2030",border:"1px solid #2a2d3e",borderRadius:8,padding:"10px 16px",display:"flex",alignItems:"center",gap:10,fontSize:12,flexWrap:"wrap"}}>
+        <div style={{width:8,height:8,borderRadius:"50%",background:"#a87840",flexShrink:0}}/>
+        <div style={{flex:1}}>
+          <span style={{color:"#d6d3cc",fontWeight:600}}>Integração Gmail — configuração pendente</span>
+          <span style={{color:"#555",marginLeft:8,fontSize:11}}>publicacoes@publicacoesonline.com.br · oabba@recortedigital.adv.br</span>
+        </div>
+        <span style={{fontSize:11,color:"#555"}}>Horários: 08:00 e 15:00</span>
+        <button style={{background:"#1a1c28",border:"1px solid #3a3d50",borderRadius:6,color:"#888",fontSize:11,padding:"5px 12px",cursor:"pointer",fontFamily:"inherit"}}
+          onClick={()=>showToast("Configure a integração Gmail no painel Vercel para ativar varredura automática","erro")}>↻ Varrer agora</button>
+      </div>
+
+      {/* Stats */}
+      <div style={{display:"flex",gap:12}}>
+        {[["Não lidos",naoLidos,"#b46464"],["Esta semana",semana,"#d6d3cc"],["Processos judiciais",monitorados,"#5a7aaa"],["Total de alertas",alertas.length,"#5a8f6e"]].map(([l,v,c])=>(
+          <MiniStat key={l} l={l} v={v} c={c}/>
+        ))}
+      </div>
+
+      {/* Filtros */}
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+        {[["todos","Todos"],["nao_lidos",`Não lidos${naoLidos>0?" ("+naoLidos+")":""}`],["intimacao","Intimações"],["despacho","Despachos"],["decisao","Decisões"],["citacao","Citações"]].map(([k,l])=>(
+          <button key={k} style={{padding:"4px 12px",borderRadius:20,fontSize:11,cursor:"pointer",border:"1px solid",fontFamily:"inherit",
+            background:filtro===k?"#c0392b22":"#1a1c28",borderColor:filtro===k?"#c0392b55":"#2a2d3e",color:filtro===k?"#e57373":"#555"}}
+            onClick={()=>setFiltro(k)}>{l}</button>
+        ))}
+        <button style={{marginLeft:"auto",padding:"5px 14px",borderRadius:6,fontSize:11,cursor:"pointer",border:"1px solid #5a8f6e55",fontFamily:"inherit",background:"#1e3a2a",color:"#5a8f6e"}}
+          onClick={adicionarAlertaManual}>+ Registrar manualmente</button>
+      </div>
+
+      {/* Lista de alertas */}
+      {filtrados.length===0
+        ?<div style={{textAlign:"center",padding:48,color:"#555",fontSize:13}}>Nenhum alerta{filtro!=="todos"?" nesta categoria":""}</div>
+        :filtrados.map(a=>{
+          const serv=getServico(a);
+          const clienteNome=serv?cn(serv.clienteId||serv.cliente_id):null;
+          const cor=TIPO_COR[a.tipo]||TIPO_COR.outro;
+          const dtStr=a.email_data||a.created_at;
+          const dtFmt=dtStr?new Date(dtStr).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"";
+          return(
+            <div key={a.id} style={{background:"#1a1c28",border:`1px solid ${a.lido?"#232629":"#3a3d50"}`,borderLeft:`3px solid ${a.lido?"#2a2d3e":cor}`,borderRadius:10,padding:16,display:"flex",gap:14,alignItems:"flex-start",opacity:a.lido?0.5:1}}>
+              <div style={{width:38,height:38,borderRadius:8,background:cor+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,flexShrink:0}}>{TIPO_ICON[a.tipo]||"📧"}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,flexWrap:"wrap"}}>
+                  <span style={{fontSize:10,fontWeight:700,letterSpacing:"0.5px",textTransform:"uppercase",padding:"2px 7px",borderRadius:4,background:cor+"22",color:cor}}>{a.tipo||"outro"}</span>
+                  {!a.lido&&<span style={{fontSize:9,fontWeight:700,background:"#c0392b",color:"#fff",padding:"1px 6px",borderRadius:3}}>NOVO</span>}
+                  {a.diligencia_criada&&<span style={{fontSize:10,color:"#5a8f6e"}}>✓ Diligência criada</span>}
+                  {a.email_remetente==="manual"&&<span style={{fontSize:10,color:"#a87840"}}>• Entrada manual</span>}
+                </div>
+                {clienteNome&&<div style={{fontSize:13,fontWeight:600,color:"#d6d3cc",marginBottom:2}}>{clienteNome}</div>}
+                <div style={{fontSize:11,color:"#555",marginBottom:5}}>
+                  {a.numero_processo||"Sem número"}
+                  {serv?<span style={{color:"#4a4d56"}}> · {serv.tipo||""}</span>:<span style={{color:"#b46464"}}> ⚠ Processo não vinculado</span>}
+                </div>
+                <div style={{fontSize:12,color:"#888",lineHeight:1.5}}>{a.assunto||"Sem descrição"}</div>
+                {dtFmt&&<div style={{fontSize:10,color:"#3a3d50",marginTop:6}}>{a.email_remetente&&a.email_remetente!=="manual"?a.email_remetente+" · ":""}{dtFmt}</div>}
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end",flexShrink:0}}>
+                {!a.diligencia_criada&&serv&&(
+                  <button style={{background:"none",border:"1px solid #c0392b44",borderRadius:6,color:"#e57373",fontSize:11,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}
+                    onClick={()=>criarDiligencia(a)}>+ Diligência</button>
+                )}
+                {!a.lido&&(
+                  <button style={{background:"none",border:"1px solid #2a2d3e",borderRadius:6,color:"#555",fontSize:11,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}
+                    onClick={()=>marcarLido(a.id)}>✓ Marcar lido</button>
+                )}
+              </div>
+            </div>
+          );
+        })
+      }
+    </div>
+  );
+};
+
 const AppContent=({session})=>{
   const [tela,setTela]=useState("dashboard");
   const [clientes,setClientes]=useState([]);
@@ -462,8 +613,19 @@ const AppContent=({session})=>{
   const [searchC,setSearchC]=useState("");
   const [searchS,setSearchS]=useState("");
   const [perfilUser,setPerfilUser]=useState("operador");
+  const [alertas,setAlertas]=useState([]);
+  const [mostrarAvisoInativ,setMostrarAvisoInativ]=useState(false);
+  const timerInativRef=useRef(null);
+  const timerAvisoRef=useRef(null);
 
   const showToast=(msg,tipo="ok")=>{setToast({msg,tipo});setTimeout(()=>setToast(null),3000);};
+  const resetarTimerInativ=useCallback(()=>{
+    setMostrarAvisoInativ(false);
+    clearTimeout(timerInativRef.current);
+    clearTimeout(timerAvisoRef.current);
+    timerAvisoRef.current=setTimeout(()=>setMostrarAvisoInativ(true),58*60*1000);
+    timerInativRef.current=setTimeout(()=>sb.auth.signOut(),60*60*1000);
+  },[]);
   const abrirModal=(k,d={})=>setModais(m=>({...m,[k]:d}));
   const fecharModal=(k)=>setModais(m=>({...m,[k]:null}));
 
@@ -495,6 +657,7 @@ const AppContent=({session})=>{
       // Carregar historicos do Supabase
       try{const{data:hr}=await sb.from("configuracoes").select("dados").eq("id","historico_recibos").single();if(hr?.dados)window._histRec=hr.dados;}catch(e){}
       try{const{data:hc}=await sb.from("configuracoes").select("dados").eq("id","historico_contracheques").single();if(hc?.dados)window._histCC=hc.dados;}catch(e){}
+      try{const{data:altData}=await sb.from("alertas").select("*").order("created_at",{ascending:false});if(altData)setAlertas(altData);}catch(e){}
       // Carregar empresa do Supabase
       try{
         const{data:empData}=await sb.from("configuracoes").select("dados").eq("id","empresa").single();
@@ -525,6 +688,7 @@ const AppContent=({session})=>{
         sb.from("leads").select("*").order("created_at",{ascending:false}),
         sb.from("pagamentos").select("*").order("data",{ascending:false}),
       ]);
+      try{const{data:altData}=await sb.from("alertas").select("*").order("created_at",{ascending:false});if(altData)setAlertas(altData);}catch(e){}
       let ag={data:[]};
       try{ag=await sb.from("agenda").select("*").order("data",{ascending:true});}catch(e){}
       if(c.data)setClientes(c.data.map(x=>({...x,
@@ -595,6 +759,7 @@ const AppContent=({session})=>{
       .on("postgres_changes",{event:"*",schema:"public",table:"agenda"},load2)
       .on("postgres_changes",{event:"*",schema:"public",table:"pagamentos"},load2)
       .on("postgres_changes",{event:"*",schema:"public",table:"usuarios"},load2)
+      .on("postgres_changes",{event:"*",schema:"public",table:"alertas"},load2)
       .subscribe();
     return()=>sb.removeChannel(channel);
   },[]);
@@ -768,6 +933,17 @@ const AppContent=({session})=>{
     }).catch(()=>{});
   },[]);
 
+  useEffect(()=>{
+    const evs=["mousemove","keydown","click","scroll","touchstart"];
+    evs.forEach(e=>window.addEventListener(e,resetarTimerInativ,{passive:true}));
+    resetarTimerInativ();
+    return()=>{
+      evs.forEach(e=>window.removeEventListener(e,resetarTimerInativ));
+      clearTimeout(timerInativRef.current);
+      clearTimeout(timerAvisoRef.current);
+    };
+  },[resetarTimerInativ]);
+
   const confirmarBackup=async()=>{
     await fazerBackup(sb,showToast);
     const hoje=new Date().toISOString().slice(0,10);
@@ -791,7 +967,7 @@ const AppContent=({session})=>{
           </div>
         </div>
         <nav style={{padding:"12px 8px",display:"flex",flexDirection:"column",gap:2,flex:1}}>
-          {NAV.map(n=>{let badge=0;if(n.k==="andamento")badge=diligVenc.length+diligHoje.length;if(n.k==="captacao")badge=leadsN;if(n.k==="servicos")badge=orcA;return<button key={n.k} onClick={()=>{setTela(n.k);setServicoAberto(null);setProcessoAberto(null);}} style={{...S.navItem,...(tela===n.k?S.navActive:{})}} className="ni"><span style={{fontSize:14,minWidth:18,textAlign:"center"}}>{n.i}</span><span>{n.l}</span>{badge>0&&<span style={{marginLeft:"auto",background:"#b46464",color:"#fff",borderRadius:999,fontSize:10,fontWeight:700,minWidth:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 5px"}}>{badge}</span>}</button>;})}
+          {NAV.map(n=>{let badge=0;if(n.k==="andamento")badge=diligVenc.length+diligHoje.length;if(n.k==="captacao")badge=leadsN;if(n.k==="servicos")badge=orcA;if(n.k==="alertas")badge=alertas.filter(a=>!a.lido).length;return<button key={n.k} onClick={()=>{setTela(n.k);setServicoAberto(null);setProcessoAberto(null);}} style={{...S.navItem,...(tela===n.k?S.navActive:{})}} className="ni"><span style={{fontSize:14,minWidth:18,textAlign:"center"}}>{n.i}</span><span>{n.l}</span>{badge>0&&<span style={{marginLeft:"auto",background:"#b46464",color:"#fff",borderRadius:999,fontSize:10,fontWeight:700,minWidth:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 5px"}}>{badge}</span>}</button>;})}
         </nav>
         <div style={{padding:"12px 14px",borderTop:"1px solid #232629",display:"flex",flexDirection:"column",gap:5}}>
           <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{color:"#5a8f6e"}}>◉</span><span style={{fontSize:11,color:"#4a4d56"}}>{clientes.length} clientes</span></div>
@@ -828,6 +1004,7 @@ const AppContent=({session})=>{
         {tela==="financeiro"&&<TelaFinanceiro aba={abaFin} setAba={setAbaFin} recebimentos={recebimentos} pagamentos={pagamentos} setRecebimentos={setRecebimentos} setPagamentos={setPagamentos} totRec={totRec} totPag={totPag} lucro={lucro} dadosMensais={dadosMensais} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} abrirModal={abrirModal} setReciboData={setReciboData} sb={sb} colaboradores={colaboradores} setColaboradores={setColaboradores} metas={metas} setMetas={setMetas} servicos={servicos}/>}
         {tela==="relatorios"&&<TelaRelatorios dadosMensais={dadosMensais} totRec={totRec} totPag={totPag} lucro={lucro} recAno={recAno} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} recebimentos={recebimentos} pagamentos={pagamentos} servicos={servicos} cn={cn} clientes={clientes} snapshots={snapshots} setSnapshots={setSnapshots} agenda={agenda} sb={sb}/>}
         {tela==="custos"&&<TelaCustos showToast={showToast} custos={custos} setCustos={v=>{setCustos(v);sb.from("configuracoes").upsert({id:"custos",dados:v,updated_at:new Date().toISOString()}).then(()=>{}).catch(()=>{});}} sb={sb}/>}
+        {tela==="alertas"&&<TelaAlertas alertas={alertas} setAlertas={setAlertas} servicos={servicos} cn={cn} sb={sb} showToast={showToast}/>}
         {tela==="captacao"&&<TelaCaptacao leads={leads} setLeads={setLeads} atualizarLead={atualizarLead} showToast={showToast} sb={sb}/>}
         {tela==="usuarios"&&<TelaUsuarios usuarios={usuarios} setUsuarios={setUsuarios} abrirModal={abrirModal} session={session}/>}
       </main>
@@ -839,6 +1016,24 @@ const AppContent=({session})=>{
       {modais.usuario&&<ModalUsuario inicial={modais.usuario} onSave={salvarUser} onClose={()=>fecharModal("usuario")}/>}
       {printData&&<PrintProtocolo servico={printData} cliente={clientes.find(c=>c.id===printData.clienteId)} onClose={()=>setPrintData(null)}/>}
       {reciboData&&<Recibo data={reciboData} onClose={()=>setReciboData(null)} clientes={clientes}/>}
+      {mostrarAvisoInativ&&(
+        <div style={S.overlay} onClick={e=>e.stopPropagation()}>
+          <div style={{...S.modal,maxWidth:380,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
+            <div style={{padding:"28px 24px 0"}}>
+              <div style={{fontSize:40,marginBottom:12}}>⏱</div>
+              <div style={{fontSize:16,fontWeight:800,color:"#d6d3cc",marginBottom:8}}>Sessão expirando</div>
+              <div style={{fontSize:13,color:"#8a8782",lineHeight:1.7,marginBottom:20}}>
+                Você ficou inativo por <strong style={{color:"#d6d3cc"}}>58 minutos</strong>.<br/>
+                Será desconectado em <strong style={{color:"#b46464"}}>2 minutos</strong>.
+              </div>
+            </div>
+            <div style={{padding:"0 24px 24px",display:"flex",gap:10,justifyContent:"center"}}>
+              <button style={S.btnDang} onClick={()=>sb.auth.signOut()}>Sair agora</button>
+              <button style={S.btnPrimary} onClick={resetarTimerInativ}>✓ Continuar conectado</button>
+            </div>
+          </div>
+        </div>
+      )}
       {modalBackup&&(
         <div style={S.overlay}>
           <div style={{...S.modal,maxWidth:420,textAlign:"center"}} onClick={e=>e.stopPropagation()}>
