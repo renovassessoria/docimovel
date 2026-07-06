@@ -467,7 +467,8 @@ const TelaAlertas=({alertas,setAlertas,servicos,cn,sb,showToast})=>{
     const{error}=await sb.from("diligencias").insert({
       servico_id:serv.id,
       descricao:"Movimentação processual: "+(alerta.assunto||alerta.tipo||"ver e-mail"),
-      status:"Pendente",
+      status:"Em andamento",
+      orgao:"Judiciário",
       prazo:prazo.toISOString().slice(0,10),
       responsavel:"Dr. Carlos"
     });
