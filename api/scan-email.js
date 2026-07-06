@@ -148,7 +148,7 @@ export default async function handler(req, res) {
         const numerosEncontrados = matches ? [...new Set(matches)] : [];
         const numProc = numerosEncontrados[0] || null;
 
-        // Cruzar com serviços cadastrados
+        // Cruzar com serviços cadastrados — matching pelos 15 dígitos finais (preciso)
         let servicoId = null;
         if (numProc) {
           const numClean = numProc.replace(/\D/g, '');
@@ -157,8 +157,8 @@ export default async function handler(req, res) {
               s.dados_judiciais?.numero ||
               s.dados_judiciais?.numeroProcesso || ''
             ).replace(/\D/g, '');
-            return n && n.length >= 10 &&
-              (n.includes(numClean.slice(-10)) || numClean.includes(n.slice(-10)));
+            return n && n.length >= 15 && numClean.length >= 15 &&
+              n.slice(-15) === numClean.slice(-15);
           });
           servicoId = match?.id || null;
         }
