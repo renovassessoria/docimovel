@@ -185,7 +185,11 @@ export default async function handler(req, res) {
     }
 
     await atualizarUltimaVarredura();
-    res.json({ ok: true, processed: messages.length, created, erros });
+    // Debug: mostrar números encontrados vs cadastrados
+    const debugServicos = (servicos||[])
+      .filter(s => s.dados_judiciais?.numeroProcesso)
+      .map(s => ({id: s.id, num: s.dados_judiciais.numeroProcesso, digits: s.dados_judiciais.numeroProcesso.replace(/\D/g,'')}));
+    res.json({ ok: true, processed: messages.length, created, erros, debug_servicos: debugServicos });
 
   } catch (err) {
     console.error('[scan-email] Erro:', err);
