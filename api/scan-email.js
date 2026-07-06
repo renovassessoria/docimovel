@@ -117,7 +117,7 @@ export default async function handler(req, res) {
     const idsExistentes = new Set((existentes || []).map(a => a.gmail_message_id).filter(Boolean));
 
     // 6. Serviços judiciais para cruzamento
-    const servicos = await sbGet('servicos', '?select=id,dados_judiciais&tipo_processo=eq.judicial');
+    const servicos = await sbGet('servicos', '?select=id,dados_judiciais,cliente_id');
 
     let created = 0;
     const erros = [];
