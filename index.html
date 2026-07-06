@@ -512,14 +512,14 @@ const TelaAlertas=({alertas,setAlertas,servicos,cn,sb,showToast})=>{
 
       {/* Barra de status da integração */}
       <div style={{background:"#1e2030",border:"1px solid #2a2d3e",borderRadius:8,padding:"10px 16px",display:"flex",alignItems:"center",gap:10,fontSize:12,flexWrap:"wrap"}}>
-        <div style={{width:8,height:8,borderRadius:"50%",background:"#a87840",flexShrink:0}}/>
+        <div style={{width:8,height:8,borderRadius:"50%",background:"#5a8f6e",flexShrink:0}}/>
         <div style={{flex:1}}>
-          <span style={{color:"#d6d3cc",fontWeight:600}}>Integração Gmail — configuração pendente</span>
+          <span style={{color:"#d6d3cc",fontWeight:600}}>Gmail conectado</span>
           <span style={{color:"#555",marginLeft:8,fontSize:11}}>publicacoes@publicacoesonline.com.br · oabba@recortedigital.adv.br</span>
         </div>
         <span style={{fontSize:11,color:"#555"}}>Horários: 08:00 e 15:00</span>
         <button style={{background:"#1a1c28",border:"1px solid #3a3d50",borderRadius:6,color:"#888",fontSize:11,padding:"5px 12px",cursor:"pointer",fontFamily:"inherit"}}
-          onClick={()=>showToast("Configure a integração Gmail no painel Vercel para ativar varredura automática","erro")}>↻ Varrer agora</button>
+          onClick={async()=>{showToast("Iniciando varredura...");try{const r=await fetch("/api/scan-email");const d=await r.json();if(d.ok)showToast(`Varredura concluída — ${d.created} novo(s) alerta(s)`);else showToast(d.error||"Erro na varredura","erro");}catch(e){showToast("Erro ao conectar com o servidor","erro");}}}>↻ Varrer agora</button>
       </div>
 
       {/* Stats */}
