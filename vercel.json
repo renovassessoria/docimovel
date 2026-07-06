@@ -1,6 +1,10 @@
 {
   "rewrites": [
     { "source": "/processo/:token", "destination": "/processo.html" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
+  "crons": [
+    { "path": "/api/scan-email", "schedule": "0 11 * * *" },
+    { "path": "/api/scan-email", "schedule": "0 18 * * *" }
   ]
 }
