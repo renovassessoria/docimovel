@@ -441,12 +441,19 @@ const TelaAlertas=({alertas,setAlertas,servicos,cn,sb,showToast})=>{
   const TIPO_COR={despacho:"#e8a87c",intimacao:"#7ca8e8",decisao:"#b87ce8",citacao:"#7ce8a8",outro:"#8a8782"};
   const TIPO_ICON={despacho:"⚖️",intimacao:"📬",decisao:"🏛️",citacao:"📋",outro:"📧"};
 
-  const getServico=(a)=>servicos.find(s=>
-    (a.servico_id&&s.id===a.servico_id)||
-    (a.numero_processo&&s.dadosJudiciais?.numeroProcesso&&
-     (s.dadosJudiciais.numeroProcesso.replace(/\D/g,"").includes(a.numero_processo.replace(/\D/g,"").slice(-10))||
-      a.numero_processo.replace(/\D/g,"").includes(s.dadosJudiciais.numeroProcesso.replace(/\D/g,"").slice(-10))))
-  );
+  const getServico=(a)=>{
+    // 1. Match por servico_id (mais confiável)
+    if(a.servico_id){const s=servicos.find(s=>s.id===a.servico_id);if(s)return s;}
+    // 2. Match por número do processo — compara os 15 dígitos finais (descarta variações de prefixo)
+    if(a.numero_processo){
+      const numA=a.numero_processo.replace(/\D/g,"");
+      return servicos.find(s=>{
+        const numS=(s.dadosJudiciais?.numeroProcesso||"").replace(/\D/g,"");
+        return numS.length>=15&&numA.length>=15&&numS.slice(-15)===numA.slice(-15);
+      });
+    }
+    return null;
+  };
 
   const marcarLido=async(id)=>{
     await sb.from("alertas").update({lido:true}).eq("id",id);
