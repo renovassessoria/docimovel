@@ -155,7 +155,8 @@ export default async function handler(req, res) {
           const match = (servicos || []).find(s => {
             const n = (
               s.dados_judiciais?.numero ||
-              s.dados_judiciais?.numeroProcesso || ''
+              s.dados_judiciais?.numeroProcesso ||
+              s.dados_judiciais?.numero_processo || ''
             ).replace(/\D/g, '');
             return n && n.length >= 15 && numClean.length >= 15 &&
               n.slice(-15) === numClean.slice(-15);
@@ -185,11 +186,7 @@ export default async function handler(req, res) {
     }
 
     await atualizarUltimaVarredura();
-    // Debug: mostrar números encontrados vs cadastrados
-    const debugServicos = (servicos||[])
-      .filter(s => s.dados_judiciais?.numeroProcesso)
-      .map(s => ({id: s.id, num: s.dados_judiciais.numeroProcesso, digits: s.dados_judiciais.numeroProcesso.replace(/\D/g,'')}));
-    res.json({ ok: true, processed: messages.length, created, erros, debug_servicos: debugServicos });
+    res.json({ ok: true, processed: messages.length, created, erros });
 
   } catch (err) {
     console.error('[scan-email] Erro:', err);
