@@ -4519,7 +4519,7 @@ const imprimirCC = (func, empresa, cnpj, endereco, mes, ano, bonus) => {
     ".rod{padding:8px 16px;background:#1e293b;color:#fff;font-size:9px;text-align:center;}"+
     "@media print{button{display:none!important;}}";
   const w = window.open("","_blank");
-  w.document.write("<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Contracheque "+func.nome+" "+mesNome+"/"+ano+"</title><style>"+css+"</style></head><body>"+
+  const via =
     "<div class='page'>"+
     "<div class='hd'><div><div class='sub'>RECIBO DE PAGAMENTO DE SALARIO</div><h1>CONTRACHEQUE</h1></div>"+
     "<div style='text-align:right'><div class='sub'>Competencia</div><div style='font-size:14px;font-weight:800'>"+mesNome+" / "+ano+"</div></div></div>"+
@@ -4546,8 +4546,13 @@ const imprimirCC = (func, empresa, cnpj, endereco, mes, ano, bonus) => {
     "<div class='assin'>"+
     "<div class='asl'><div class='asl-l'>"+func.nome+"<br><span style='font-size:9px'>Assinatura do Funcionario</span></div></div>"+
     "<div class='asl'><div class='asl-l'>"+empresa+"<br><span style='font-size:9px'>Assinatura do Empregador</span></div></div></div>"+
-    "<div class='rod'>DocImovel PRO - "+new Date().toLocaleDateString("pt-BR")+"</div></div>"+
-    "<br><button onclick='window.print()' style='background:#1e293b;color:#fff;border:none;padding:10px 22px;border-radius:6px;cursor:pointer;font-size:13px;margin:12px'>Imprimir / PDF</button>"+
+    "<div class='rod'>DocImovel PRO - "+new Date().toLocaleDateString("pt-BR")+"</div></div>";
+
+  w.document.write("<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Contracheque "+func.nome+" "+mesNome+"/"+ano+"</title><style>"+css+    ".via-label{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#64748b;padding:6px 0;text-align:right;}"+    ".separador{border:none;border-top:2px dashed #94a3b8;margin:16px 0 8px;}"+    "@media print{.no-print{display:none!important;}.via-wrap{page-break-inside:avoid;}}"+    "</style></head><body>"+
+    "<div class='via-wrap'><div class='via-label'>1ª Via — Funcionário</div>"+via+"</div>"+
+    "<hr class='separador'>"+
+    "<div class='via-wrap'><div class='via-label'>2ª Via — Escritório</div>"+via+"</div>"+
+    "<br><button class='no-print' onclick='window.print()' style='background:#1e293b;color:#fff;border:none;padding:10px 22px;border-radius:6px;cursor:pointer;font-size:13px;margin:12px'>Imprimir / PDF</button>"+
     "</body></html>");
   w.document.close();
   addHistCC({func:{nome:func.nome,cargo:func.cargo}, empresa, cnpj, mes, ano, bonus, liquido:liq, competencia:mesNome+"/"+ano});
