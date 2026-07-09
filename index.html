@@ -943,8 +943,8 @@ const AppContent=({session})=>{
   const prazosProx=servicos.filter(s=>s.prazoConclusao&&s.status!=="Concluído"&&s.status!=="Concluido"&&Math.ceil((new Date(s.prazoConclusao)-hoje2)/(864e5))>1&&Math.ceil((new Date(s.prazoConclusao)-hoje2)/(864e5))<=3).map(s=>({descricao:"Prazo: "+s.tipo,clienteNome:cn(s.clienteId||s.cliente_id),protocolo:s.protocolo}));
   const leadsN=leads.filter(l=>l.status==="Novo").length;
   const orcA=servicos.filter(s=>s.orcamento?.status==="Orçamento").length;
-  const parcelasVenc=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>p.parcelado&&p.status==="pendente"&&p.data&&p.data<td()).map(p=>({descricao:"Parcela vencida: "+p.descricao,clienteNome:cn(s.clienteId||s.cliente_id),protocolo:s.protocolo,servicoId:s.id,tipo:"servico"})));
-  const parcelasHoje=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>p.parcelado&&p.status==="pendente"&&p.data===td()).map(p=>({descricao:"Parcela hoje: "+p.descricao,clienteNome:cn(s.clienteId||s.cliente_id),protocolo:s.protocolo,servicoId:s.id,tipo:"servico"})));
+  const parcelasVenc=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>p.status!=="pago"&&p.data&&p.data<td()).map(p=>({descricao:"Parcela vencida: "+p.descricao,clienteNome:cn(s.clienteId||s.cliente_id),protocolo:s.protocolo,servicoId:s.id,tipo:"servico"})));
+  const parcelasHoje=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>p.status!=="pago"&&p.data&&p.data===td()).map(p=>({descricao:"Parcela hoje: "+p.descricao,clienteNome:cn(s.clienteId||s.cliente_id),protocolo:s.protocolo,servicoId:s.id,tipo:"servico"})));
   const recAno=recebimentos.filter(r=>r.data?.startsWith(String(anoFin)));
   const pagAno=pagamentos.filter(p=>p.data?.startsWith(String(anoFin)));
   const totRec=recAno.reduce((s,r)=>s+Number(r.valor),0);
@@ -1335,8 +1335,6 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
         const _d7=new Date();_d7.setDate(_d7.getDate()+7);const _d7s=_d7.toISOString().slice(0,10);
         const parcelasCard=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>{
           if(p.status==="pago")return false;
-          const isParc=p.parcelado===true||(p.descricao&&p.descricao.includes("(")&&p.descricao.includes("/"));
-          if(!isParc)return false;
           if(!p.data)return false;
           return p.data<=_d7s;
         }).map(p=>({...p,clienteNome:cn(s.clienteId||s.cliente_id),servicoObj:s})))
