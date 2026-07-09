@@ -1332,7 +1332,7 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
       </div>
       {(()=>{
         const _hj=new Date().toISOString().slice(0,10);
-        const _d7=new Date();_d7.setDate(_d7.getDate()+7);const _d7s=_d7.toISOString().slice(0,10);
+        const _d7=new Date();_d7.setDate(_d7.getDate()+15);const _d7s=_d7.toISOString().slice(0,10);
         const isParc=(p)=>!!p.parcelado||/\(\d+\/\d+\)/.test(p.descricao||"")||(/(ª\s*[Pp]arcela|[Pp]arcela\s*\d|[Rr]emanescente)/i.test(p.descricao||""));
         const parcelasCard=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>{
           if(p.status==="pago")return false;
