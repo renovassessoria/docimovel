@@ -943,7 +943,7 @@ const AppContent=({session})=>{
   const prazosProx=servicos.filter(s=>s.prazoConclusao&&s.status!=="Concluído"&&s.status!=="Concluido"&&Math.ceil((new Date(s.prazoConclusao)-hoje2)/(864e5))>1&&Math.ceil((new Date(s.prazoConclusao)-hoje2)/(864e5))<=3).map(s=>({descricao:"Prazo: "+s.tipo,clienteNome:cn(s.clienteId||s.cliente_id),protocolo:s.protocolo}));
   const leadsN=leads.filter(l=>l.status==="Novo").length;
   const orcA=servicos.filter(s=>s.orcamento?.status==="Orçamento").length;
-  const isP=(p)=>{const d=p.descricao||"";return !!p.parcelado||(d.includes("(")&&d.includes("/"))||/[Rr]emanescente|ª Parc/i.test(d);};const parcelasVenc=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>p.status!=="pago"&&p.data&&p.data<td()&&isP(p)).map(p=>({descricao:"Parcela vencida: "+p.descricao,clienteNome:cn(s.clienteId||s.cliente_id),protocolo:s.protocolo,servicoId:s.id,tipo:"servico"})));
+  const isP=(p)=>{const d=p.descricao||"";return !!p.parcelado||(d.includes("(")&&d.includes("/"))||d.toLowerCase().includes("remanescente")||d.toLowerCase().includes("parcela");};const parcelasVenc=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>p.status!=="pago"&&p.data&&p.data<td()&&isP(p)).map(p=>({descricao:"Parcela vencida: "+p.descricao,clienteNome:cn(s.clienteId||s.cliente_id),protocolo:s.protocolo,servicoId:s.id,tipo:"servico"})));
   const parcelasHoje=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>p.status!=="pago"&&p.data&&p.data===td()&&isP(p))).map(p=>({descricao:"Parcela hoje: "+p.descricao,clienteNome:cn(s.clienteId||s.cliente_id),protocolo:s.protocolo,servicoId:s.id,tipo:"servico"})));
   const recAno=recebimentos.filter(r=>r.data?.startsWith(String(anoFin)));
   const pagAno=pagamentos.filter(p=>p.data?.startsWith(String(anoFin)));
