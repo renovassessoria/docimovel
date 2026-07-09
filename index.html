@@ -1083,7 +1083,7 @@ const AppContent=({session})=>{
         {tela==="custos"&&<TelaCustos showToast={showToast} custos={custos} setCustos={v=>{setCustos(v);sb.from("configuracoes").upsert({id:"custos",dados:v,updated_at:new Date().toISOString()}).then(()=>{}).catch(()=>{});}} sb={sb}/>}
         {tela==="alertas"&&<TelaAlertas alertas={alertas} setAlertas={setAlertas} servicos={servicos} cn={cn} sb={sb} showToast={showToast}/>}
         {tela==="captacao"&&<TelaCaptacao leads={leads} setLeads={setLeads} atualizarLead={atualizarLead} showToast={showToast} sb={sb}/>}
-        {tela==="usuarios"&&<TelaUsuarios usuarios={usuarios} setUsuarios={setUsuarios} abrirModal={abrirModal} session={session} logs={logs}/>}
+        {tela==="usuarios"&&<TelaUsuarios usuarios={usuarios} setUsuarios={setUsuarios} abrirModal={abrirModal} session={session} logs={logs} sb={sb} setLogs={setLogs}/>}
       </main>
 
       {modais.cliente&&<ModalCliente inicial={modais.cliente} onSave={salvarCliente} onClose={()=>fecharModal("cliente")} clientes={clientes}/>}
@@ -5138,8 +5138,13 @@ const TelaCustos = ({showToast, custos, setCustos}) => {
 };
 
 
-const TelaUsuarios=({usuarios,setUsuarios,abrirModal,session,logs=[]})=>{
+const TelaUsuarios=({usuarios,setUsuarios,abrirModal,session,logs=[],sb,setLogs})=>{
   const [aba,setAba]=React.useState("usuarios");
+  React.useEffect(()=>{
+    if(sb&&setLogs){
+      sb.from("logs").select("*").order("created_at",{ascending:false}).limit(1000).then(({data})=>{if(data)setLogs(data);});
+    }
+  },[]);
   const [filtroUser,setFiltroUser]=React.useState("todos");
   const [filtroPeriodo,setFiltroPeriodo]=React.useState("mes");
   const [filtroAcao,setFiltroAcao]=React.useState("todos");
