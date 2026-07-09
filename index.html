@@ -450,6 +450,19 @@ const App=()=>{
 
 
 
+let _currentUser={id:null,nome:"Sistema"};
+const regLog=async(tabela,acao,detalhes,registroId=null)=>{
+  try{
+    await sb.from("logs").insert({
+      usuario_id:_currentUser.id,
+      usuario_nome:_currentUser.nome,
+      acao,tabela,
+      registro_id:registroId?String(registroId):null,
+      detalhes:String(detalhes||"").slice(0,300),
+    });
+  }catch(e){}
+};
+
 const TelaAlertas=({alertas,setAlertas,servicos,cn,sb,showToast})=>{
   const [filtro,setFiltro]=React.useState("todos");
   const TIPO_COR={despacho:"#e8a87c",intimacao:"#7ca8e8",decisao:"#b87ce8",citacao:"#7ce8a8",outro:"#8a8782"};
@@ -487,6 +500,7 @@ const TelaAlertas=({alertas,setAlertas,servicos,cn,sb,showToast})=>{
       responsavel:"Dr. Carlos"
     });
     if(!error){
+      regLog("diligencias","criou","Movimentação: "+(alerta.assunto||alerta.tipo||""),alerta.id);
       await sb.from("alertas").update({diligencia_criada:true}).eq("id",alerta.id);
       setAlertas(prev=>prev.map(a=>a.id===alerta.id?{...a,diligencia_criada:true}:a));
       showToast("Diligência criada com prazo de 5 dias!");
@@ -637,6 +651,7 @@ const AppContent=({session})=>{
   const [perfilUser,setPerfilUser]=useState("operador");
   const [alertas,setAlertas]=useState([]);
   const [mostrarAvisoInativ,setMostrarAvisoInativ]=useState(false);
+  const [logs,setLogs]=useState([]);
   const [lembreteAgenda,setLembreteAgenda]=useState(null);
   const snoozeRef=useRef({});
   const timerInativRef=useRef(null);
@@ -713,6 +728,7 @@ const AppContent=({session})=>{
         sb.from("pagamentos").select("*").order("data",{ascending:false}),
       ]);
       try{const{data:altData}=await sb.from("alertas").select("*").order("created_at",{ascending:false});if(altData)setAlertas(altData);}catch(e){}
+      try{const{data:logsData}=await sb.from("logs").select("*").order("created_at",{ascending:false}).limit(1000);if(logsData)setLogs(logsData);}catch(e){}
       let ag={data:[]};
       try{ag=await sb.from("agenda").select("*").order("data",{ascending:true});}catch(e){}
       if(c.data)setClientes(c.data.map(x=>({...x,
@@ -784,6 +800,7 @@ const AppContent=({session})=>{
       .on("postgres_changes",{event:"*",schema:"public",table:"pagamentos"},load2)
       .on("postgres_changes",{event:"*",schema:"public",table:"usuarios"},load2)
       .on("postgres_changes",{event:"*",schema:"public",table:"alertas"},load2)
+      .on("postgres_changes",{event:"*",schema:"public",table:"logs"},()=>{sb.from("logs").select("*").order("created_at",{ascending:false}).limit(1000).then(({data})=>{if(data)setLogs(data);});})
       .subscribe();
     return()=>sb.removeChannel(channel);
   },[]);
@@ -804,7 +821,7 @@ const AppContent=({session})=>{
       const sv=servicos.find(s=>s.id===id);
       const antigas=(sv?.diligencias||[]).map(d=>d.id);
       for(const d of patch.diligencias){
-        const dIsNew=!d.id||!String(d.id).includes("-");if(dIsNew){const{data}=await sb.from("diligencias").insert({servico_id:id,descricao:d.descricao,orgao:d.orgao,prazo:d.prazo||null,status:d.status,obs:d.obs,ref:d.ref||null,responsavel:d.responsavel||null,data_conclusao:d.dataConclusao||null}).select().single();if(data)d.id=data.id;}
+        const dIsNew=!d.id||!String(d.id).includes("-");if(dIsNew){const{data}=await sb.from("diligencias").insert({servico_id:id,descricao:d.descricao,orgao:d.orgao,prazo:d.prazo||null,status:d.status,obs:d.obs,ref:d.ref||null,responsavel:d.responsavel||null,data_conclusao:d.dataConclusao||null}).select().single();if(data){d.id=data.id;regLog("diligencias","criou",d.descricao||"Diligência",data.id);}}
         else await sb.from("diligencias").update({descricao:d.descricao,orgao:d.orgao,prazo:d.prazo||null,status:d.status,obs:d.obs,ref:d.ref||null,responsavel:d.responsavel||null,data_conclusao:d.dataConclusao||null}).eq("id",d.id);
       }
       const novosIds=patch.diligencias.map(d=>d.id).filter(id=>id&&String(id).includes("-"));
@@ -831,7 +848,7 @@ const AppContent=({session})=>{
           const{data,error:errPag}=await sb.from("pagamentos_processo").insert(payPag).select().single();
           if(errPag)console.error("Erro insert pag:",errPag);
           if(data){
-            p.id=data.id;
+            p.id=data.id;regLog("pagamentos_processo","criou",(payPag.descricao||"Pagamento")+" R$ "+(payPag.valor||0),data.id);
             const sv=servicos.find(s=>s.id===id);
             const cli=sv?clientes.find(c=>c.id===(sv.clienteId||sv.cliente_id)):null;
             const recPay={descricao:p.descricao+" - "+(sv?.tipo||"Serviço"),categoria:"Honorários",valor:Number(p.valor),forma:p.forma,data:p.data,cliente:cli?.nome||"",protocolo:sv?.protocolo||"",servico_id:id};
@@ -859,7 +876,7 @@ const AppContent=({session})=>{
     const pay={tipo:form.tipo,nome:form.nome,cpf:form.cpf,rg:form.rg,cnpj:form.cnpj,fantasia:form.fantasia,email:form.email,telefone:form.telefone,whatsapp:form.whatsapp,endereco:form.endereco,cidade:form.cidade,estado:form.estado,cep:form.cep,obs:form.obs,estado_civil:form.estadoCivil||"",profissao:form.profissao||"",naturalidade:form.naturalidade||"",filiacao:form.filiacao||"",data_nascimento:form.dataNascimento||null,cnh:form.cnh||"",conjuge_nome:form.conjugeNome||"",conjuge_cpf:form.conjugeCpf||"",conjuge_rg:form.conjugeRg||"",conjuge_profissao:form.conjugeProfissao||"",conjuge_naturalidade:form.conjugeNaturalidade||"",conjuge_filiacao:form.conjugeFiliacao||"",regime_bens:form.regimeBens||"",data_casamento:form.dataCasamento||null,cartorio_casamento:form.cartorioCasamento||"",casamento_livro:form.casamentoLivro||"",casamento_folha:form.casamentoFolha||"",casamento_matricula:form.matriculaCasamento||null};
     if(form.id){await sb.from("clientes").update(pay).eq("id",form.id);setClientes(prev=>prev.map(c=>c.id===form.id?{...c,...pay,estadoCivil:pay.estado_civil,profissao:pay.profissao,naturalidade:pay.naturalidade,filiacao:pay.filiacao,dataNascimento:pay.data_nascimento,cnh:pay.cnh,conjugeNome:pay.conjuge_nome,conjugeCpf:pay.conjuge_cpf,conjugeRg:pay.conjuge_rg,conjugeProfissao:pay.conjuge_profissao,conjugeNaturalidade:pay.conjuge_naturalidade,conjugeFiliacao:pay.conjuge_filiacao,regimeBens:pay.regime_bens,dataCasamento:pay.data_casamento,cartorioCasamento:pay.cartorio_casamento,casamentoLivro:pay.casamento_livro,casamentoFolha:pay.casamento_folha}:c));}
     else{const{data}=await sb.from("clientes").insert(pay).select().single();if(data)setClientes(prev=>[{...data,estadoCivil:data.estado_civil||"",profissao:data.profissao||"",naturalidade:data.naturalidade||"",filiacao:data.filiacao||"",dataNascimento:data.data_nascimento||"",cnh:data.cnh||"",conjugeNome:data.conjuge_nome||"",conjugeCpf:data.conjuge_cpf||"",conjugeRg:data.conjuge_rg||"",conjugeProfissao:data.conjuge_profissao||"",conjugeNaturalidade:data.conjuge_naturalidade||"",conjugeFiliacao:data.conjuge_filiacao||"",regimeBens:data.regime_bens||"",dataCasamento:data.data_casamento||"",cartorioCasamento:data.cartorio_casamento||"",casamentoLivro:data.casamento_livro||"",casamentoFolha:data.casamento_folha||""},...prev]);}
-    fecharModal("cliente");showToast("Cliente salvo!");
+    fecharModal("cliente");showToast("Cliente salvo!");regLog("clientes",form.id?"editou":"criou",form.nome,form.id||null);
   };
 
   const salvarServico=async(form)=>{
@@ -878,27 +895,27 @@ const AppContent=({session})=>{
         setServicos(prev=>[novo,...prev]);
       }
     }
-    fecharModal("servico");showToast("Serviço salvo!");
+    fecharModal("servico");showToast("Serviço salvo!");regLog("servicos",form.id?"editou":"criou",(form.tipo||"Serviço")+(form.clienteId?" - "+cn(form.clienteId):""),form.id||null);
   };
 
   const salvarRec=async(form)=>{
     const pay={descricao:form.descricao,categoria:form.categoria,valor:Number(form.valor),forma:form.forma,data:form.data,cliente:form.cliente,protocolo:form.protocolo,competencia:form.competencia||(form.data||"").slice(0,7)};
     if(form.id){await sb.from("recebimentos").update(pay).eq("id",form.id);setRecebimentos(prev=>prev.map(r=>r.id===form.id?{...r,...pay}:r));}
     else{const{data}=await sb.from("recebimentos").insert(pay).select().single();if(data)setRecebimentos(prev=>[data,...prev]);}
-    fecharModal("rec");showToast("Recebimento salvo!");
+    fecharModal("rec");showToast("Recebimento salvo!");regLog("recebimentos",form.id?"editou":"criou",(form.descricao||"Recebimento")+" R$ "+(form.valor||0),form.id||null);
   };
 
   const salvarPag=async(form)=>{
     const pay={descricao:form.descricao,categoria:form.categoria,valor:Number(form.valor),forma:form.forma,data:form.data,protocolo:form.protocolo,competencia:form.competencia||(form.data||"").slice(0,7),colaborador_id:form.colaborador_id||null};
     if(form.id){await sb.from("pagamentos").update(pay).eq("id",form.id);setPagamentos(prev=>prev.map(p=>p.id===form.id?{...p,...pay}:p));}
     else{const{data}=await sb.from("pagamentos").insert(pay).select().single();if(data)setPagamentos(prev=>[data,...prev]);}
-    fecharModal("pag");showToast("Pagamento salvo!");
+    fecharModal("pag");showToast("Pagamento salvo!");regLog("pagamentos",form.id?"editou":"criou",(form.descricao||"Pagamento")+" R$ "+(form.valor||0),form.id||null);
   };
 
   const salvarUser=async(form)=>{
     await sb.from("usuarios").update({nome:form.nome,cargo:form.cargo,perfil:form.perfil,ativo:form.ativo}).eq("id",form.id);
     setUsuarios(prev=>prev.map(u=>u.id===form.id?{...u,...form}:u));
-    fecharModal("usuario");showToast("Usuário atualizado!");
+    fecharModal("usuario");showToast("Usuário atualizado!");regLog("usuarios","editou",form.nome,form.id);
   };
 
   const atualizarLead=async(id,patch)=>{
@@ -956,6 +973,11 @@ const AppContent=({session})=>{
       }
     }).catch(()=>{});
   },[]);
+
+  useEffect(()=>{
+    const u=usuarios.find(x=>x.id===session?.user?.id);
+    _currentUser={id:session?.user?.id||null,nome:u?.nome||session?.user?.email||"Sistema"};
+  },[session,usuarios]);
 
   useEffect(()=>{
     const evs=["mousemove","keydown","click","scroll","touchstart"];
@@ -1061,7 +1083,7 @@ const AppContent=({session})=>{
         {tela==="custos"&&<TelaCustos showToast={showToast} custos={custos} setCustos={v=>{setCustos(v);sb.from("configuracoes").upsert({id:"custos",dados:v,updated_at:new Date().toISOString()}).then(()=>{}).catch(()=>{});}} sb={sb}/>}
         {tela==="alertas"&&<TelaAlertas alertas={alertas} setAlertas={setAlertas} servicos={servicos} cn={cn} sb={sb} showToast={showToast}/>}
         {tela==="captacao"&&<TelaCaptacao leads={leads} setLeads={setLeads} atualizarLead={atualizarLead} showToast={showToast} sb={sb}/>}
-        {tela==="usuarios"&&<TelaUsuarios usuarios={usuarios} setUsuarios={setUsuarios} abrirModal={abrirModal} session={session}/>}
+        {tela==="usuarios"&&<TelaUsuarios usuarios={usuarios} setUsuarios={setUsuarios} abrirModal={abrirModal} session={session} logs={logs}/>}
       </main>
 
       {modais.cliente&&<ModalCliente inicial={modais.cliente} onSave={salvarCliente} onClose={()=>fecharModal("cliente")} clientes={clientes}/>}
@@ -1393,7 +1415,7 @@ const TelaClientes=({clientes,servicos,search,setSearch,abrirModal,setClientes,s
                       <button style={S.btnSm} onClick={()=>abrirModal("cliente",{...c})} className="bs">Editar</button>
                       {sb&&<button style={{...S.btnSm,...S.btnDang}} onClick={async()=>{
                         if(window.confirm("Excluir cliente "+c.nome+"? Esta acao e permanente.")){
-                          if(sb)await sb.from("clientes").delete().eq("id",c.id);
+                          if(sb){await sb.from("clientes").delete().eq("id",c.id);regLog("clientes","excluiu",c.nome,c.id);}
                           setClientes(prev=>prev.filter(x=>x.id!==c.id));
                           if(showToast)showToast("Cliente excluido.");
                         }
@@ -1456,7 +1478,7 @@ const TelaServicos=({servicos,search,setSearch,cn,abrirModal,abrirServico,setPri
     </div>
     {orcA.length>0&&<div style={{...S.alertBanner,marginBottom:14}}>⚠ <strong>{orcA.length} orçamento(s) pendente(s)</strong> - entre em contato para fechar!</div>}
   <div style={S.tableCard}><table style={S.table}><thead><tr>{["Protocolo","Cliente","Tipo","Estágio","Orçamento","Status","Ações"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
-  <tbody>{filtrados.map(s=>(<tr key={s.id} style={S.tr} className="tr"><td style={S.td}><span style={S.proto}>{s.protocolo}</span></td><td style={S.td}><div style={{fontWeight:600,color:"#d6d3cc"}}>{cn(s.clienteId)}</div></td><td style={S.td}>{s.tipo}</td><td style={S.td}><Tag label={s.estagio} color={ECOR[s.estagio]||"#5a5d66"}/></td><td style={S.td}><div style={{fontWeight:700,color:"#d6d3cc",fontSize:13}}>R$ {fmt(s.orcamento?.valor)}</div><Tag label={s.orcamento?.status||"-"} color={s.orcamento?.status==="Fechado"?"#5a8f6e":s.orcamento?.status==="Concluído"?"#5a7aaa":"#a87840"}/></td><td style={S.td}><Tag label={s.status} color={s.status==="Concluído"?"#5a8f6e":"#5a7aaa"}/></td><td style={S.td}><button style={S.btnSm} onClick={()=>abrirServico(s)} className="bs">Abrir</button><button style={{...S.btnSm,color:"#5a7aaa",borderColor:"#3b82f644"}} onClick={()=>abrirModal("servico",{...s,tipoProcesso:s.tipoProcesso||"extrajudicial",dadosJudiciais:s.dadosJudiciais||{}})} className="bs">Editar</button><button style={{...S.btnSm,color:"#a87840",borderColor:"#f59e0b44"}} onClick={()=>setPrintData(s)} className="bs">🖨</button><button style={{...S.btnSm,...S.btnDang}} onClick={async()=>{if(window.confirm("Excluir este servico? Esta acao e permanente e nao pode ser desfeita.")){await sb.from("servicos").delete().eq("id",s.id);setServicos(prev=>prev.filter(x=>x.id!==s.id));showToast("Excluído.");}}} className="bs">✕</button></td></tr>))}</tbody></table>
+  <tbody>{filtrados.map(s=>(<tr key={s.id} style={S.tr} className="tr"><td style={S.td}><span style={S.proto}>{s.protocolo}</span></td><td style={S.td}><div style={{fontWeight:600,color:"#d6d3cc"}}>{cn(s.clienteId)}</div></td><td style={S.td}>{s.tipo}</td><td style={S.td}><Tag label={s.estagio} color={ECOR[s.estagio]||"#5a5d66"}/></td><td style={S.td}><div style={{fontWeight:700,color:"#d6d3cc",fontSize:13}}>R$ {fmt(s.orcamento?.valor)}</div><Tag label={s.orcamento?.status||"-"} color={s.orcamento?.status==="Fechado"?"#5a8f6e":s.orcamento?.status==="Concluído"?"#5a7aaa":"#a87840"}/></td><td style={S.td}><Tag label={s.status} color={s.status==="Concluído"?"#5a8f6e":"#5a7aaa"}/></td><td style={S.td}><button style={S.btnSm} onClick={()=>abrirServico(s)} className="bs">Abrir</button><button style={{...S.btnSm,color:"#5a7aaa",borderColor:"#3b82f644"}} onClick={()=>abrirModal("servico",{...s,tipoProcesso:s.tipoProcesso||"extrajudicial",dadosJudiciais:s.dadosJudiciais||{}})} className="bs">Editar</button><button style={{...S.btnSm,color:"#a87840",borderColor:"#f59e0b44"}} onClick={()=>setPrintData(s)} className="bs">🖨</button><button style={{...S.btnSm,...S.btnDang}} onClick={async()=>{if(window.confirm("Excluir este servico? Esta acao e permanente e nao pode ser desfeita.")){await sb.from("servicos").delete().eq("id",s.id);setServicos(prev=>prev.filter(x=>x.id!==s.id));showToast("Excluído.");regLog("servicos","excluiu",(s.tipo||"Serviço")+" - "+s.protocolo,s.id);}}} className="bs">✕</button></td></tr>))}</tbody></table>
   {filtrados.length===0&&<div style={S.empty}>Nenhum serviço encontrado com os filtros selecionados.</div>}</div></div></div>);
 };
 
@@ -1622,7 +1644,7 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
                     <div style={{display:"flex",gap:4,flexShrink:0}}>
                       {d.status!=="Concluída"&&<>
                         <button style={{...S.btnSm,color:"#5a7aaa",borderColor:"#3b82f644"}} onClick={()=>atualizar({diligencias:(servico.diligencias||[]).map(x=>x.id===d.id?{...x,status:"Em andamento"}:x)})} className="bs">Em and.</button>
-                        <button style={{...S.btnSm,color:"#5a8f6e",borderColor:"#22c55e44"}} onClick={()=>atualizar({diligencias:(servico.diligencias||[]).map(x=>x.id===d.id?{...x,status:"Concluída",dataConclusao:new Date().toISOString().slice(0,10)}:x)})} className="bs">✓ Concluir</button>
+                        <button style={{...S.btnSm,color:"#5a8f6e",borderColor:"#22c55e44"}} onClick={()=>{regLog("diligencias","concluiu",d.descricao||"Diligência",d.id);atualizar({diligencias:(servico.diligencias||[]).map(x=>x.id===d.id?{...x,status:"Concluída",dataConclusao:new Date().toISOString().slice(0,10)}:x)});}} className="bs">✓ Concluir</button>
                       </>}
                       <button style={S.btnSm} onClick={()=>setModalDilig2({...d})} className="bs">Editar</button>
                       <button style={{...S.btnSm,...S.btnDang}} onClick={()=>{if(!window.confirm("Excluir esta diligência?"))return;atualizar({diligencias:(servico.diligencias||[]).filter(x=>x.id!==d.id)});}} className="bs">✕</button>
@@ -2672,12 +2694,12 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
         const payloads=datas.map((dt,idx)=>({...payload,data:dt,recorrencia_id:recId,recorrencia_ordem:idx}));
         const{data,error}=await sb.from("agenda").insert(payloads).select();
         if(error){showToast("Erro: "+error.message,"erro");return;}
-        if(data)setAgenda(prev=>[...prev,...data]);
+        if(data){setAgenda(prev=>[...prev,...data]);regLog("agenda","criou",form.titulo||"Evento",null);}
         showToast(datas.length+" agendamentos criados!");
       }else{
         const{data,error}=await sb.from("agenda").insert(payload).select().single();
         if(error){showToast("Erro: "+error.message,"erro");return;}
-        if(data)setAgenda(prev=>[...prev,data]);
+        if(data){setAgenda(prev=>[...prev,data]);regLog("agenda","criou",form.titulo||"Evento",data.id);}
         showToast("Agendamento criado!");
       }
       setForm({titulo:"",tipo:"atendimento",data:td(),hora:"",cliente_id:"",servico_id:"",obs:"",recorrencia:"nao_repete",recorrencia_fim:"",_buscaCli:""});
@@ -2720,7 +2742,7 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
   const marcarRealizado=async(id)=>{
     const hoje=new Date().toISOString().slice(0,10);
     await sb.from("agenda").update({status:"realizado",data_conclusao:hoje}).eq("id",id);
-    setAgenda(prev=>prev.map(a=>a.id===id?{...a,status:"realizado",data_conclusao:hoje}:a));
+    setAgenda(prev=>prev.map(a=>{if(a.id===id)regLog("agenda","concluiu",a.titulo||"Evento",id);return a.id===id?{...a,status:"realizado",data_conclusao:hoje}:a;}));
     showToast("Marcado como realizado!");
   };
 
@@ -2731,7 +2753,7 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
       return;
     }
     if(!window.confirm("Excluir este agendamento?"))return;
-    await sb.from("agenda").delete().eq("id",id);
+    await sb.from("agenda").delete().eq("id",id);regLog("agenda","excluiu","Evento",id);
     setAgenda(prev=>prev.filter(a=>a.id!==id));
     showToast("Agendamento excluído.");
   };
@@ -3019,7 +3041,7 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
                   <td style={S.td}>
                     <button style={S.btnSm} onClick={()=>abrirModal("rec",{...r})} className="bs">Ed</button>
                     <button style={S.btnSm} onClick={()=>setReciboData(r)} className="bs">Recibo</button>
-                    <button style={{...S.btnSm,...S.btnDang}} onClick={async()=>{if(!window.confirm("Excluir este recebimento? Esta acao e permanente."))return;await sb.from("recebimentos").delete().eq("id",r.id);setRecebimentos(prev=>prev.filter(x=>x.id!==r.id));}} className="bs">Excluir</button>
+                    <button style={{...S.btnSm,...S.btnDang}} onClick={async()=>{if(!window.confirm("Excluir este recebimento? Esta acao e permanente."))return;await sb.from("recebimentos").delete().eq("id",r.id);setRecebimentos(prev=>prev.filter(x=>x.id!==r.id));regLog("recebimentos","excluiu",r.descricao,r.id);}} className="bs">Excluir</button>
                   </td>
                 </tr>
               ))}</tbody>
@@ -3041,7 +3063,7 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
                   <td style={S.td}><span style={{fontWeight:700,color:"#b46464"}}>R$ {fmt(p.valor)}</span></td>
                   <td style={S.td}>
                     <button style={S.btnSm} onClick={()=>abrirModal("pag",{...p})} className="bs">Ed</button>
-                    <button style={{...S.btnSm,...S.btnDang}} onClick={async()=>{if(!window.confirm("Excluir este pagamento? Esta acao e permanente."))return;await sb.from("pagamentos").delete().eq("id",p.id);setPagamentos(prev=>prev.filter(x=>x.id!==p.id));}} className="bs">Excluir</button>
+                    <button style={{...S.btnSm,...S.btnDang}} onClick={async()=>{if(!window.confirm("Excluir este pagamento? Esta acao e permanente."))return;await sb.from("pagamentos").delete().eq("id",p.id);setPagamentos(prev=>prev.filter(x=>x.id!==p.id));regLog("pagamentos","excluiu",p.descricao,p.id);}} className="bs">Excluir</button>
                   </td>
                 </tr>
               ))}</tbody>
@@ -3238,7 +3260,7 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
 
           const excluirColab=async(id)=>{
             if(!window.confirm("Excluir este colaborador? Pagamentos já vinculados a ele permanecerão no histórico, apenas sem o vínculo."))return;
-            await sb.from("colaboradores").delete().eq("id",id);
+            await sb.from("colaboradores").delete().eq("id",id);regLog("colaboradores","excluiu","Colaborador",id);
             setColaboradores(prev=>prev.filter(c=>c.id!==id));
           };
 
@@ -4437,7 +4459,7 @@ const TelaCaptacao=({leads,setLeads,atualizarLead,showToast,sb})=>{
                 <td style={S.td}>
                   <button style={S.btnSm} onClick={()=>setModal({...l})} className="bs">Editar</button>
                   {l.telefone&&<a href={"https://wa.me/55"+l.telefone.replace(/\D/g,"")} target="_blank" rel="noopener noreferrer" style={{...S.btnSm,background:"#25d36622",color:"#25d366",borderColor:"#25d36644",borderRadius:6,padding:"4px 10px",fontSize:11,textDecoration:"none",display:"inline-block",marginRight:4}}>WA</a>}
-                  <button style={{...S.btnSm,...S.btnDang}} onClick={async()=>{if(window.confirm("Confirmar exclusao? Esta acao e permanente.")){await sb.from("leads").delete().eq("id",l.id);setLeads(prev=>prev.filter(x=>x.id!==l.id));}}} className="bs">Excluir</button>
+                  <button style={{...S.btnSm,...S.btnDang}} onClick={async()=>{if(window.confirm("Confirmar exclusao? Esta acao e permanente.")){await sb.from("leads").delete().eq("id",l.id);setLeads(prev=>prev.filter(x=>x.id!==l.id));regLog("leads","excluiu",l.nome||"Lead",l.id);}}} className="bs">Excluir</button>
                 </td>
               </tr>
             ))}</tbody>
@@ -5116,15 +5138,145 @@ const TelaCustos = ({showToast, custos, setCustos}) => {
 };
 
 
-const TelaUsuarios=({usuarios,setUsuarios,abrirModal,session})=>(
-  <div style={S.tela}><PageHeader title="Usuários e Permissões" sub="Gerencie o acesso da equipe"/>
-  <div style={S.body}>
-    <div style={{...S.card,marginBottom:14,background:"#2a2d36",border:"1px solid #1e3a5f"}}><div style={{fontSize:13,color:"#8a8782",lineHeight:1.7}}>💡 <strong style={{color:"#d6d3cc"}}>Para convidar novos usuários:</strong> acesse o painel do Supabase → Authentication → Users → Invite User. Após o primeiro login, o perfil aparece aqui.</div></div>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:14}}>
-      {usuarios.map(u=><div key={u.id} style={{...S.card,opacity:u.ativo!==false?1:0.5}}><div style={{display:"flex",gap:12,marginBottom:12}}><div style={{width:42,height:42,borderRadius:12,background:u.ativo!==false?"#b8965a":"#2a2d36",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:13,color:"#fff",flexShrink:0}}>{(u.nome||"?").split(" ").slice(0,2).map(n=>n[0]).join("").toUpperCase()}</div><div style={{flex:1}}><div style={{fontWeight:700,color:"#d6d3cc"}}>{u.nome||"Sem nome"}</div><div style={{fontSize:12,color:"#5a5d66"}}>{u.cargo||"-"}</div></div><Tag label={PERFS[u.perfil]?.l||u.perfil||"-"} color={PERFS[u.perfil]?.c||"#5a5d66"}/></div>{u.id===session.user.id&&<div style={{fontSize:11,color:"#5a8f6e",marginBottom:8}}>● Você está logado com este perfil</div>}<div style={{display:"flex",justifyContent:"flex-end",gap:4}}><button style={S.btnSm} onClick={()=>abrirModal("usuario",{...u})} className="bs">Editar perfil</button><button style={{...S.btnSm,...(u.ativo!==false?S.btnDang:{background:"#22c55e11",color:"#5a8f6e",borderColor:"#22c55e33"})}} onClick={async()=>{await sb.from("usuarios").update({ativo:u.ativo===false}).eq("id",u.id);setUsuarios(prev=>prev.map(x=>x.id===u.id?{...x,ativo:x.ativo===false}:x));}} className="bs">{u.ativo!==false?"Desativar":"Ativar"}</button></div></div>)}
+const TelaUsuarios=({usuarios,setUsuarios,abrirModal,session,logs=[]})=>{
+  const [aba,setAba]=React.useState("usuarios");
+  const [filtroUser,setFiltroUser]=React.useState("todos");
+  const [filtroPeriodo,setFiltroPeriodo]=React.useState("mes");
+  const [filtroAcao,setFiltroAcao]=React.useState("todos");
+  const [buscaLog,setBuscaLog]=React.useState("");
+
+  const PERIODOS=[{k:"hoje",l:"Hoje"},{k:"semana",l:"Esta semana"},{k:"mes",l:"Este mês"},{k:"ano",l:"Este ano"},{k:"todos",l:"Todos"}];
+  const ACOES=[{k:"todos",l:"Todas"},{k:"criou",l:"Criou"},{k:"editou",l:"Editou"},{k:"excluiu",l:"Excluiu"},{k:"concluiu",l:"Concluiu"}];
+  const TAB_LABELS={clientes:"Clientes",servicos:"Serviços",diligencias:"Diligências",agenda:"Agenda",pagamentos:"Pagamentos",recebimentos:"Recebimentos",pagamentos_processo:"Pag. Processo",colaboradores:"Colaboradores",leads:"CRM",usuarios:"Usuários",alertas:"Alertas"};
+
+  const filtrarPorPeriodo=(item)=>{
+    const d=new Date(item.created_at);
+    const agora=new Date();
+    if(filtroPeriodo==="hoje"){const h=new Date();h.setHours(0,0,0,0);return d>=h;}
+    if(filtroPeriodo==="semana"){const s=new Date();s.setDate(s.getDate()-7);return d>=s;}
+    if(filtroPeriodo==="mes"){return d.getMonth()===agora.getMonth()&&d.getFullYear()===agora.getFullYear();}
+    if(filtroPeriodo==="ano"){return d.getFullYear()===agora.getFullYear();}
+    return true;
+  };
+
+  const logsFiltrados=logs.filter(l=>{
+    const matchUser=filtroUser==="todos"||l.usuario_nome===filtroUser;
+    const matchPeriodo=filtrarPorPeriodo(l);
+    const matchAcao=filtroAcao==="todos"||(l.acao||"")===filtroAcao;
+    const matchBusca=!buscaLog||(l.detalhes||"").toLowerCase().includes(buscaLog.toLowerCase())||(l.usuario_nome||"").toLowerCase().includes(buscaLog.toLowerCase())||(l.tabela||"").toLowerCase().includes(buscaLog.toLowerCase());
+    return matchUser&&matchPeriodo&&matchAcao&&matchBusca;
+  });
+
+  const nomeUsuarios=[...new Set(logs.map(l=>l.usuario_nome).filter(Boolean))];
+
+  const prodPorUsuario=usuarios.map(u=>{
+    const logU=logs.filter(l=>l.usuario_nome===u.nome&&filtrarPorPeriodo(l));
+    const contar=(tab,ac)=>logU.filter(l=>l.tabela===tab&&(!ac||l.acao===ac)).length;
+    return{
+      ...u,
+      totalAcoes:logU.length,
+      clientesCriados:contar("clientes","criou"),
+      servicosCriados:contar("servicos","criou"),
+      servicosConcluidos:contar("servicos","concluiu"),
+      diligenciasCriadas:contar("diligencias","criou"),
+      diligenciasConcluidas:contar("diligencias","concluiu"),
+      agendaCriados:contar("agenda","criou"),
+      agendaConcluidos:contar("agenda","concluiu"),
+      pagamentosCriados:contar("pagamentos","criou")+contar("pagamentos_processo","criou"),
+      recebimentosCriados:contar("recebimentos","criou"),
+      excluidos:logU.filter(l=>l.acao==="excluiu").length,
+    };
+  }).sort((a,b)=>b.totalAcoes-a.totalAcoes);
+
+  const corAcao={criou:"#5a8f6e",editou:"#5a7aaa",excluiu:"#b46464",concluiu:"#a87840"};
+
+  return(
+    <div style={S.tela}>
+      <PageHeader title="Usuários e Permissões" sub="Gerencie o acesso, produtividade e auditoria da equipe"/>
+      <div style={{display:"flex",gap:0,borderBottom:"1px solid #2a2d3e",marginBottom:16}}>
+        {[{k:"usuarios",l:"Usuários"},{k:"produtividade",l:"Produtividade"},{k:"auditoria",l:"Auditoria"}].map(t=>(
+          <button key={t.k} style={{padding:"10px 20px",background:"none",border:"none",borderBottom:aba===t.k?"2px solid #b8965a":"2px solid transparent",color:aba===t.k?"#d6d3cc":"#555",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",marginBottom:-1}} onClick={()=>setAba(t.k)}>{t.l}</button>
+        ))}
+      </div>
+
+      {aba==="usuarios"&&<div style={S.body}>
+        <div style={{...S.card,marginBottom:14,background:"#2a2d36",border:"1px solid #1e3a5f"}}><div style={{fontSize:13,color:"#8a8782",lineHeight:1.7}}>💡 <strong style={{color:"#d6d3cc"}}>Para convidar novos usuários:</strong> acesse o painel do Supabase → Authentication → Users → Invite User. Após o primeiro login, o perfil aparece aqui.</div></div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:14}}>
+          {usuarios.map(u=><div key={u.id} style={{...S.card,opacity:u.ativo!==false?1:0.5}}><div style={{display:"flex",gap:12,marginBottom:12}}><div style={{width:42,height:42,borderRadius:12,background:u.ativo!==false?"#b8965a":"#2a2d36",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:13,color:"#fff",flexShrink:0}}>{(u.nome||"?").split(" ").slice(0,2).map(n=>n[0]).join("").toUpperCase()}</div><div style={{flex:1}}><div style={{fontWeight:700,color:"#d6d3cc"}}>{u.nome||"Sem nome"}</div><div style={{fontSize:12,color:"#5a5d66"}}>{u.cargo||"-"}</div></div><Tag label={PERFS[u.perfil]?.l||u.perfil||"-"} color={PERFS[u.perfil]?.c||"#5a5d66"}/></div>{u.id===session.user.id&&<div style={{fontSize:11,color:"#5a8f6e",marginBottom:8}}>● Você está logado com este perfil</div>}<div style={{display:"flex",justifyContent:"flex-end",gap:4}}><button style={S.btnSm} onClick={()=>abrirModal("usuario",{...u})} className="bs">Editar perfil</button><button style={{...S.btnSm,...(u.ativo!==false?S.btnDang:{background:"#22c55e11",color:"#5a8f6e",borderColor:"#22c55e33"})}} onClick={async()=>{await sb.from("usuarios").update({ativo:u.ativo===false}).eq("id",u.id);setUsuarios(prev=>prev.map(x=>x.id===u.id?{...x,ativo:x.ativo===false}:x));}} className="bs">{u.ativo!==false?"Desativar":"Ativar"}</button></div></div>)}
+        </div>
+      </div>}
+
+      {aba==="produtividade"&&<div style={S.body}>
+        <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
+          {PERIODOS.map(p=><button key={p.k} style={{padding:"5px 14px",borderRadius:20,fontSize:11,cursor:"pointer",border:"1px solid",fontFamily:"inherit",background:filtroPeriodo===p.k?"#b8965a22":"#1a1c28",borderColor:filtroPeriodo===p.k?"#b8965a55":"#2a2d3e",color:filtroPeriodo===p.k?"#b8965a":"#555"}} onClick={()=>setFiltroPeriodo(p.k)}>{p.l}</button>)}
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:16}}>
+          {prodPorUsuario.map(u=>(
+            <div key={u.id} style={{...S.card,opacity:u.ativo!==false?1:0.5}}>
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
+                <div style={{width:42,height:42,borderRadius:12,background:"#b8965a",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:13,color:"#fff"}}>{(u.nome||"?").split(" ").slice(0,2).map(n=>n[0]).join("").toUpperCase()}</div>
+                <div style={{flex:1}}><div style={{fontWeight:700,color:"#d6d3cc",fontSize:14}}>{u.nome||"Sem nome"}</div><div style={{fontSize:11,color:"#5a5d66"}}>{u.cargo||"-"} · {u.totalAcoes} ação(ões) no período</div></div>
+                <Tag label={PERFS[u.perfil]?.l||"-"} color={PERFS[u.perfil]?.c||"#5a5d66"}/>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8}}>
+                {[
+                  {l:"Clientes criados",v:u.clientesCriados,c:"#5a7aaa"},
+                  {l:"Serviços criados",v:u.servicosCriados,c:"#a87840"},
+                  {l:"Serviços concluídos",v:u.servicosConcluidos,c:"#5a8f6e"},
+                  {l:"Diligências criadas",v:u.diligenciasCriadas,c:"#7a6aaa"},
+                  {l:"Diligências concluídas",v:u.diligenciasConcluidas,c:"#5a8f6e"},
+                  {l:"Agendamentos criados",v:u.agendaCriados,c:"#5a7aaa"},
+                  {l:"Agendamentos realizados",v:u.agendaConcluidos,c:"#5a8f6e"},
+                  {l:"Pagamentos lançados",v:u.pagamentosCriados,c:"#b46464"},
+                  {l:"Recebimentos lançados",v:u.recebimentosCriados,c:"#5a8f6e"},
+                  {l:"Exclusões realizadas",v:u.excluidos,c:"#b46464"},
+                ].map(item=>(
+                  <div key={item.l} style={{background:"#1a1c28",border:"1px solid #2a2d3e",borderRadius:8,padding:"10px 12px",textAlign:"center"}}>
+                    <div style={{fontSize:22,fontWeight:800,color:item.v>0?item.c:"#2a2d3e"}}>{item.v}</div>
+                    <div style={{fontSize:10,color:"#555",marginTop:3,lineHeight:1.3}}>{item.l}</div>
+                  </div>
+                ))}
+              </div>
+              {u.totalAcoes===0&&<div style={{textAlign:"center",padding:"16px 0",color:"#444",fontSize:12}}>Nenhuma atividade registrada no período selecionado</div>}
+            </div>
+          ))}
+        </div>
+      </div>}
+
+      {aba==="auditoria"&&<div style={S.body}>
+        <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+          <input style={{...S.fi,width:200,margin:0,padding:"6px 10px",fontSize:12}} placeholder="Buscar..." value={buscaLog} onChange={e=>setBuscaLog(e.target.value)}/>
+          <select style={{...S.fi,width:140,margin:0,padding:"6px 10px",fontSize:12}} value={filtroUser} onChange={e=>setFiltroUser(e.target.value)}>
+            <option value="todos">Todos usuários</option>
+            {nomeUsuarios.map(n=><option key={n} value={n}>{n}</option>)}
+          </select>
+          <select style={{...S.fi,width:130,margin:0,padding:"6px 10px",fontSize:12}} value={filtroAcao} onChange={e=>setFiltroAcao(e.target.value)}>
+            {ACOES.map(a=><option key={a.k} value={a.k}>{a.l}</option>)}
+          </select>
+          {PERIODOS.map(p=><button key={p.k} style={{padding:"5px 12px",borderRadius:20,fontSize:11,cursor:"pointer",border:"1px solid",fontFamily:"inherit",background:filtroPeriodo===p.k?"#b8965a22":"#1a1c28",borderColor:filtroPeriodo===p.k?"#b8965a55":"#2a2d3e",color:filtroPeriodo===p.k?"#b8965a":"#555"}} onClick={()=>setFiltroPeriodo(p.k)}>{p.l}</button>)}
+          <span style={{marginLeft:"auto",fontSize:11,color:"#555"}}>{logsFiltrados.length} registro(s)</span>
+        </div>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+            <thead><tr>{["Data/Hora","Usuário","Ação","Módulo","Detalhes"].map(h=><th key={h} style={{...S.th,textAlign:"left",padding:"8px 12px",fontSize:10}}>{h}</th>)}</tr></thead>
+            <tbody>
+              {logsFiltrados.length===0?<tr><td colSpan={5} style={{textAlign:"center",padding:32,color:"#555"}}>Nenhum registro encontrado</td></tr>:
+              logsFiltrados.map(l=>(
+                <tr key={l.id} className="tr" style={S.tr}>
+                  <td style={{...S.td,whiteSpace:"nowrap",color:"#5a5d66",fontSize:11}}>{new Date(l.created_at).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"})}</td>
+                  <td style={S.td}><div style={{fontWeight:600,color:"#d6d3cc"}}>{l.usuario_nome||"Sistema"}</div></td>
+                  <td style={S.td}><span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:4,background:(corAcao[l.acao]||"#5a5d66")+"22",color:corAcao[l.acao]||"#5a5d66",textTransform:"uppercase"}}>{l.acao||"-"}</span></td>
+                  <td style={S.td}><span style={{fontSize:11,color:"#888"}}>{TAB_LABELS[l.tabela]||l.tabela||"-"}</span></td>
+                  <td style={{...S.td,color:"#8a8782",maxWidth:300,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.detalhes||"-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>}
     </div>
-  </div></div>
-);
+  );
+};
 
 // ── MODAIS ──
 const ModalCliente=({inicial,onSave,onClose,clientes=[]})=>{
