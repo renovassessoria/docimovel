@@ -1338,7 +1338,7 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
         const ehParc=(p)=>{const d=p.descricao||"";return !!p.parcelado||d.includes("(")&&d.includes("/")||d.toLowerCase().includes("remanescente")||d.toLowerCase().includes("parcela");};
         const parcelasCard=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>{
           if(p.status==="pago")return false;
-          if(!p.data||p.data>_d7s)return false;
+          if(!p.data||p.data>_d7s||p.data<td())return false;
           return ehParc(p);
         }).map(p=>({...p,clienteNome:cn(s.clienteId||s.cliente_id),servicoObj:s})))
         .sort((a,b)=>(a.data||"").localeCompare(b.data||""));
