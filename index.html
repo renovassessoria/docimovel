@@ -943,8 +943,10 @@ const AppContent=({session})=>{
   const prazosProx=servicos.filter(s=>s.prazoConclusao&&s.status!=="Concluído"&&s.status!=="Concluido"&&Math.ceil((new Date(s.prazoConclusao)-hoje2)/(864e5))>1&&Math.ceil((new Date(s.prazoConclusao)-hoje2)/(864e5))<=3).map(s=>({descricao:"Prazo: "+s.tipo,clienteNome:cn(s.clienteId||s.cliente_id),protocolo:s.protocolo}));
   const leadsN=leads.filter(l=>l.status==="Novo").length;
   const orcA=servicos.filter(s=>s.orcamento?.status==="Orçamento").length;
-  const isP=(p)=>{const d=p.descricao||"";return !!p.parcelado||(d.includes("(")&&d.includes("/"))||d.toLowerCase().includes("remanescente")||d.toLowerCase().includes("parcela");};const parcelasVenc=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>p.status!=="pago"&&p.data&&p.data<td()&&isP(p)).map(p=>({descricao:"Parcela vencida: "+p.descricao,clienteNome:cn(s.clienteId||s.cliente_id),protocolo:s.protocolo,servicoId:s.id,tipo:"servico"})));
-  const parcelasHoje=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>p.status!=="pago"&&p.data&&p.data===td()&&isP(p)).map(p=>({descricao:"Parcela hoje: "+p.descricao,clienteNome:cn(s.clienteId||s.cliente_id),protocolo:s.protocolo,servicoId:s.id,tipo:"servico"})));
+  const ehParcela=(p)=>{const d=p.descricao||"";return !!p.parcelado||d.includes("(")&&d.includes("/")||d.toLowerCase().includes("remanescente")||d.toLowerCase().includes("parcela");};
+  const parcelasVenc=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>p.status!=="pago"&&p.data&&p.data<td()&&ehParcela(p)).map(p=>({descricao:"Parcela vencida: "+p.descricao,clienteNome:cn(s.clienteId||s.cliente_id),protocolo:s.protocolo,servicoId:s.id,tipo:"servico"})));
+  const parcelasHoje=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>p.status!=="pago"&&p.data&&p.data===td()&&ehParcela(p)).map(p=>({descricao:"Parcela hoje: "+p.descricao,clienteNome:cn(s.clienteId||s.cliente_id),protocolo:s.protocolo,servicoId:s.id,tipo:"servico"})));
+  
   const recAno=recebimentos.filter(r=>r.data?.startsWith(String(anoFin)));
   const pagAno=pagamentos.filter(p=>p.data?.startsWith(String(anoFin)));
   const totRec=recAno.reduce((s,r)=>s+Number(r.valor),0);
@@ -1333,12 +1335,11 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
       {(()=>{
         const _hj=new Date().toISOString().slice(0,10);
         const _d7=new Date();_d7.setDate(_d7.getDate()+15);const _d7s=_d7.toISOString().slice(0,10);
-        const isParc=(p)=>{const d=p.descricao||"";return !!p.parcelado||(d.includes("(")&&d.includes("/"))||d.toLowerCase().includes("remanescente")||d.toLowerCase().includes("parcela");}
+        const ehParc=(p)=>{const d=p.descricao||"";return !!p.parcelado||d.includes("(")&&d.includes("/")||d.toLowerCase().includes("remanescente")||d.toLowerCase().includes("parcela");};
         const parcelasCard=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>{
           if(p.status==="pago")return false;
-          if(!isParc(p))return false;
-          if(!p.data)return false;
-          return p.data<=_d7s;
+          if(!p.data||p.data>_d7s)return false;
+          return ehParc(p);
         }).map(p=>({...p,clienteNome:cn(s.clienteId||s.cliente_id),servicoObj:s})))
         .sort((a,b)=>(a.data||"").localeCompare(b.data||""));
         const totalCard=parcelasCard.reduce((a,p)=>a+Number(p.valor||0),0);
