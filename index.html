@@ -943,8 +943,8 @@ const AppContent=({session})=>{
   const prazosProx=servicos.filter(s=>s.prazoConclusao&&s.status!=="Concluído"&&s.status!=="Concluido"&&Math.ceil((new Date(s.prazoConclusao)-hoje2)/(864e5))>1&&Math.ceil((new Date(s.prazoConclusao)-hoje2)/(864e5))<=3).map(s=>({descricao:"Prazo: "+s.tipo,clienteNome:cn(s.clienteId||s.cliente_id),protocolo:s.protocolo}));
   const leadsN=leads.filter(l=>l.status==="Novo").length;
   const orcA=servicos.filter(s=>s.orcamento?.status==="Orçamento").length;
-  const parcelasVenc=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>p.status!=="pago"&&p.data&&p.data<td()).map(p=>({descricao:"Parcela vencida: "+p.descricao,clienteNome:cn(s.clienteId||s.cliente_id),protocolo:s.protocolo,servicoId:s.id,tipo:"servico"})));
-  const parcelasHoje=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>p.status!=="pago"&&p.data&&p.data===td()).map(p=>({descricao:"Parcela hoje: "+p.descricao,clienteNome:cn(s.clienteId||s.cliente_id),protocolo:s.protocolo,servicoId:s.id,tipo:"servico"})));
+  const parcelasVenc=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>p.status!=="pago"&&p.data&&p.data<td()&&(!!p.parcelado||/\(\d+\/\d+\)/.test(p.descricao||"")||/(ª\s*[Pp]arcela|[Pp]arcela\s*\d|[Rr]emanescente)/i.test(p.descricao||""))).map(p=>({descricao:"Parcela vencida: "+p.descricao,clienteNome:cn(s.clienteId||s.cliente_id),protocolo:s.protocolo,servicoId:s.id,tipo:"servico"})));
+  const parcelasHoje=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>p.status!=="pago"&&p.data&&p.data===td()&&(!!p.parcelado||/\(\d+\/\d+\)/.test(p.descricao||"")||/(ª\s*[Pp]arcela|[Pp]arcela\s*\d|[Rr]emanescente)/i.test(p.descricao||""))).map(p=>({descricao:"Parcela hoje: "+p.descricao,clienteNome:cn(s.clienteId||s.cliente_id),protocolo:s.protocolo,servicoId:s.id,tipo:"servico"})));
   const recAno=recebimentos.filter(r=>r.data?.startsWith(String(anoFin)));
   const pagAno=pagamentos.filter(p=>p.data?.startsWith(String(anoFin)));
   const totRec=recAno.reduce((s,r)=>s+Number(r.valor),0);
@@ -1333,8 +1333,10 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
       {(()=>{
         const _hj=new Date().toISOString().slice(0,10);
         const _d7=new Date();_d7.setDate(_d7.getDate()+7);const _d7s=_d7.toISOString().slice(0,10);
+        const isParc=(p)=>!!p.parcelado||/\(\d+\/\d+\)/.test(p.descricao||"")||(/(ª\s*[Pp]arcela|[Pp]arcela\s*\d|[Rr]emanescente|[Pp]arcelas)/i.test(p.descricao||""));
         const parcelasCard=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>{
           if(p.status==="pago")return false;
+          if(!isParc(p))return false;
           if(!p.data)return false;
           return p.data<=_d7s;
         }).map(p=>({...p,clienteNome:cn(s.clienteId||s.cliente_id),servicoObj:s})))
