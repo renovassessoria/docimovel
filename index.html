@@ -1345,7 +1345,7 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
         return(
           <div style={{...S.card}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-              <div style={S.cardTitle}>Parcelas — próx. 7 dias</div>
+              <div style={S.cardTitle}>Parcelas — próx. 15 dias</div>
               {parcelasCard.length>0&&<span style={{fontSize:11,color:"#b8965a"}}>R$ {fmt(totalCard)}</span>}
             </div>
             {parcelasCard.length===0&&<div style={{fontSize:11,color:"#5a8f6e",opacity:.6,padding:"6px 0"}}>Nenhuma parcela pendente.</div>}
