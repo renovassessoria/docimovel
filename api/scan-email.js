@@ -42,7 +42,6 @@ function detectarTipo(texto = '') {
   return 'outro';
 }
 
-// Decodifica base64url para texto
 function decodeBase64(str) {
   try {
     const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
@@ -52,7 +51,6 @@ function decodeBase64(str) {
   }
 }
 
-// Extrai texto de todas as partes do e-mail recursivamente
 function extrairTexto(payload) {
   if (!payload) return '';
   let texto = '';
@@ -63,6 +61,19 @@ function extrairTexto(payload) {
     }
   }
   return texto;
+}
+
+function encontrarServico(numProc, servicos) {
+  const numClean = numProc.replace(/\D/g, '');
+  return (servicos || []).find(s => {
+    const n = (
+      s.dados_judiciais?.numero ||
+      s.dados_judiciais?.numeroProcesso ||
+      s.dados_judiciais?.numero_processo || ''
+    ).replace(/\D/g, '');
+    return n && n.length >= 15 && numClean.length >= 15 &&
+      n.slice(-15) === numClean.slice(-15);
+  });
 }
 
 export default async function handler(req, res) {
@@ -112,11 +123,13 @@ export default async function handler(req, res) {
       return res.json({ ok: true, message: 'Nenhum e-mail novo encontrado.', processed: 0, created: 0 });
     }
 
-    // 5. IDs já processados
-    const existentes = await sbGet('alertas', '?select=gmail_message_id&gmail_message_id=not.is.null');
-    const idsExistentes = new Set((existentes || []).map(a => a.gmail_message_id).filter(Boolean));
+    // 5. IDs já processados (gmail_message_id + numero_processo para evitar duplicatas por processo)
+    const existentes = await sbGet('alertas', '?select=gmail_message_id,numero_processo');
+    const chaveExistente = new Set(
+      (existentes || []).map(a => `${a.gmail_message_id}|${a.numero_processo}`).filter(Boolean)
+    );
 
-    // 6. Serviços judiciais para cruzamento
+    // 6. Serviços para cruzamento
     const servicos = await sbGet('servicos', '?select=id,dados_judiciais,cliente_id');
 
     let created = 0;
@@ -124,10 +137,7 @@ export default async function handler(req, res) {
 
     // 7. Processar cada mensagem
     for (const msg of messages) {
-      if (idsExistentes.has(msg.id)) continue;
-
       try {
-        // Buscar e-mail COMPLETO (com corpo) para extrair número do processo
         const msgRes = await fetch(
           `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`,
           { headers: { Authorization: `Bearer ${access_token}` } }
@@ -139,47 +149,65 @@ export default async function handler(req, res) {
         const from = hdrs.find(h => h.name === 'From')?.value || '';
         const dateStr = hdrs.find(h => h.name === 'Date')?.value || '';
 
-        // Extrair texto completo do corpo
         const corpo = extrairTexto(msgData.payload);
         const textoCompleto = subject + ' ' + corpo + ' ' + (msgData.snippet || '');
 
-        // Buscar números de processo CNJ no texto completo
+        // Extrair TODOS os números de processo únicos do e-mail
         const matches = textoCompleto.match(PROC_REGEX);
-        const numerosEncontrados = matches ? [...new Set(matches)] : [];
-        const numProc = numerosEncontrados[0] || null;
+        const numerosUnicos = matches ? [...new Set(matches)] : [];
 
-        // Cruzar com serviços cadastrados — matching pelos 15 dígitos finais (preciso)
-        let servicoId = null;
-        if (numProc) {
-          const numClean = numProc.replace(/\D/g, '');
-          const match = (servicos || []).find(s => {
-            const n = (
-              s.dados_judiciais?.numero ||
-              s.dados_judiciais?.numeroProcesso ||
-              s.dados_judiciais?.numero_processo || ''
-            ).replace(/\D/g, '');
-            return n && n.length >= 15 && numClean.length >= 15 &&
-              n.slice(-15) === numClean.slice(-15);
-          });
-          servicoId = match?.id || null;
+        // Se não encontrou nenhum processo, criar 1 alerta genérico
+        if (numerosUnicos.length === 0) {
+          const chave = `${msg.id}|null`;
+          if (!chaveExistente.has(chave)) {
+            const emailRem = from.match(/<(.+)>/)?.[1] || from.trim();
+            await sbPost('alertas', {
+              tipo: detectarTipo(textoCompleto),
+              numero_processo: null,
+              assunto: subject.slice(0, 500),
+              servico_id: null,
+              email_remetente: emailRem,
+              email_data: dateStr ? new Date(dateStr).toISOString() : new Date().toISOString(),
+              gmail_message_id: msg.id,
+              lido: false,
+              diligencia_criada: false,
+            });
+            created++;
+          }
+          continue;
         }
 
         const emailRem = from.match(/<(.+)>/)?.[1] || from.trim();
-        const tipo = detectarTipo(textoCompleto);
+        const emailData = dateStr ? new Date(dateStr).toISOString() : new Date().toISOString();
 
-        await sbPost('alertas', {
-          tipo,
-          numero_processo: numProc,
-          assunto: subject.slice(0, 500),
-          servico_id: servicoId,
-          email_remetente: emailRem,
-          email_data: dateStr ? new Date(dateStr).toISOString() : new Date().toISOString(),
-          gmail_message_id: msg.id,
-          lido: false,
-          diligencia_criada: false,
-        });
+        // Criar 1 alerta por processo único encontrado no e-mail
+        for (const numProc of numerosUnicos) {
+          const chave = `${msg.id}|${numProc}`;
+          if (chaveExistente.has(chave)) continue; // já processado
 
-        created++;
+          const servico = encontrarServico(numProc, servicos);
+          const tipo = detectarTipo(textoCompleto);
+
+          // gmail_message_id único por processo: usar msg.id + sufixo do processo
+          const gmailId = numerosUnicos.length === 1
+            ? msg.id
+            : `${msg.id}_${numProc.replace(/\D/g, '').slice(-10)}`;
+
+          await sbPost('alertas', {
+            tipo,
+            numero_processo: numProc,
+            assunto: subject.slice(0, 500),
+            servico_id: servico?.id || null,
+            email_remetente: emailRem,
+            email_data: emailData,
+            gmail_message_id: gmailId,
+            lido: false,
+            diligencia_criada: false,
+          });
+
+          created++;
+        }
+
       } catch (e) {
         erros.push({ id: msg.id, err: e.message });
       }
