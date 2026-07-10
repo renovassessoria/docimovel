@@ -870,6 +870,7 @@ const AppContent=({session})=>{
     setServicos(prev=>prev.map(s=>s.id===id?{...s,...patch}:s));
     if(servicoAberto?.id===id)setServicoAberto(prev=>({...prev,...patch}));
     if(processoAberto?.id===id)setProcessoAberto(prev=>({...prev,...patch}));
+    setTimeout(()=>load2(),800);
   };
 
   const salvarCliente=async(form)=>{
@@ -2689,19 +2690,19 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
         const{error}=await sb.from("agenda").update(payload).eq("id",editando);
         if(error){showToast("Erro: "+error.message,"erro");return;}
         setAgenda(prev=>prev.map(a=>a.id===editando?{...a,...payload}:a));
-        showToast("Agendamento atualizado!");
+        showToast("Agendamento atualizado!");setTimeout(()=>load2(),800);
       }else if(form.recorrencia&&form.recorrencia!=="nao_repete"){
         const datas=gerarDatas(form.data,form.recorrencia,form.recorrencia_fim);
         const payloads=datas.map((dt,idx)=>({...payload,data:dt,recorrencia_id:recId,recorrencia_ordem:idx}));
         const{data,error}=await sb.from("agenda").insert(payloads).select();
         if(error){showToast("Erro: "+error.message,"erro");return;}
         if(data){setAgenda(prev=>[...prev,...data]);regLog("agenda","criou",(form.tipo||"evento").toUpperCase()+": "+(form.titulo||"Evento"),null);}
-        showToast(datas.length+" agendamentos criados!");
+        showToast(datas.length+" agendamentos criados!");setTimeout(()=>load2(),800);
       }else{
         const{data,error}=await sb.from("agenda").insert(payload).select().single();
         if(error){showToast("Erro: "+error.message,"erro");return;}
         if(data){setAgenda(prev=>[...prev,data]);regLog("agenda","criou",(form.tipo||"evento").toUpperCase()+": "+(form.titulo||"Evento"),data.id);}
-        showToast("Agendamento criado!");
+        showToast("Agendamento criado!");setTimeout(()=>load2(),800);
       }
       setForm({titulo:"",tipo:"atendimento",data:td(),hora:"",cliente_id:"",servico_id:"",obs:"",recorrencia:"nao_repete",recorrencia_fim:"",_buscaCli:""});
       setEditando(null);
@@ -2744,7 +2745,7 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
     const hoje=new Date().toISOString().slice(0,10);
     await sb.from("agenda").update({status:"realizado",data_conclusao:hoje}).eq("id",id);
     setAgenda(prev=>prev.map(a=>{if(a.id===id)regLog("agenda","concluiu",(a.tipo||"evento").toUpperCase()+": "+(a.titulo||"Evento"),id);return a.id===id?{...a,status:"realizado",data_conclusao:hoje}:a;}));
-    showToast("Marcado como realizado!");
+    showToast("Marcado como realizado!");setTimeout(()=>load2(),800);
   };
 
   const excluir=async(id)=>{
@@ -2756,7 +2757,7 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
     if(!window.confirm("Excluir este agendamento?"))return;
     await sb.from("agenda").delete().eq("id",id);regLog("agenda","excluiu","Evento",id);
     setAgenda(prev=>prev.filter(a=>a.id!==id));
-    showToast("Agendamento excluído.");
+    showToast("Agendamento excluído.");setTimeout(()=>load2(),800);
   };
 
   const confirmarExclusaoRecorr=async()=>{
