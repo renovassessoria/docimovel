@@ -4,9 +4,10 @@
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
-const REMETENTES = [
+const REMETENTES_DEFAULT = [
   'publicacoes@publicacoesonline.com.br',
   'oabba@recortedigital.adv.br',
+  'pje@tjba.jus.br',
 ];
 const PROC_REGEX = /\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/g;
 
@@ -87,6 +88,14 @@ export default async function handler(req, res) {
     const config = await sbGet('configuracoes', '?id=eq.gmail_refresh_token&select=dados');
     const refreshToken = config[0]?.dados?.token;
     if (!refreshToken) return res.status(400).json({ error: 'Gmail não autorizado. Acesse /api/auth/gmail primeiro.' });
+
+    // 1b. Buscar remetentes configurados no banco (ou usar defaults)
+    let REMETENTES = [...REMETENTES_DEFAULT];
+    try {
+      const remConfig = await sbGet('configuracoes', '?id=eq.gmail_remetentes&select=dados');
+      const remSalvos = remConfig[0]?.dados?.lista;
+      if (Array.isArray(remSalvos) && remSalvos.length > 0) REMETENTES = remSalvos;
+    } catch(e) {}
 
     // 2. Obter access_token
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
