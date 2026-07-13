@@ -465,6 +465,34 @@ const regLog=async(tabela,acao,detalhes,registroId=null)=>{
 
 const TelaAlertas=({alertas,setAlertas,servicos,cn,sb,showToast})=>{
   const [filtro,setFiltro]=React.useState("todos");
+  const [modalRem,setModalRem]=React.useState(false);
+  const [remetentes,setRemetentes]=React.useState([]);
+  const [novoRem,setNovoRem]=React.useState("");
+
+  React.useEffect(()=>{
+    sb.from("configuracoes").select("dados").eq("id","gmail_remetentes").single()
+      .then(({data})=>{
+        if(data?.dados?.lista?.length>0) setRemetentes(data.dados.lista);
+        else setRemetentes(["publicacoes@publicacoesonline.com.br","oabba@recortedigital.adv.br","pje@tjba.jus.br"]);
+      }).catch(()=>setRemetentes(["publicacoes@publicacoesonline.com.br","oabba@recortedigital.adv.br","pje@tjba.jus.br"]));
+  },[]);
+
+  const salvarRemetentes=async(lista)=>{
+    await sb.from("configuracoes").upsert({id:"gmail_remetentes",dados:{lista},updated_at:new Date().toISOString()});
+    setRemetentes(lista);
+    showToast("Remetentes salvos!");
+    setModalRem(false);
+  };
+
+  const adicionarRem=()=>{
+    const r=novoRem.trim().toLowerCase();
+    if(!r||!r.includes("@")){showToast("E-mail inválido","erro");return;}
+    if(remetentes.includes(r)){showToast("E-mail já cadastrado","erro");return;}
+    setNovoRem("");
+    salvarRemetentes([...remetentes,r]);
+  };
+
+  const removerRem=(r)=>salvarRemetentes(remetentes.filter(x=>x!==r));
   const TIPO_COR={despacho:"#e8a87c",intimacao:"#7ca8e8",decisao:"#b87ce8",citacao:"#7ce8a8",outro:"#8a8782"};
   const TIPO_ICON={despacho:"⚖️",intimacao:"📬",decisao:"🏛️",citacao:"📋",outro:"📧"};
 
@@ -551,11 +579,12 @@ const TelaAlertas=({alertas,setAlertas,servicos,cn,sb,showToast})=>{
         <div style={{width:8,height:8,borderRadius:"50%",background:"#5a8f6e",flexShrink:0}}/>
         <div style={{flex:1}}>
           <span style={{color:"#d6d3cc",fontWeight:600}}>Gmail conectado</span>
-          <span style={{color:"#555",marginLeft:8,fontSize:11}}>publicacoes@publicacoesonline.com.br · oabba@recortedigital.adv.br</span>
+          <span style={{color:"#555",marginLeft:8,fontSize:11}}>{remetentes.join(" · ")}</span>
         </div>
         <span style={{fontSize:11,color:"#555"}}>Horários: 08:00 e 15:00</span>
         <button style={{background:"#1a1c28",border:"1px solid #3a3d50",borderRadius:6,color:"#888",fontSize:11,padding:"5px 12px",cursor:"pointer",fontFamily:"inherit"}}
           onClick={async()=>{showToast("Iniciando varredura...");try{const r=await fetch("/api/scan-email");const d=await r.json();if(d.ok)showToast(`Varredura concluída — ${d.created} novo(s) alerta(s)`);else showToast(d.error||"Erro na varredura","erro");}catch(e){showToast("Erro ao conectar com o servidor","erro");}}}>↻ Varrer agora</button>
+        <button style={{background:"#1a1c28",border:"1px solid #b8965a44",borderRadius:6,color:"#b8965a",fontSize:11,padding:"5px 12px",cursor:"pointer",fontFamily:"inherit"}} onClick={()=>setModalRem(true)}>⚙ Remetentes</button>
       </div>
 
       {/* Stats */}
@@ -617,6 +646,33 @@ const TelaAlertas=({alertas,setAlertas,servicos,cn,sb,showToast})=>{
           );
         })
       }
+    </div>
+
+      {modalRem&&(
+        <div style={S.overlay} onClick={()=>setModalRem(false)}>
+          <div style={{...S.modal,maxWidth:440}} onClick={e=>e.stopPropagation()}>
+            <div style={{padding:"20px 24px 0"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#d6d3cc",marginBottom:4}}>⚙ Remetentes Monitorados</div>
+              <div style={{fontSize:11,color:"#555",marginBottom:16}}>E-mails cujas mensagens serão varridas pelo sistema</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
+                {remetentes.map(r=>(
+                  <div key={r} style={{display:"flex",alignItems:"center",gap:8,background:"#1e2030",border:"1px solid #2a2d3e",borderRadius:6,padding:"8px 12px"}}>
+                    <div style={{flex:1,fontSize:12,color:"#d6d3cc"}}>{r}</div>
+                    <button style={{background:"none",border:"none",color:"#b46464",cursor:"pointer",fontSize:13,padding:"0 4px"}} onClick={()=>removerRem(r)}>✕</button>
+                  </div>
+                ))}
+              </div>
+              <div style={{display:"flex",gap:8,marginBottom:20}}>
+                <input style={{...S.fi,flex:1,margin:0,fontSize:12,padding:"8px 10px"}} placeholder="novo@email.com.br" value={novoRem} onChange={e=>setNovoRem(e.target.value)} onKeyDown={e=>e.key==="Enter"&&adicionarRem()}/>
+                <button style={{...S.btnPrimary,padding:"8px 16px",fontSize:12,whiteSpace:"nowrap"}} onClick={adicionarRem}>+ Adicionar</button>
+              </div>
+            </div>
+            <div style={{padding:"0 24px 20px",display:"flex",justifyContent:"flex-end"}}>
+              <button style={S.btnSec} onClick={()=>setModalRem(false)}>Fechar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
