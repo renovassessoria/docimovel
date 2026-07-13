@@ -646,8 +646,6 @@ const TelaAlertas=({alertas,setAlertas,servicos,cn,sb,showToast})=>{
           );
         })
       }
-    </div>
-
       {modalRem&&(
         <div style={S.overlay} onClick={()=>setModalRem(false)}>
           <div style={{...S.modal,maxWidth:440}} onClick={e=>e.stopPropagation()}>
