@@ -1052,14 +1052,21 @@ const AppContent=({session})=>{
       const agora=new Date();
       const itens=agenda.filter(a=>{
         if(a.data_conclusao||!a.hora)return false;
-        const [h,m]=a.hora.split(":").map(Number);
         const dt=new Date(a.data+"T"+a.hora+":00");
         const diffMin=(dt-agora)/60000;
         const id=String(a.id);
         const snoozeAte=snoozeRef.current[id];
         if(snoozeAte&&agora<snoozeAte)return false;
-        return diffMin>0&&diffMin<=30;
+        // Mostrar se: evento ainda não aconteceu (diffMin>0) E é hoje
+        // OU se falta até 30 min (janela de lembrete normal)
+        const hoje=agora.toISOString().slice(0,10);
+        const eHoje=a.data===hoje;
+        return diffMin>0&&(diffMin<=30||eHoje);
       });
+      if(itens.length>0&&(!lembreteAgenda||lembreteAgenda.id!==itens[0].id)){
+        setLembreteAgenda(itens[0]);
+      }
+    };
       if(itens.length>0&&(!lembreteAgenda||lembreteAgenda.id!==itens[0].id)){
         setLembreteAgenda(itens[0]);
       }
