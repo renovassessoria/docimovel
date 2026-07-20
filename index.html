@@ -1390,10 +1390,10 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
       {(()=>{
         const _hj=new Date().toISOString().slice(0,10);
         const _d7=new Date();_d7.setDate(_d7.getDate()+15);const _d7s=_d7.toISOString().slice(0,10);
-        const ehParc=(p)=>{const d=p.descricao||"";return !!p.parcelado||d.includes("(")&&d.includes("/")||d.toLowerCase().includes("remanescente")||d.toLowerCase().includes("parcela");};
+        const ehParc=(p)=>!!p.parcelado;
         const parcelasCard=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>{
           if(p.status==="pago")return false;
-          if(!p.data||p.data>_d7s||p.data<td())return false;
+          if(!p.data||p.data>_d7s)return false;
           return ehParc(p);
         }).map(p=>({...p,clienteNome:cn(s.clienteId||s.cliente_id),servicoObj:s})))
         .sort((a,b)=>(a.data||"").localeCompare(b.data||""));
@@ -1426,6 +1426,37 @@ const TelaDashboard=({clientes,servicos,diligVenc,diligHoje,leadsN,orcA,cn,irPar
                   </div>
                 );
               })}
+            </div>
+          </div>
+        );
+      })()}
+      {(()=>{
+        const _susp=servicos.flatMap(s=>(s.pagamentos||[]).filter(p=>{
+          if(p.status==="pago")return false;
+          if(!!p.parcelado)return false;
+          const d=p.descricao||"";
+          return d.includes("(")&&d.includes("/")||d.toLowerCase().includes("remanescente")||d.toLowerCase().includes("parcela");
+        }).map(p=>({...p,clienteNome:cn(s.clienteId||s.cliente_id),servicoObj:s})))
+        .sort((a,b)=>(a.data||"").localeCompare(b.data||""));
+        if(_susp.length===0)return null;
+        return(
+          <div style={{...S.card,border:"1px solid #b4646444"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+              <div style={S.cardTitle}>⚠ Parcelas sem flag "Parcelado" ({_susp.length})</div>
+            </div>
+            <div style={{fontSize:11,color:"#8a8d96",marginBottom:8}}>Parecem parcela pelo texto, mas não estão marcadas — por isso não aparecem no card "Parcelas — próx. 15 dias". Abra, clique em Ed e marque "Parcelado".</div>
+            <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:320,overflowY:"auto"}}>
+              {_susp.map((p,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:4,background:"#16181d",border:"1px solid #232629"}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:11,color:"#d6d3cc",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.descricao}</div>
+                    <div style={{fontSize:10,color:"#3e4048"}}>{p.clienteNome} · {p.data} · R$ {fmt(p.valor)}</div>
+                  </div>
+                  <button style={{...S.btnSm,fontSize:10,padding:"2px 8px",color:"#b8965a",borderColor:"rgba(184,150,90,0.2)",flexShrink:0}}
+                    onClick={()=>{if(abrirServicoVisao)abrirServicoVisao({...p.servicoObj,_abaInicial:"pagamentos"});}}
+                    className="bs">→</button>
+                </div>
+              ))}
             </div>
           </div>
         );
@@ -1839,6 +1870,10 @@ const TelaServicoDetalhe=({servico,clientes,aba,setAba,atualizar,voltar,setPrint
                 <div><FL l="Forma"/><select style={S.fi} value={editPag.forma||"PIX"} onChange={e=>setEditPag(m=>({...m,forma:e.target.value}))}>
                   {["PIX","Boleto","Cartao","Dinheiro","TED","Outros"].map(f=><option key={f}>{f}</option>)}
                 </select></div>
+                <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:"#9a9a9a",cursor:"pointer"}}>
+                  <input type="checkbox" checked={!!editPag.parcelado} onChange={e=>setEditPag(m=>({...m,parcelado:e.target.checked}))} style={{width:14,height:14,cursor:"pointer"}}/>
+                  Parcelado (aparece no card "Parcelas — próx. 15 dias")
+                </label>
               </div>
             </div>
             <div style={S.modalFooter}>
