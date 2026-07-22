@@ -888,35 +888,40 @@ const AppContent=({session})=>{
       const sv=servicos.find(s=>s.id===id);
       const antigas=(sv?.pagamentos||[]).map(p=>p.id);
       for(const p of patch.pagamentos){
-        const isNew=!p.id||!String(p.id).includes("-");
-        if(isNew){
-          // Montar payload apenas com colunas que existem no banco
-          const payPag={servico_id:id,descricao:p.descricao,valor:Number(p.valor),forma:p.forma,data:p.data};
-          // Tentar incluir campos extras se existirem
-          try{payPag.parcelado=p.parcelado||false;}catch(e){}
-          try{payPag.status=p.status||"pendente";}catch(e){}
-          try{payPag.nota_fiscal=p.notaFiscal||false;}catch(e){}
-          try{if(p.grupoParcela)payPag.grupo_parcela=p.grupoParcela;}catch(e){}
-          try{if(p.parcelaNumero)payPag.parcela_numero=p.parcelaNumero;}catch(e){}
-          try{if(p.totalParcelas)payPag.total_parcelas=p.totalParcelas;}catch(e){}
-          const{data,error:errPag}=await sb.from("pagamentos_processo").insert(payPag).select().single();
-          if(errPag)console.error("Erro insert pag:",errPag);
-          if(data){
-            p.id=data.id;regLog("pagamentos_processo","criou",(servico?.protocolo||"")+": "+(payPag.descricao||"Pagamento")+" R$ "+(payPag.valor||0),data.id);
-            const sv=servicos.find(s=>s.id===id);
-            const cli=sv?clientes.find(c=>c.id===(sv.clienteId||sv.cliente_id)):null;
-            const recPay={descricao:p.descricao+" - "+(sv?.tipo||"Serviço"),categoria:"Honorários",valor:Number(p.valor),forma:p.forma,data:p.data,cliente:cli?.nome||"",protocolo:sv?.protocolo||"",servico_id:id};
-            const{data:recData}=await sb.from("recebimentos").insert(recPay).select().single();
-            if(recData){p.recebimento_id=recData.id;setRecebimentos(prev=>[recData,...prev]);}
+        try{
+          const isNew=!p.id||!String(p.id).includes("-");
+          if(isNew){
+            // Montar payload apenas com colunas que existem no banco
+            const payPag={servico_id:id,descricao:p.descricao,valor:Number(p.valor),forma:p.forma,data:p.data};
+            // Tentar incluir campos extras se existirem
+            try{payPag.parcelado=p.parcelado||false;}catch(e){}
+            try{payPag.status=p.status||"pendente";}catch(e){}
+            try{payPag.nota_fiscal=p.notaFiscal||false;}catch(e){}
+            try{if(p.grupoParcela)payPag.grupo_parcela=p.grupoParcela;}catch(e){}
+            try{if(p.parcelaNumero)payPag.parcela_numero=p.parcelaNumero;}catch(e){}
+            try{if(p.totalParcelas)payPag.total_parcelas=p.totalParcelas;}catch(e){}
+            const{data,error:errPag}=await sb.from("pagamentos_processo").insert(payPag).select().single();
+            if(errPag)console.error("Erro insert pag:",errPag);
+            if(data){
+              p.id=data.id;regLog("pagamentos_processo","criou",(servico?.protocolo||"")+": "+(payPag.descricao||"Pagamento")+" R$ "+(payPag.valor||0),data.id);
+              try{
+                const sv=servicos.find(s=>s.id===id);
+                const cli=sv?clientes.find(c=>c.id===(sv.clienteId||sv.cliente_id)):null;
+                const recPay={descricao:p.descricao+" - "+(sv?.tipo||"Serviço"),categoria:"Honorários",valor:Number(p.valor),forma:p.forma,data:p.data,cliente:cli?.nome||"",protocolo:sv?.protocolo||"",servico_id:id};
+                const{data:recData,error:errRec}=await sb.from("recebimentos").insert(recPay).select().single();
+                if(errRec)console.error("Erro insert recebimento (pagamento salvo normalmente):",errRec);
+                if(recData){p.recebimento_id=recData.id;setRecebimentos(prev=>[recData,...prev]);}
+              }catch(eRec){console.error("Erro ao espelhar recebimento (pagamento salvo normalmente):",eRec);}
+            }
+          } else {
+            const updPag={descricao:p.descricao,valor:Number(p.valor),forma:p.forma,data:p.data};
+            try{updPag.parcelado=p.parcelado||false;}catch(e){}
+            try{updPag.status=p.status||"pendente";}catch(e){}
+            try{updPag.nota_fiscal=p.notaFiscal||false;}catch(e){}
+            try{if(p.dataPagamento)updPag.data_pagamento=p.dataPagamento;}catch(e){}
+            await sb.from("pagamentos_processo").update(updPag).eq("id",p.id);
           }
-        } else {
-          const updPag={descricao:p.descricao,valor:Number(p.valor),forma:p.forma,data:p.data};
-          try{updPag.parcelado=p.parcelado||false;}catch(e){}
-          try{updPag.status=p.status||"pendente";}catch(e){}
-          try{updPag.nota_fiscal=p.notaFiscal||false;}catch(e){}
-          try{if(p.dataPagamento)updPag.data_pagamento=p.dataPagamento;}catch(e){}
-          await sb.from("pagamentos_processo").update(updPag).eq("id",p.id);
-        }
+        }catch(ePag){console.error("Erro ao salvar pagamento, seguindo para os demais:",ePag);}
       }
       const novosIds=patch.pagamentos.map(p=>p.id).filter(Boolean);
       for(const oid of antigas)if(!novosIds.includes(oid))await sb.from("pagamentos_processo").delete().eq("id",oid);
