@@ -218,6 +218,18 @@ const fmtCPF=(v)=>{
   if(n.length<=9)return n.slice(0,3)+"."+n.slice(3,6)+"."+n.slice(6);
   return n.slice(0,3)+"."+n.slice(3,6)+"."+n.slice(6,9)+"-"+n.slice(9);
 };
+const fmtCNPJ=(v)=>{
+  const n=v.replace(/\D/g,"").slice(0,14);
+  if(n.length<=2)return n;
+  if(n.length<=5)return n.slice(0,2)+"."+n.slice(2);
+  if(n.length<=8)return n.slice(0,2)+"."+n.slice(2,5)+"."+n.slice(5);
+  if(n.length<=12)return n.slice(0,2)+"."+n.slice(2,5)+"."+n.slice(5,8)+"/"+n.slice(8);
+  return n.slice(0,2)+"."+n.slice(2,5)+"."+n.slice(5,8)+"/"+n.slice(8,12)+"-"+n.slice(12);
+};
+const fmtCpfCnpj=(v)=>{
+  const n=v.replace(/\D/g,"");
+  return n.length>11?fmtCNPJ(v):fmtCPF(v);
+};
 const fmtTel=(v)=>{
   const n=v.replace(/\D/g,"").slice(0,11);
   if(n.length<=2)return n.length?"("+n:"";
@@ -606,6 +618,7 @@ const TelaAlertas=({alertas,setAlertas,servicos,cn,sb,showToast})=>{
       </div>
 
       {/* Lista de alertas */}
+      <div style={{display:"flex",flexDirection:"column",gap:10,maxHeight:560,overflowY:"auto",paddingRight:4}}>
       {filtrados.length===0
         ?<div style={{textAlign:"center",padding:48,color:"#555",fontSize:13}}>Nenhum alerta{filtro!=="todos"?" nesta categoria":""}</div>
         :filtrados.map(a=>{
@@ -646,6 +659,7 @@ const TelaAlertas=({alertas,setAlertas,servicos,cn,sb,showToast})=>{
           );
         })
       }
+      </div>
       {modalRem&&(
         <div style={S.overlay} onClick={()=>setModalRem(false)}>
           <div style={{...S.modal,maxWidth:440}} onClick={e=>e.stopPropagation()}>
@@ -3006,6 +3020,7 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
                 <option value="todos">Todos</option>
               </select>
             </div>
+            <div style={{maxHeight:560,overflowY:"auto",paddingRight:4}}>
             {filtrados.length===0&&<div style={S.empty}>Nenhum agendamento encontrado.</div>}
             {filtrados.map(a=>{
               const cor=corTipo(a.tipo);
@@ -3038,6 +3053,7 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
                 </div>
               );
             })}
+            </div>
           </div>
         </div>
       </div>
@@ -3495,7 +3511,7 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
                             <option value="cnpj">CNPJ</option>
                           </select>
                         </div>
-                        <FI l={modalColab.tipo_doc==="cnpj"?"CNPJ":"CPF"} v={modalColab.documento||""} set={v=>setModalColab({...modalColab,documento:v})} ph={modalColab.tipo_doc==="cnpj"?"00.000.000/0000-00":"000.000.000-00"}/>
+                        <FI l={modalColab.tipo_doc==="cnpj"?"CNPJ":"CPF"} v={modalColab.documento||""} set={v=>setModalColab({...modalColab,documento:modalColab.tipo_doc==="cnpj"?fmtCNPJ(v):fmtCPF(v)})} ph={modalColab.tipo_doc==="cnpj"?"00.000.000/0000-00":"000.000.000-00"}/>
                         <FI l="Chave PIX" v={modalColab.pix||""} set={v=>setModalColab({...modalColab,pix:v})} ph="CPF, e-mail, telefone ou aleatória"/>
                         <FI l="Telefone" v={modalColab.telefone||""} set={v=>setModalColab({...modalColab,telefone:fmtTel(v)})} ph="(75) 99999-9999"/>
                         <div style={{gridColumn:"1/-1"}}>
@@ -4710,7 +4726,7 @@ const ModalContracheque = ({func, onClose, showToast}) => {
                 <div style={{fontWeight:700,color:"#8a8782",marginBottom:8,fontSize:11,textTransform:"uppercase"}}>Dados do Empregador</div>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   <FI l="Nome da empresa" v={emp.nome||""} set={v=>upE({nome:v})} ph="Ex: DocImovel PRO Ltda"/>
-                  <FI l="CNPJ" v={emp.cnpj||""} set={v=>upE({cnpj:v})} ph="00.000.000/0000-00"/>
+                  <FI l="CNPJ" v={emp.cnpj||""} set={v=>upE({cnpj:fmtCNPJ(v)})} ph="00.000.000/0000-00"/>
                   <FI l="Endereco completo" v={emp.endereco||""} set={v=>upE({endereco:v})} ph="Rua, numero, cidade/UF"/>
                 </div>
               </div>
@@ -5394,7 +5410,7 @@ const ModalCliente=({inicial,onSave,onClose,clientes=[]})=>{
     <div style={{marginBottom:12}}><FL l="Tipo"/><div style={{display:"flex",gap:6}}>{["pf","pj"].map(t=><button key={t} style={{...S.btnSm,...(form.tipo===t?{background:"#3b82f622",color:"#5a7aaa",borderColor:"#3b82f644"}:{})}} onClick={()=>setForm({...form,tipo:t})} className="bs">{t==="pf"?"Pessoa Física":"Pessoa Jurídica"}</button>)}</div></div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
       <div style={{gridColumn:"1/-1"}}><FL l={form.tipo==="pj"?"Razão Social":"Nome completo"}/><input style={S.fi} value={form.nome||""} onChange={e=>setForm({...form,nome:e.target.value})}/></div>
-      {form.tipo==="pf"?<><div><FL l="CPF"/><input style={S.fi} value={form.cpf||""} onChange={e=>{const v=fmtCPF(e.target.value);setForm({...form,cpf:v});checarCPF(v);}} placeholder="000.000.000-00"/></div><FI l="RG" v={form.rg||""} set={v=>setForm({...form,rg:v})}/></>:<><div><FL l="CNPJ"/><input style={S.fi} value={form.cnpj||""} onChange={e=>{setForm({...form,cnpj:e.target.value});checarCPF(e.target.value);}} placeholder="00.000.000/0000-00"/></div><FI l="Nome Fantasia" v={form.fantasia||""} set={v=>setForm({...form,fantasia:v})}/></>}
+      {form.tipo==="pf"?<><div><FL l="CPF"/><input style={S.fi} value={form.cpf||""} onChange={e=>{const v=fmtCPF(e.target.value);setForm({...form,cpf:v});checarCPF(v);}} placeholder="000.000.000-00"/></div><FI l="RG" v={form.rg||""} set={v=>setForm({...form,rg:v})}/></>:<><div><FL l="CNPJ"/><input style={S.fi} value={form.cnpj||""} onChange={e=>{const v=fmtCNPJ(e.target.value);setForm({...form,cnpj:v});checarCPF(v);}} placeholder="00.000.000/0000-00"/></div><FI l="Nome Fantasia" v={form.fantasia||""} set={v=>setForm({...form,fantasia:v})}/></>}
       <FI l="Telefone" v={form.telefone||""} set={v=>setForm({...form,telefone:fmtTel(v)})} ph="(75) 99999-9999"/>
       <FI l="WhatsApp" v={form.whatsapp||""} set={v=>setForm({...form,whatsapp:fmtTel(v)})} ph="(75) 99999-9999"/>
       <div style={{gridColumn:"1/-1"}}><FI l="E-mail" v={form.email||""} set={v=>setForm({...form,email:v})} type="email"/></div>
@@ -5413,7 +5429,7 @@ const ModalCliente=({inicial,onSave,onClose,clientes=[]})=>{
             <div style={{fontSize:11,fontWeight:800,color:"#5a7aaa",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:12}}>💍 Dados do Cônjuge</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
               <div style={{gridColumn:"1/-1"}}><FI l="Nome completo do cônjuge" v={form.conjugeNome||""} set={v=>setForm({...form,conjugeNome:v})}/></div>
-              <FI l="CPF do cônjuge" v={form.conjugeCpf||""} set={v=>setForm({...form,conjugeCpf:v})} ph="000.000.000-00"/>
+              <FI l="CPF do cônjuge" v={form.conjugeCpf||""} set={v=>setForm({...form,conjugeCpf:fmtCPF(v)})} ph="000.000.000-00"/>
               <FI l="RG do cônjuge" v={form.conjugeRg||""} set={v=>setForm({...form,conjugeRg:v})}/>
               <FI l="Profissão do cônjuge" v={form.conjugeProfissao||""} set={v=>setForm({...form,conjugeProfissao:v})}/>
               <FI l="Naturalidade do cônjuge" v={form.conjugeNaturalidade||""} set={v=>setForm({...form,conjugeNaturalidade:v})} ph="Ex: Feira de Santana/BA"/>
@@ -5750,9 +5766,9 @@ const S={
   headerSub:{fontSize:11,color:"#5a5d66",marginTop:2},
   body:{flex:1,padding:"20px 24px",overflowY:"auto"},
   sg4:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:14},
-  tableCard:{background:"#1e2128",border:"1px solid #2a2d36",borderRadius:9,overflow:"auto"},
+  tableCard:{background:"#1e2128",border:"1px solid #2a2d36",borderRadius:9,overflow:"auto",maxHeight:560},
   table:{width:"100%",borderCollapse:"collapse"},
-  th:{textAlign:"left",padding:"9px 14px",fontSize:9,fontWeight:600,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"1px",borderBottom:"1px solid #2a2d36",whiteSpace:"nowrap"},
+  th:{textAlign:"left",padding:"9px 14px",fontSize:9,fontWeight:600,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"1px",borderBottom:"1px solid #2a2d36",whiteSpace:"nowrap",position:"sticky",top:0,background:"#1e2128",zIndex:1},
   td:{padding:"10px 14px",fontSize:12,color:"#8a8782",borderBottom:"1px solid rgba(255,255,255,0.025)",verticalAlign:"top"},
   tr:{transition:"background 0.1s"},
   proto:{fontFamily:"'IBM Plex Mono',monospace",fontSize:10,color:"#b8965a",background:"rgba(184,150,90,0.08)",borderRadius:3,padding:"2px 6px",border:"1px solid rgba(184,150,90,0.15)"},
