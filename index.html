@@ -704,6 +704,7 @@ const AppContent=({session})=>{
   const [custos,setCustos]=useState({vals:{aluguel:{},energia:{},iptu:{},agua:{},condominio:{},contabilidade:{},impostos:{}},funcs:[],outros:[],ano:new Date().getFullYear()});
   const [loadingData,setLoadingData]=useState(true);
   const [toast,setToast]=useState(null);
+  const [refreshing,setRefreshing]=useState(false);
   const [modalBackup,setModalBackup]=useState(false);
   const [servicoAberto,setServicoAberto]=useState(null);
   const [abaServico,setAbaServico]=useState("visao");
@@ -786,8 +787,7 @@ const AppContent=({session})=>{
     load();
   },[]);
 
-  useEffect(()=>{
-    const load2=async()=>{
+  const load2=async()=>{
       const[c,s,r,l,p]=await Promise.all([
         sb.from("clientes").select("*").order("nome",{ascending:true}),
         sb.from("servicos").select("*, diligencias(*), pagamentos_processo(*)").order("created_at",{ascending:false}),
@@ -858,6 +858,7 @@ const AppContent=({session})=>{
       if(ag.data)setAgenda(ag.data);
       if(p.data)setPagamentos(p.data);
     };
+  useEffect(()=>{
     const channel=sb.channel("docmovel-realtime")
       .on("postgres_changes",{event:"*",schema:"public",table:"clientes"},load2)
       .on("postgres_changes",{event:"*",schema:"public",table:"servicos"},load2)
@@ -868,6 +869,9 @@ const AppContent=({session})=>{
       .on("postgres_changes",{event:"*",schema:"public",table:"pagamentos"},load2)
       .on("postgres_changes",{event:"*",schema:"public",table:"usuarios"},load2)
       .on("postgres_changes",{event:"*",schema:"public",table:"alertas"},load2)
+      .on("postgres_changes",{event:"*",schema:"public",table:"pagamentos_processo"},load2)
+      .on("postgres_changes",{event:"*",schema:"public",table:"colaboradores"},load2)
+      .on("postgres_changes",{event:"*",schema:"public",table:"configuracoes"},load2)
       .on("postgres_changes",{event:"*",schema:"public",table:"logs"},()=>{sb.from("logs").select("*").order("created_at",{ascending:false}).limit(1000).then(({data})=>{if(data)setLogs(data);});})
       .subscribe();
     return()=>sb.removeChannel(channel);
@@ -943,7 +947,7 @@ const AppContent=({session})=>{
     setServicos(prev=>prev.map(s=>s.id===id?{...s,...patch}:s));
     if(servicoAberto?.id===id)setServicoAberto(prev=>({...prev,...patch}));
     if(processoAberto?.id===id)setProcessoAberto(prev=>({...prev,...patch}));
-    setTimeout(()=>load2(),800);
+    load2();
   };
 
   const salvarCliente=async(form)=>{
@@ -1145,12 +1149,18 @@ const AppContent=({session})=>{
 
       {/* MAIN */}
       <main style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:"#16181d"}}>
+        <div style={{padding:"8px 16px",borderBottom:"1px solid #232629",display:"flex",justifyContent:"flex-end",flexShrink:0}}>
+          <button onClick={async()=>{setRefreshing(true);try{await load2();showToast("Dados atualizados!");}catch(e){showToast("Erro ao atualizar","erro");}setRefreshing(false);}} className="bs" disabled={refreshing}
+            style={{background:"#22252e",border:"1px solid #2a2d36",borderRadius:5,padding:"6px 14px",color:refreshing?"#3a3d46":"#8a8782",fontSize:11,cursor:refreshing?"default":"pointer",display:"flex",alignItems:"center",gap:6,fontWeight:600}}>
+            {refreshing?"↻ Atualizando...":"↻ Atualizar"}
+          </button>
+        </div>
         {tela==="dashboard"&&<TelaDashboard clientes={clientes} servicos={servicos} abrirServico={(s)=>{setServicoAberto(s);setAbaServico("diligencias");setTela("servicos");}} abrirServicoVisao={(s)=>{setServicoAberto(s);setAbaServico(s._abaInicial||"visao");setTela("servicos");}} irAgenda={()=>setTela("agenda")} agenda={agenda} diligVenc={[...diligVenc,...prazosVenc,...parcelasVenc]} diligHoje={[...diligHoje,...prazosHoje,...prazosProx,...parcelasHoje]} leadsN={leadsN} orcA={orcA} cn={cn} irPara={setTela}/>}
         {tela==="clientes"&&<TelaClientes clientes={filtC} servicos={servicos} search={searchC} setSearch={setSearchC} abrirModal={abrirModal} setClientes={setClientes}/>}
         {tela==="servicos"&&!servicoAberto&&<TelaServicos servicos={filtS} search={searchS} setSearch={setSearchS} cn={cn} abrirModal={abrirModal} abrirServico={s=>{setServicoAberto(s);setAbaServico("visao");}} setPrintData={setPrintData} setServicos={setServicos} showToast={showToast} clientes={clientes}/>}
         {tela==="servicos"&&servicoAberto&&<TelaServicoDetalhe servico={servicoAberto} clientes={clientes} aba={abaServico} setAba={setAbaServico} atualizar={p=>atualizarServico(servicoAberto.id,p)} showToast={showToast} sb={sb} abrirModal={abrirModal} voltar={()=>setServicoAberto(null)} setPrintData={setPrintData}/>}
         {tela==="diligencias_all"&&<TelaDiligencias servicos={servicos} cn={cn} abrirServico={s=>{setServicoAberto(s);setAbaServico("diligencias");setTela("servicos");}}/>}
-        {tela==="agenda"&&<TelaAgenda agenda={agenda} setAgenda={setAgenda} clientes={clientes} servicos={servicos} cn={cn} sb={sb} showToast={showToast}/>}
+        {tela==="agenda"&&<TelaAgenda agenda={agenda} setAgenda={setAgenda} clientes={clientes} servicos={servicos} cn={cn} sb={sb} showToast={showToast} load2={load2}/>}
         {tela==="judicial"&&<TelaJudicial servicos={servicos} setServicos={setServicos} clientes={clientes} cn={cn} irPara={setTela} sb={sb} showToast={showToast} abrirServico={s=>{setServicoAberto(s);setAbaServico("visao");setTela("servicos");}}/>}
         {tela==="andamento"&&!processoAberto&&<TelaAndamento servicos={servicos} cn={cn} diligVenc={diligVenc} diligHoje={diligHoje} abrirProcesso={s=>{setProcessoAberto(s);setAbaProcesso("timeline");}}/>}
         {tela==="andamento"&&processoAberto&&<TelaProcessoDetalhe servico={processoAberto} aba={abaProcesso} setAba={setAbaProcesso} atualizar={p=>atualizarServico(processoAberto.id,p)} voltar={()=>setProcessoAberto(null)} cn={cn}/>}
@@ -2729,7 +2739,7 @@ const TelaDiligencias=({servicos,cn,abrirServico})=>{
   );
 };
 
-const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
+const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast,load2})=>{
   const [form,setForm]=useState({titulo:"",tipo:"atendimento",data:td(),hora:"",cliente_id:"",servico_id:"",obs:"",recorrencia:"nao_repete",recorrencia_fim:""});
   const [editando,setEditando]=useState(null);
   const [filtro,setFiltro]=useState("pendente");
@@ -2798,19 +2808,19 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
         const{error}=await sb.from("agenda").update(payload).eq("id",editando);
         if(error){showToast("Erro: "+error.message,"erro");return;}
         setAgenda(prev=>prev.map(a=>a.id===editando?{...a,...payload}:a));
-        showToast("Agendamento atualizado!");setTimeout(()=>load2(),800);
+        showToast("Agendamento atualizado!");load2();
       }else if(form.recorrencia&&form.recorrencia!=="nao_repete"){
         const datas=gerarDatas(form.data,form.recorrencia,form.recorrencia_fim);
         const payloads=datas.map((dt,idx)=>({...payload,data:dt,recorrencia_id:recId,recorrencia_ordem:idx}));
         const{data,error}=await sb.from("agenda").insert(payloads).select();
         if(error){showToast("Erro: "+error.message,"erro");return;}
         if(data){setAgenda(prev=>[...prev,...data]);regLog("agenda","criou",(form.tipo||"evento").toUpperCase()+": "+(form.titulo||"Evento"),null);}
-        showToast(datas.length+" agendamentos criados!");setTimeout(()=>load2(),800);
+        showToast(datas.length+" agendamentos criados!");load2();
       }else{
         const{data,error}=await sb.from("agenda").insert(payload).select().single();
         if(error){showToast("Erro: "+error.message,"erro");return;}
         if(data){setAgenda(prev=>[...prev,data]);regLog("agenda","criou",(form.tipo||"evento").toUpperCase()+": "+(form.titulo||"Evento"),data.id);}
-        showToast("Agendamento criado!");setTimeout(()=>load2(),800);
+        showToast("Agendamento criado!");load2();
       }
       setForm({titulo:"",tipo:"atendimento",data:td(),hora:"",cliente_id:"",servico_id:"",obs:"",recorrencia:"nao_repete",recorrencia_fim:"",_buscaCli:""});
       setEditando(null);
@@ -2853,7 +2863,7 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
     const hoje=new Date().toISOString().slice(0,10);
     await sb.from("agenda").update({status:"realizado",data_conclusao:hoje}).eq("id",id);
     setAgenda(prev=>prev.map(a=>{if(a.id===id)regLog("agenda","concluiu",(a.tipo||"evento").toUpperCase()+": "+(a.titulo||"Evento"),id);return a.id===id?{...a,status:"realizado",data_conclusao:hoje}:a;}));
-    showToast("Marcado como realizado!");setTimeout(()=>load2(),800);
+    showToast("Marcado como realizado!");load2();
   };
 
   const excluir=async(id)=>{
@@ -2865,7 +2875,7 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast})=>{
     if(!window.confirm("Excluir este agendamento?"))return;
     await sb.from("agenda").delete().eq("id",id);regLog("agenda","excluiu","Evento",id);
     setAgenda(prev=>prev.filter(a=>a.id!==id));
-    showToast("Agendamento excluído.");setTimeout(()=>load2(),800);
+    showToast("Agendamento excluído.");load2();
   };
 
   const confirmarExclusaoRecorr=async()=>{
