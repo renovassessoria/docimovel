@@ -888,11 +888,18 @@ const AppContent=({session})=>{
     if(patch.estagios)db.estagios=patch.estagios;
     if(patch.checklist)db.checklist=patch.checklist;
     if(patch.outrosDesc!==undefined)db.outros_desc=patch.outrosDesc;
-    if(patch.dataConclusao!==undefined)db.data_conclusao=patch.dataConclusao||null;
-    if(patch.obsConclusao!==undefined)db.obs_conclusao=patch.obsConclusao;
     if(patch.orcamento)db.orcamento=patch.orcamento;
     if(patch.portal!==undefined)db.portal=patch.portal;
     if(Object.keys(db).length){const{error:errSv}=await sb.from("servicos").update(db).eq("id",id);if(errSv){console.error("Erro ao atualizar serviço:",errSv);showToast("Erro ao salvar: "+errSv.message,"erro");}}
+    // Conclusão (data_conclusao/obs_conclusao) em gravação separada — se as colunas ainda não existirem no banco,
+    // isso não pode travar a gravação dos campos principais acima (estagio, status etc.)
+    const dbConc={};
+    if(patch.dataConclusao!==undefined)dbConc.data_conclusao=patch.dataConclusao||null;
+    if(patch.obsConclusao!==undefined)dbConc.obs_conclusao=patch.obsConclusao;
+    if(Object.keys(dbConc).length){
+      const{error:errConc}=await sb.from("servicos").update(dbConc).eq("id",id);
+      if(errConc){console.error("Erro ao salvar conclusão:",errConc);showToast("Não foi possível salvar 'Concluído em'/observação — colunas ainda não existem no banco.","erro");}
+    }
     if(patch.diligencias){
       const sv=servicos.find(s=>s.id===id);
       const antigas=(sv?.diligencias||[]).map(d=>d.id);
