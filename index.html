@@ -582,6 +582,11 @@ const TelaAlertas=({alertas,setAlertas,servicos,cn,sb,showToast})=>{
     if(filtro==="nao_lidos")return !a.lido;
     if(["despacho","intimacao","decisao","citacao","outro"].includes(filtro))return a.tipo===filtro;
     return true;
+  }).slice().sort((a,b)=>{
+    const pendA=!a.lido&&!a.diligencia_criada?0:1;
+    const pendB=!b.lido&&!b.diligencia_criada?0:1;
+    if(pendA!==pendB)return pendA-pendB;
+    return 0;
   });
 
   return(
@@ -634,9 +639,9 @@ const TelaAlertas=({alertas,setAlertas,servicos,cn,sb,showToast})=>{
           const cor=TIPO_COR[a.tipo]||TIPO_COR.outro;
           const dtStr=a.email_data||a.created_at;
           const dtFmt=dtStr?new Date(dtStr).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"";
-          const pendente=!a.diligencia_criada;
+          const resolvido=a.lido||a.diligencia_criada;
           return(
-            <div key={a.id} style={{background:"#1a1c28",border:`1px solid ${pendente?"#c0392b55":a.lido?"#232629":"#3a3d50"}`,borderLeft:`3px solid ${pendente?"#c0392b":a.lido?"#2a2d3e":cor}`,borderRadius:10,padding:16,display:"flex",gap:14,alignItems:"flex-start",opacity:pendente?1:a.lido?0.5:1}}>
+            <div key={a.id} style={{background:"#1a1c28",border:`1px solid ${resolvido?"#232629":"#3a3d50"}`,borderLeft:`3px solid ${resolvido?"#2a2d3e":cor}`,borderRadius:10,padding:16,display:"flex",gap:14,alignItems:"flex-start",opacity:resolvido?0.5:1}}>
               <div style={{width:38,height:38,borderRadius:8,background:cor+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,flexShrink:0}}>{TIPO_ICON[a.tipo]||"📧"}</div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,flexWrap:"wrap"}}>
