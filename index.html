@@ -1191,7 +1191,7 @@ const AppContent=({session})=>{
         {tela==="andamento"&&processoAberto&&<TelaProcessoDetalhe servico={processoAberto} aba={abaProcesso} setAba={setAbaProcesso} atualizar={p=>atualizarServico(processoAberto.id,p)} voltar={()=>setProcessoAberto(null)} cn={cn}/>}
         {tela==="financeiro"&&<TelaFinanceiro aba={abaFin} setAba={setAbaFin} recebimentos={recebimentos} pagamentos={pagamentos} setRecebimentos={setRecebimentos} setPagamentos={setPagamentos} totRec={totRec} totPag={totPag} lucro={lucro} dadosMensais={dadosMensais} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} abrirModal={abrirModal} setReciboData={setReciboData} sb={sb} colaboradores={colaboradores} setColaboradores={setColaboradores} metas={metas} setMetas={setMetas} servicos={servicos}/>}
         {tela==="relatorios"&&<TelaRelatorios dadosMensais={dadosMensais} totRec={totRec} totPag={totPag} lucro={lucro} recAno={recAno} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} recebimentos={recebimentos} pagamentos={pagamentos} servicos={servicos} cn={cn} clientes={clientes} snapshots={snapshots} setSnapshots={setSnapshots} agenda={agenda} sb={sb}/>}
-        {tela==="custos"&&<TelaCustos showToast={showToast} custos={custos} setCustos={v=>{setCustos(v);sb.from("configuracoes").upsert({id:"custos",dados:v,updated_at:new Date().toISOString()}).then(()=>{}).catch(()=>{});}} sb={sb}/>}
+        {tela==="custos"&&<TelaCustos showToast={showToast} custos={custos} setCustos={v=>{setCustos(v);sb.from("configuracoes").upsert({id:"custos",dados:v,updated_at:new Date().toISOString()}).then(()=>{}).catch(()=>{});}} sb={sb} colaboradores={colaboradores}/>}
         {tela==="alertas"&&<TelaAlertas alertas={alertas} setAlertas={setAlertas} servicos={servicos} cn={cn} sb={sb} showToast={showToast}/>}
         {tela==="captacao"&&<TelaCaptacao leads={leads} setLeads={setLeads} atualizarLead={atualizarLead} showToast={showToast} sb={sb}/>}
         {tela==="usuarios"&&<TelaUsuarios usuarios={usuarios} setUsuarios={setUsuarios} abrirModal={abrirModal} session={session} logs={logs} sb={sb} setLogs={setLogs}/>}
@@ -1200,7 +1200,7 @@ const AppContent=({session})=>{
       {modais.cliente&&<ModalCliente inicial={modais.cliente} onSave={salvarCliente} onClose={()=>fecharModal("cliente")} clientes={clientes}/>}
       {modais.servico&&<ModalServico inicial={modais.servico} clientes={clientes} onSave={salvarServico} onClose={()=>fecharModal("servico")}/>}
       {modais.rec&&<ModalLanc titulo={modais.rec.id?"Editar Recebimento":"Novo Recebimento"} form={modais.rec} setForm={f=>setModais(m=>({...m,rec:f}))} cats={["Honorários","Entrada de honorários","Complemento de honorários","Diligência extra","Outros"]} onSave={()=>salvarRec(modais.rec)} onClose={()=>fecharModal("rec")} cor="#5a8f6e" showC/>}
-      {modais.pag&&<ModalLanc titulo={modais.pag.id?"Editar Pagamento":"Novo Pagamento"} form={modais.pag} setForm={f=>setModais(m=>({...m,pag:f}))} cats={["Taxa de cartório","ITBI","ITCMD","IR","Administrativa","Diligência","Material","Outros"]} onSave={()=>salvarPag(modais.pag)} onClose={()=>fecharModal("pag")} cor="#b46464" colaboradores={colaboradores}/>}
+      {modais.pag&&<ModalLanc titulo={modais.pag.id?"Editar Pagamento":"Novo Pagamento"} form={modais.pag} setForm={f=>setModais(m=>({...m,pag:f}))} cats={["Taxa de cartório","ITBI","ITCMD","IR","Administrativa","Diligência","Material","Folha de Pagamento","Outros"]} onSave={()=>salvarPag(modais.pag)} onClose={()=>fecharModal("pag")} cor="#b46464" colaboradores={colaboradores}/>}
       {modais.usuario&&<ModalUsuario inicial={modais.usuario} onSave={salvarUser} onClose={()=>fecharModal("usuario")}/>}
       {printData&&<PrintProtocolo servico={printData} cliente={clientes.find(c=>c.id===printData.clienteId)} onClose={()=>setPrintData(null)}/>}
       {reciboData&&<Recibo data={reciboData} onClose={()=>setReciboData(null)} clientes={clientes}/>}
@@ -3516,6 +3516,7 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
                             </div>
                             <div style={{display:"flex",alignItems:"center",gap:10}}>
                               <span style={{fontWeight:500,color:"#b46464",fontSize:14}}>R$ {fmt(c.total)}</span>
+                              <button style={{...S.btnSm,color:"#5a7aaa",borderColor:"#3b82f644"}} onClick={function(e){e.stopPropagation();imprimirRelatorioColab(c,anoFin,pgs,servicos);}} className="bs">Imprimir</button>
                               <span style={{fontSize:10,color:"#4a4d56"}}>{expandido?"▲":"▼"}</span>
                             </div>
                           </div>
@@ -4893,7 +4894,38 @@ const imprimirRelPessoal = (funcs, fC) => {
   w.document.close();
 };
 
-const TelaCustos = ({showToast, custos, setCustos}) => {
+const imprimirRelatorioColab = (colab, ano, pgs, servicos) => {
+  const w = window.open("", "_blank");
+  const achaProto = (p) => {
+    for(const s of (servicos||[])){
+      if((s.pagamentos||[]).some(x => x.id === p.id)) return s.protocolo;
+    }
+    return "—";
+  };
+  const ordenados = pgs.slice().sort((a,b) => (a.data||"").localeCompare(b.data||""));
+  const pago = ordenados.filter(p => p.status==="pago").reduce((a,p) => a+Number(p.valor||0), 0);
+  const pendente = ordenados.filter(p => p.status!=="pago").reduce((a,p) => a+Number(p.valor||0), 0);
+  const total = pago + pendente;
+  const rows = ordenados.map(p => {
+    const statusTxt = p.status==="pago" ? "Pago" : "Pendente";
+    const statusColor = p.status==="pago" ? "#16a34a" : "#d97706";
+    return "<tr><td>"+(p.data||"—")+"</td><td>"+(p.categoria||"—")+"</td><td>"+(p.descricao||"—")+"</td><td>"+achaProto(p)+"</td><td style='color:"+statusColor+";font-weight:700'>"+statusTxt+"</td><td style='text-align:right;font-weight:600'>R$ "+fmt(Number(p.valor||0))+"</td></tr>";
+  }).join("");
+  const css = "body{font-family:Arial,sans-serif;padding:28px;max-width:820px;margin:0 auto;}h1{font-size:16px;border-bottom:2px solid #000;padding-bottom:8px;}table{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px;}th{background:#1e293b;color:#fff;padding:7px 10px;text-align:left;}td{padding:6px 10px;border-bottom:1px solid #eee;}.tot td{background:#f0f0f0;font-weight:800;}@media print{button{display:none;}}";
+  w.document.write("<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Relatorio Anual - "+colab.nome+"</title><style>"+css+"</style></head><body>"+
+    "<h1>Relatorio Anual de Pagamentos - "+ano+"</h1>"+
+    "<p><b>Colaborador:</b> "+colab.nome+" &nbsp;&nbsp; <b>Tipo:</b> "+(colab.tipo_parceria||"-")+"</p>"+
+    "<p style='color:#666;font-size:11px'>Emitido em "+new Date().toLocaleDateString("pt-BR")+" | "+ordenados.length+" lancamento(s)</p>"+
+    "<table><tr><th>Data</th><th>Categoria</th><th>Descricao</th><th>Protocolo</th><th>Status</th><th>Valor</th></tr>"+rows+
+    "<tr class='tot'><td colspan='5'>TOTAL PAGO</td><td style='text-align:right;color:#16a34a'>R$ "+fmt(pago)+"</td></tr>"+
+    "<tr class='tot'><td colspan='5'>TOTAL PENDENTE</td><td style='text-align:right;color:#d97706'>R$ "+fmt(pendente)+"</td></tr>"+
+    "<tr class='tot'><td colspan='5'>TOTAL GERAL</td><td style='text-align:right'>R$ "+fmt(total)+"</td></tr></table>"+
+    "<br><button onclick='window.print()' style='background:#1e293b;color:#fff;border:none;padding:10px 22px;border-radius:6px;cursor:pointer'>Imprimir / PDF</button>"+
+    "</body></html>");
+  w.document.close();
+};
+
+const TelaCustos = ({showToast, custos, setCustos, sb, colaboradores}) => {
   const MS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
   const ML = ["Janeiro","Fevereiro","Marco","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
   const FIXOS = [
@@ -4929,6 +4961,13 @@ const TelaCustos = ({showToast, custos, setCustos}) => {
     if(s <= 7786.02) return s * 0.14;
     return 908.86;
   };
+  const irrf = (b) => {
+    if(b <= 2259.20) return 0;
+    if(b <= 2826.65) return b*0.075 - 169.44;
+    if(b <= 3751.05) return b*0.15  - 381.44;
+    if(b <= 4664.68) return b*0.225 - 662.77;
+    return b*0.275 - 896;
+  };
 
   const setFuncs = (fn) => upd({funcs: typeof fn === "function" ? fn(funcs) : fn});
   const setOutros= (fn) => upd({outros: typeof fn === "function" ? fn(outros) : fn});
@@ -4961,6 +5000,95 @@ const TelaCustos = ({showToast, custos, setCustos}) => {
     const novo = ((atual / SM_ATUAL) * novoSM).toFixed(2);
     if(window.confirm("Novo salario de " + f.nome + ": R$ " + novo + ". Confirmar?"))
       setFuncs(p => p.map(x => x.id === f.id ? {...x, salario: novo} : x));
+  };
+
+  const parseD = (s) => { const [y,m,d] = String(s||"").split("-").map(Number); return new Date(y,(m||1)-1,d||1); };
+  const fmtD   = (d) => d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  const addDays= (d,n) => { const r = new Date(d); r.setDate(r.getDate()+n); return r; };
+  const diasNoMesF = (ano,mes) => new Date(ano,mes+1,0).getDate();
+  const nomeMesF = (ano,mes) => ML[mes] + "/" + ano;
+  const sobrepoe = (iniA,fimA,iniB,fimB) => {
+    const ini = iniA > iniB ? iniA : iniB;
+    const fim = fimA < fimB ? fimA : fimB;
+    if(fim < ini) return 0;
+    return Math.round((fim - ini) / 86400000) + 1;
+  };
+
+  const calcCronograma = (func, periodosRaw, incluir13) => {
+    const salario = Number(func.salario||0);
+    const diario = salario / 30;
+    const diaPag = Number(func.diaPagamento||5);
+    const periodos = periodosRaw
+      .filter(p => p.inicio && Number(p.dias) > 0)
+      .map(p => {
+        const dIni = parseD(p.inicio);
+        const dFim = addDays(dIni, Number(p.dias) - 1);
+        const dRetorno = addDays(dFim, 1);
+        const valorFerias = diario * Number(p.dias);
+        const umTerco = valorFerias / 3;
+        const totalBruto = valorFerias + umTerco;
+        const descINSS = inss(totalBruto);
+        const descIRRF = Math.max(0, irrf(totalBruto - descINSS));
+        const liquido = totalBruto - descINSS - descIRRF;
+        return {dIni, dFim, dRetorno, dias:Number(p.dias), liquido};
+      })
+      .sort((a,b) => a.dIni - b.dIni);
+
+    if(periodos.length === 0) return {itens:[], totalPago:0};
+
+    const itens = [];
+    periodos.forEach(p => {
+      itens.push({data:addDays(p.dIni,-30), evento:"Assinar aviso de ferias ("+p.dias+" dias, inicio "+p.dIni.toLocaleDateString("pt-BR")+")", valor:null, tipo:"aviso"});
+      itens.push({data:addDays(p.dIni,-2), evento:"Pagamento das ferias ("+p.dias+" dias) + 1/3", valor:p.liquido, tipo:"ferias"});
+      itens.push({data:p.dIni, evento:"Inicio das ferias ("+p.dias+" dias)", valor:null, tipo:"periodo"});
+      itens.push({data:p.dRetorno, evento:"Retorno ao trabalho", valor:null, tipo:"retorno"});
+    });
+
+    if(incluir13){
+      const ano13 = periodos[0].dIni.getFullYear();
+      const totalDecimo = salario;
+      const inssDecimo = inss(totalDecimo);
+      const irrfDecimo = Math.max(0, irrf(totalDecimo - inssDecimo));
+      itens.push({data:new Date(ano13,10,30), evento:"1a parcela do 13o salario", valor:salario/2, tipo:"decimo"});
+      itens.push({data:new Date(ano13,11,20), evento:"2a parcela do 13o salario (com desconto de INSS/IRRF)", valor:salario/2 - inssDecimo - irrfDecimo, tipo:"decimo"});
+    }
+
+    const primeiroMes = new Date(periodos[0].dIni.getFullYear(), periodos[0].dIni.getMonth(), 1);
+    const ultimoRetorno = periodos[periodos.length-1].dRetorno;
+    const ultimoMes = new Date(ultimoRetorno.getFullYear(), ultimoRetorno.getMonth(), 1);
+    let cursor = addDays(primeiroMes,-1); cursor = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+    const fimJanela = new Date(ultimoMes.getFullYear(), ultimoMes.getMonth()+1, 1);
+
+    let guard = 0;
+    while(cursor <= fimJanela && guard < 14){
+      guard++;
+      const ano = cursor.getFullYear(), mes = cursor.getMonth();
+      const diaUm = new Date(ano,mes,1);
+      const diaUlt = new Date(ano,mes,diasNoMesF(ano,mes));
+      let diasFerias = 0;
+      periodos.forEach(p => { diasFerias += sobrepoe(diaUm,diaUlt,p.dIni,p.dFim); });
+      const valorMes = Math.max(0, salario - diario*diasFerias);
+
+      const payCursor = new Date(ano, mes+1, 1);
+      const payAno = payCursor.getFullYear(), payMes = payCursor.getMonth();
+      const payDiaUm = new Date(payAno,payMes,1);
+      const payDiaUlt = new Date(payAno,payMes,diasNoMesF(payAno,payMes));
+      const periodosNoMesPag = periodos.filter(p => sobrepoe(payDiaUm,payDiaUlt,p.dIni,p.dFim) > 0);
+      let dataPag;
+      if(periodosNoMesPag.length > 0){
+        dataPag = periodosNoMesPag.reduce((max,p) => p.dRetorno > max ? p.dRetorno : max, periodosNoMesPag[0].dRetorno);
+      } else {
+        dataPag = new Date(payAno, payMes, diaPag);
+      }
+      const diasTrabalhados = diasNoMesF(ano,mes) - diasFerias;
+      itens.push({data:dataPag, evento:"Salario de "+nomeMesF(ano,mes)+(diasFerias>0?" ("+diasTrabalhados+" dias)":" (integral)"), valor:valorMes, tipo:"salario"});
+
+      cursor = new Date(ano, mes+1, 1);
+    }
+
+    itens.sort((a,b) => a.data - b.data);
+    const totalPago = itens.reduce((a,i) => a + (i.valor||0), 0);
+    return {itens, totalPago};
   };
 
   return (
@@ -5103,6 +5231,7 @@ const TelaCustos = ({showToast, custos, setCustos}) => {
                         <div style={{fontWeight:700,color:"#d6d3cc",fontSize:14}}>{f.nome}</div>
                         <div style={{fontSize:12,color:"#5a5d66"}}>{f.cargo}</div>
                         {f.admissao && <div style={{fontSize:11,color:"#4a4d56"}}>Adm: {f.admissao}</div>}
+                        {f.diaPagamento && <div style={{fontSize:11,color:"#4a4d56"}}>Pagamento: dia {f.diaPagamento}</div>}
                       </div>
                       <div style={{display:"flex",gap:4,flexWrap:"wrap",justifyContent:"flex-end"}}>
                         <button style={S.btnSm} onClick={() => setMf({...f})} className="bs">Editar</button>
@@ -5192,6 +5321,7 @@ const TelaCustos = ({showToast, custos, setCustos}) => {
                 <FI l="Data admissao" v={mf.admissao||""} set={v => setMf(m => ({...m,admissao:v}))} type="date"/>
                 <FI l="Salario base (R$)" v={mf.salario||""} set={v => setMf(m => ({...m,salario:v}))} type="number"/>
                 <FI l="Encargos/mes (R$)" v={mf.enc||""} set={v => setMf(m => ({...m,enc:v}))} type="number"/>
+                <FI l="Dia de pagamento do salario" v={mf.diaPagamento||""} set={v => setMf(m => ({...m,diaPagamento:v}))} type="number" ph="Ex: 8"/>
               </div>
             </div>
             <div style={S.modalFooter}>
@@ -5210,13 +5340,17 @@ const TelaCustos = ({showToast, custos, setCustos}) => {
 
       {modalFerias&&(
         <div style={S.overlay}>
-          <div style={{...S.modal,maxWidth:480}} onClick={e=>e.stopPropagation()}>
+          <div style={{...S.modal,maxWidth:modalFerias.aba==="cronograma"?680:480}} onClick={e=>e.stopPropagation()}>
             <div style={S.modalHeader}>
               <span style={S.modalTitle}>Ferias - {modalFerias.func.nome}</span>
               <button style={S.modalClose} onClick={()=>setModalFerias(null)}>X</button>
             </div>
+            <div style={{display:"flex",gap:4,padding:"10px 24px 0"}}>
+              <button onClick={()=>setModalFerias(m=>({...m,aba:"recibo"}))} style={{...S.abaBtn,...((!modalFerias.aba||modalFerias.aba==="recibo")?S.abaBtnActive:{})}} className="ab">Recibo simples</button>
+              <button onClick={()=>setModalFerias(m=>({...m,aba:"cronograma"}))} style={{...S.abaBtn,...(modalFerias.aba==="cronograma"?S.abaBtnActive:{})}} className="ab">Cronograma completo</button>
+            </div>
             <div style={S.modalBody}>
-              {(()=>{
+              {(!modalFerias.aba||modalFerias.aba==="recibo")&&(()=>{
                 const s = Number(modalFerias.func.salario||0);
                 const diasSolicitados = Number(modalFerias.dias||0);
                 const valorDiario = s/30;
@@ -5294,8 +5428,49 @@ const TelaCustos = ({showToast, custos, setCustos}) => {
                   </div>
                 );
               })()}
+              {modalFerias.aba==="cronograma"&&(()=>{
+                const periodos = modalFerias.periodos && modalFerias.periodos.length>0 ? modalFerias.periodos : [{inicio:"",dias:""}];
+                const setPeriodos = (fn) => setModalFerias(m=>({...m,periodos:fn(periodos)}));
+                const {itens,totalPago} = calcCronograma(modalFerias.func, periodos, !!modalFerias.incluir13);
+                const fR = (v) => Number(v||0).toLocaleString("pt-BR",{minimumFractionDigits:2});
+                return(
+                  <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                    <div style={{background:"#2a2d36",borderRadius:8,padding:"12px"}}>
+                      <div style={{fontWeight:700,color:"#8a8782",marginBottom:8,fontSize:11,textTransform:"uppercase"}}>Periodos de ferias (ate 3, conforme CLT)</div>
+                      {periodos.map((p,i) => (
+                        <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:8,marginBottom:8,alignItems:"end"}}>
+                          <FI l={"Inicio periodo "+(i+1)} v={p.inicio||""} set={v=>setPeriodos(ps=>ps.map((x,j)=>j===i?{...x,inicio:v}:x))} type="date"/>
+                          <FI l="Dias" v={p.dias||""} set={v=>setPeriodos(ps=>ps.map((x,j)=>j===i?{...x,dias:v}:x))} type="number" ph="Ex: 20"/>
+                          {periodos.length>1&&<button style={{...S.btnSm,...S.btnDang}} onClick={()=>setPeriodos(ps=>ps.filter((x,j)=>j!==i))} className="bs">Remover</button>}
+                        </div>
+                      ))}
+                      {periodos.length<3&&<button style={S.btnSec} onClick={()=>setPeriodos(ps=>[...ps,{inicio:"",dias:""}])} className="bs">+ Adicionar periodo</button>}
+                      <label style={{display:"flex",alignItems:"center",gap:8,marginTop:12,fontSize:12,color:"#8a8782",cursor:"pointer"}}>
+                        <input type="checkbox" checked={!!modalFerias.incluir13} onChange={e=>setModalFerias(m=>({...m,incluir13:e.target.checked}))}/>
+                        Incluir parcelas do 13o salario no cronograma
+                      </label>
+                    </div>
+                    {itens.length===0&&<div style={{background:"#f59e0b0d",border:"1px solid #f59e0b33",borderRadius:8,padding:"10px 14px",fontSize:12,color:"#a87840"}}>Informe ao menos um periodo com data de inicio e dias.</div>}
+                    {itens.length>0&&(
+                      <div style={{background:"#22c55e0d",border:"1px solid #22c55e33",borderRadius:8,padding:"4px 0",maxHeight:320,overflowY:"auto"}}>
+                        {itens.map((it,i) => (
+                          <div key={i} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"7px 14px",borderBottom:"1px solid #0f1f3533",fontSize:12}}>
+                            <span style={{color:"#5a5d66",minWidth:80}}>{it.data.toLocaleDateString("pt-BR")}</span>
+                            <span style={{color:"#8a8782",flex:1}}>{it.evento}</span>
+                            <span style={{color:it.valor?"#5a8f6e":"#4a4d56",fontWeight:it.valor?700:400}}>{it.valor!=null?"R$ "+fR(it.valor):"—"}</span>
+                          </div>
+                        ))}
+                        <div style={{display:"flex",justifyContent:"space-between",padding:"10px 14px",fontSize:13}}>
+                          <span style={{fontWeight:700,color:"#d6d3cc"}}>Total pago no periodo</span>
+                          <span style={{fontWeight:800,color:"#b46464"}}>R$ {fR(totalPago)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
-            <div style={S.modalFooter}>
+            {(!modalFerias.aba||modalFerias.aba==="recibo")&&<div style={S.modalFooter}>
               <button style={S.btnSec} onClick={()=>setModalFerias(null)} className="bs">Cancelar</button>
               <button style={{...S.btnPrimary,...(Number(modalFerias.dias||0)<=0?{opacity:.5,cursor:"not-allowed"}:{})}} onClick={()=>{
                 if(Number(modalFerias.dias||0)<=0) return showToast("Informe os dias de ferias.","erro");
@@ -5313,7 +5488,42 @@ const TelaCustos = ({showToast, custos, setCustos}) => {
                 setModalFerias(null);
                 showToast("Recibo de ferias gerado!");
               }} className="bp">Gerar Recibo de Ferias</button>
-            </div>
+            </div>}
+            {modalFerias.aba==="cronograma"&&<div style={S.modalFooter}>
+              <button style={S.btnSec} onClick={()=>setModalFerias(null)} className="bs">Cancelar</button>
+              <button style={S.btnSec} onClick={()=>{
+                const periodos = modalFerias.periodos && modalFerias.periodos.length>0 ? modalFerias.periodos : [{inicio:"",dias:""}];
+                const {itens,totalPago} = calcCronograma(modalFerias.func, periodos, !!modalFerias.incluir13);
+                if(itens.length===0) return showToast("Informe ao menos um periodo.","erro");
+                const fR3=(v)=>Number(v||0).toLocaleString("pt-BR",{minimumFractionDigits:2});
+                const w=window.open("","_blank");
+                const css3="body{font-family:Arial,sans-serif;padding:32px;max-width:700px;margin:0 auto;}h1{font-size:16px;border-bottom:2px solid #1e293b;padding-bottom:8px;}table{width:100%;border-collapse:collapse;font-size:12px;margin:12px 0;}th{background:#1e293b;color:#fff;padding:7px 10px;text-align:left;}td{padding:6px 10px;border-bottom:1px solid #eee;}.b{font-weight:800;}.tot{background:#f0f0f0;}@media print{button{display:none;}}";
+                const linhas=itens.map(it=>"<tr><td>"+it.data.toLocaleDateString("pt-BR")+"</td><td>"+it.evento+"</td><td>"+(it.valor!=null?"R$ "+fR3(it.valor):"-")+"</td></tr>").join("");
+                w.document.write("<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Cronograma de Ferias - "+modalFerias.func.nome+"</title><style>"+css3+"</style></head><body>"+
+                  "<h1>CRONOGRAMA DE FERIAS E PAGAMENTOS</h1>"+
+                  "<p><b>Funcionario:</b> "+modalFerias.func.nome+" &nbsp;&nbsp; <b>Cargo:</b> "+(modalFerias.func.cargo||"")+"</p>"+
+                  "<p><b>Salario base:</b> R$ "+fR3(modalFerias.func.salario)+" &nbsp;&nbsp; <b>Valor diario:</b> R$ "+fR3(Number(modalFerias.func.salario||0)/30)+"</p>"+
+                  "<table><tr><th>Data</th><th>O que acontece</th><th>Valor bruto</th></tr>"+linhas+
+                  "<tr class='tot'><td class='b' colspan='2'>TOTAL PAGO NO PERIODO</td><td class='b'>R$ "+fR3(totalPago)+"</td></tr></table>"+
+                  "<br><button onclick='window.print()' style='background:#1e293b;color:#fff;border:none;padding:10px 22px;border-radius:6px;cursor:pointer;margin-top:16px'>Imprimir / PDF</button>"+
+                  "</body></html>");
+                w.document.close();
+              }} className="bs">Imprimir Cronograma</button>
+              <button style={S.btnPrimary} onClick={async()=>{
+                const periodos = modalFerias.periodos && modalFerias.periodos.length>0 ? modalFerias.periodos : [{inicio:"",dias:""}];
+                const {itens} = calcCronograma(modalFerias.func, periodos, !!modalFerias.incluir13);
+                const lancaveis = itens.filter(it=>it.valor!=null);
+                if(lancaveis.length===0) return showToast("Informe ao menos um periodo valido.","erro");
+                if(!window.confirm("Lancar "+lancaveis.length+" pagamento(s) pendente(s) no Financeiro para "+modalFerias.func.nome+"?")) return;
+                const colabEncontrado = (colaboradores||[]).find(c=>(c.nome||"").trim().toLowerCase()===(modalFerias.func.nome||"").trim().toLowerCase());
+                const payload = lancaveis.map(it=>({descricao:it.evento+" - "+modalFerias.func.nome,categoria:"Folha de Pagamento",valor:Number(it.valor.toFixed(2)),data:fmtD(it.data),forma:"",status:"pendente",colaborador_id:colabEncontrado?colabEncontrado.id:null}));
+                const {error} = await sb.from("pagamentos").insert(payload);
+                if(error){ showToast("Erro ao lancar: "+error.message,"erro"); return; }
+                regLog("pagamentos","criou","Cronograma de ferias - "+modalFerias.func.nome+" ("+lancaveis.length+" lancamentos)");
+                showToast(colabEncontrado?"Lancamentos criados no Financeiro!":"Lancamentos criados (sem vinculo de colaborador - nome nao encontrado em Colaboradores)!");
+                setModalFerias(null);
+              }} className="bp">Lancar no Financeiro</button>
+            </div>}
           </div>
         </div>
       )}
