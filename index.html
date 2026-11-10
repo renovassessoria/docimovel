@@ -4894,6 +4894,22 @@ const imprimirRelPessoal = (funcs, fC) => {
   w.document.close();
 };
 
+const reimprimirCronogramaArquivado = (reg, func) => {
+  const fR3 = (v) => Number(v||0).toLocaleString("pt-BR",{minimumFractionDigits:2});
+  const w = window.open("","_blank");
+  const css = "body{font-family:Arial,sans-serif;padding:32px;max-width:700px;margin:0 auto;}h1{font-size:16px;border-bottom:2px solid #1e293b;padding-bottom:8px;}table{width:100%;border-collapse:collapse;font-size:12px;margin:12px 0;}th{background:#1e293b;color:#fff;padding:7px 10px;text-align:left;}td{padding:6px 10px;border-bottom:1px solid #eee;}.b{font-weight:800;}.tot{background:#f0f0f0;}@media print{button{display:none;}}";
+  const linhas = (reg.itens||[]).map(it => "<tr><td>"+new Date(it.data+"T12:00:00").toLocaleDateString("pt-BR")+"</td><td>"+it.evento+"</td><td>"+(it.valor!=null?"R$ "+fR3(it.valor):"-")+"</td></tr>").join("");
+  w.document.write("<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Cronograma de Ferias - "+func.nome+"</title><style>"+css+"</style></head><body>"+
+    "<h1>CRONOGRAMA DE FERIAS E PAGAMENTOS (arquivado)</h1>"+
+    "<p><b>Funcionario:</b> "+func.nome+" &nbsp;&nbsp; <b>Cargo:</b> "+(func.cargo||"")+"</p>"+
+    "<p style='color:#666;font-size:11px'>Gerado originalmente em "+new Date(reg.criadoEm).toLocaleDateString("pt-BR")+(reg.lancado?" · lancado no Financeiro":" · nao lancado no Financeiro")+" &nbsp;&nbsp; Reimpresso em "+new Date().toLocaleDateString("pt-BR")+"</p>"+
+    "<table><tr><th>Data</th><th>O que acontece</th><th>Valor bruto</th></tr>"+linhas+
+    "<tr class='tot'><td class='b' colspan='2'>TOTAL PAGO NO PERIODO</td><td class='b'>R$ "+fR3(reg.totalPago)+"</td></tr></table>"+
+    "<br><button onclick='window.print()' style='background:#1e293b;color:#fff;border:none;padding:10px 22px;border-radius:6px;cursor:pointer;margin-top:16px'>Imprimir / PDF</button>"+
+    "</body></html>");
+  w.document.close();
+};
+
 const imprimirRelatorioColab = (colab, ano, pgs, servicos) => {
   const w = window.open("", "_blank");
   const achaProto = (p) => {
@@ -5092,6 +5108,21 @@ const TelaCustos = ({showToast, custos, setCustos, sb, colaboradores}) => {
     itens.sort((a,b) => a.data - b.data);
     const totalPago = itens.reduce((a,i) => a + (i.valor||0), 0);
     return {itens, totalPago};
+  };
+
+  const arquivarCronograma = (func, periodos, incluir13, descontarInss, itens, totalPago, lancado) => {
+    const registro = {
+      id: Date.now(),
+      criadoEm: new Date().toISOString(),
+      periodos: periodos.filter(p => p.inicio && Number(p.dias) > 0),
+      incluir13: !!incluir13,
+      descontarInss: !!descontarInss,
+      lancado: !!lancado,
+      totalPago,
+      itens: itens.map(it => ({data: fmtD(it.data), evento: it.evento, valor: it.valor})),
+    };
+    setFuncs(prev => prev.map(x => x.id === func.id ? {...x, cronogramasFerias:[...(x.cronogramasFerias||[]), registro]} : x));
+    setModalFerias(m => m ? {...m, func:{...m.func, cronogramasFerias:[...(m.func.cronogramasFerias||[]), registro]}} : m);
   };
 
   return (
@@ -5473,6 +5504,27 @@ const TelaCustos = ({showToast, custos, setCustos, sb, colaboradores}) => {
                         </div>
                       </div>
                     )}
+                    {(modalFerias.func.cronogramasFerias||[]).length>0&&(
+                      <div style={{background:"#2a2d36",borderRadius:8,padding:"12px"}}>
+                        <div style={{fontWeight:700,color:"#8a8782",marginBottom:8,fontSize:11,textTransform:"uppercase"}}>Cronogramas arquivados</div>
+                        {(modalFerias.func.cronogramasFerias||[]).slice().sort((a,b)=>new Date(b.criadoEm)-new Date(a.criadoEm)).map(reg=>(
+                          <div key={reg.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #0f1f3533",gap:8}}>
+                            <div>
+                              <div style={{color:"#d6d3cc",fontSize:12}}>{(reg.periodos||[]).map(p=>new Date(p.inicio+"T12:00:00").toLocaleDateString("pt-BR")+" ("+p.dias+"d)").join(" + ")}</div>
+                              <div style={{color:"#4a4d56",fontSize:10}}>Gerado em {new Date(reg.criadoEm).toLocaleDateString("pt-BR")} · {reg.lancado?"lancado no Financeiro":"nao lancado"} · R$ {fR(reg.totalPago)}</div>
+                            </div>
+                            <div style={{display:"flex",gap:6,flexShrink:0}}>
+                              <button style={S.btnSm} onClick={()=>reimprimirCronogramaArquivado(reg,modalFerias.func)} className="bs">Reimprimir</button>
+                              <button style={{...S.btnSm,...S.btnDang}} onClick={()=>{
+                                if(!window.confirm("Excluir este cronograma arquivado? Isso nao afeta lancamentos ja feitos no Financeiro.")) return;
+                                setFuncs(prev=>prev.map(x=>x.id===modalFerias.func.id?{...x,cronogramasFerias:(x.cronogramasFerias||[]).filter(r=>r.id!==reg.id)}:x));
+                                setModalFerias(m=>m?{...m,func:{...m.func,cronogramasFerias:(m.func.cronogramasFerias||[]).filter(r=>r.id!==reg.id)}}:m);
+                              }} className="bs">Excluir</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })()}
@@ -5515,10 +5567,11 @@ const TelaCustos = ({showToast, custos, setCustos, sb, colaboradores}) => {
                   "<br><button onclick='window.print()' style='background:#1e293b;color:#fff;border:none;padding:10px 22px;border-radius:6px;cursor:pointer;margin-top:16px'>Imprimir / PDF</button>"+
                   "</body></html>");
                 w.document.close();
+                arquivarCronograma(modalFerias.func, periodos, modalFerias.incluir13, modalFerias.descontarInss!==false, itens, totalPago, false);
               }} className="bs">Imprimir Cronograma</button>
               <button style={S.btnPrimary} onClick={async()=>{
                 const periodos = modalFerias.periodos && modalFerias.periodos.length>0 ? modalFerias.periodos : [{inicio:"",dias:""}];
-                const {itens} = calcCronograma(modalFerias.func, periodos, !!modalFerias.incluir13, modalFerias.descontarInss!==false);
+                const {itens,totalPago} = calcCronograma(modalFerias.func, periodos, !!modalFerias.incluir13, modalFerias.descontarInss!==false);
                 const lancaveis = itens.filter(it=>it.valor!=null);
                 if(lancaveis.length===0) return showToast("Informe ao menos um periodo valido.","erro");
                 if(!window.confirm("Lancar "+lancaveis.length+" pagamento(s) pendente(s) no Financeiro para "+modalFerias.func.nome+"?")) return;
@@ -5527,6 +5580,7 @@ const TelaCustos = ({showToast, custos, setCustos, sb, colaboradores}) => {
                 const {error} = await sb.from("pagamentos").insert(payload);
                 if(error){ showToast("Erro ao lancar: "+error.message,"erro"); return; }
                 regLog("pagamentos","criou","Cronograma de ferias - "+modalFerias.func.nome+" ("+lancaveis.length+" lancamentos)");
+                arquivarCronograma(modalFerias.func, periodos, modalFerias.incluir13, modalFerias.descontarInss!==false, itens, totalPago, true);
                 showToast(colabEncontrado?"Lancamentos criados no Financeiro!":"Lancamentos criados (sem vinculo de colaborador - nome nao encontrado em Colaboradores)!");
                 setModalFerias(null);
               }} className="bp">Lancar no Financeiro</button>
