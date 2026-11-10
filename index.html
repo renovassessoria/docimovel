@@ -5014,7 +5014,7 @@ const TelaCustos = ({showToast, custos, setCustos, sb, colaboradores}) => {
     return Math.round((fim - ini) / 86400000) + 1;
   };
 
-  const calcCronograma = (func, periodosRaw, incluir13) => {
+  const calcCronograma = (func, periodosRaw, incluir13, descontarInss) => {
     const salario = Number(func.salario||0);
     const diario = salario / 30;
     const diaPag = Number(func.diaPagamento||5);
@@ -5027,8 +5027,8 @@ const TelaCustos = ({showToast, custos, setCustos, sb, colaboradores}) => {
         const valorFerias = diario * Number(p.dias);
         const umTerco = valorFerias / 3;
         const totalBruto = valorFerias + umTerco;
-        const descINSS = inss(totalBruto);
-        const descIRRF = Math.max(0, irrf(totalBruto - descINSS));
+        const descINSS = descontarInss ? inss(totalBruto) : 0;
+        const descIRRF = descontarInss ? Math.max(0, irrf(totalBruto - descINSS)) : 0;
         const liquido = totalBruto - descINSS - descIRRF;
         return {dIni, dFim, dRetorno, dias:Number(p.dias), liquido};
       })
@@ -5036,10 +5036,11 @@ const TelaCustos = ({showToast, custos, setCustos, sb, colaboradores}) => {
 
     if(periodos.length === 0) return {itens:[], totalPago:0};
 
+    const sufixoDesc = descontarInss ? " (liquido, com desconto de INSS/IRRF)" : " (valor bruto, sem desconto)";
     const itens = [];
     periodos.forEach(p => {
       itens.push({data:addDays(p.dIni,-30), evento:"Assinar aviso de ferias ("+p.dias+" dias, inicio "+p.dIni.toLocaleDateString("pt-BR")+")", valor:null, tipo:"aviso"});
-      itens.push({data:addDays(p.dIni,-2), evento:"Pagamento das ferias ("+p.dias+" dias) + 1/3", valor:p.liquido, tipo:"ferias"});
+      itens.push({data:addDays(p.dIni,-2), evento:"Pagamento das ferias ("+p.dias+" dias) + 1/3"+sufixoDesc, valor:p.liquido, tipo:"ferias"});
       itens.push({data:p.dIni, evento:"Inicio das ferias ("+p.dias+" dias)", valor:null, tipo:"periodo"});
       itens.push({data:p.dRetorno, evento:"Retorno ao trabalho", valor:null, tipo:"retorno"});
     });
@@ -5047,10 +5048,10 @@ const TelaCustos = ({showToast, custos, setCustos, sb, colaboradores}) => {
     if(incluir13){
       const ano13 = periodos[0].dIni.getFullYear();
       const totalDecimo = salario;
-      const inssDecimo = inss(totalDecimo);
-      const irrfDecimo = Math.max(0, irrf(totalDecimo - inssDecimo));
+      const inssDecimo = descontarInss ? inss(totalDecimo) : 0;
+      const irrfDecimo = descontarInss ? Math.max(0, irrf(totalDecimo - inssDecimo)) : 0;
       itens.push({data:new Date(ano13,10,30), evento:"1a parcela do 13o salario", valor:salario/2, tipo:"decimo"});
-      itens.push({data:new Date(ano13,11,20), evento:"2a parcela do 13o salario (com desconto de INSS/IRRF)", valor:salario/2 - inssDecimo - irrfDecimo, tipo:"decimo"});
+      itens.push({data:new Date(ano13,11,20), evento:"2a parcela do 13o salario"+sufixoDesc, valor:salario/2 - inssDecimo - irrfDecimo, tipo:"decimo"});
     }
 
     const primeiroMes = new Date(periodos[0].dIni.getFullYear(), periodos[0].dIni.getMonth(), 1);
@@ -5431,7 +5432,7 @@ const TelaCustos = ({showToast, custos, setCustos, sb, colaboradores}) => {
               {modalFerias.aba==="cronograma"&&(()=>{
                 const periodos = modalFerias.periodos && modalFerias.periodos.length>0 ? modalFerias.periodos : [{inicio:"",dias:""}];
                 const setPeriodos = (fn) => setModalFerias(m=>({...m,periodos:fn(periodos)}));
-                const {itens,totalPago} = calcCronograma(modalFerias.func, periodos, !!modalFerias.incluir13);
+                const {itens,totalPago} = calcCronograma(modalFerias.func, periodos, !!modalFerias.incluir13, modalFerias.descontarInss!==false);
                 const fR = (v) => Number(v||0).toLocaleString("pt-BR",{minimumFractionDigits:2});
                 return(
                   <div style={{display:"flex",flexDirection:"column",gap:12}}>
@@ -5448,6 +5449,10 @@ const TelaCustos = ({showToast, custos, setCustos, sb, colaboradores}) => {
                       <label style={{display:"flex",alignItems:"center",gap:8,marginTop:12,fontSize:12,color:"#8a8782",cursor:"pointer"}}>
                         <input type="checkbox" checked={!!modalFerias.incluir13} onChange={e=>setModalFerias(m=>({...m,incluir13:e.target.checked}))}/>
                         Incluir parcelas do 13o salario no cronograma
+                      </label>
+                      <label style={{display:"flex",alignItems:"center",gap:8,marginTop:8,fontSize:12,color:"#8a8782",cursor:"pointer"}}>
+                        <input type="checkbox" checked={modalFerias.descontarInss!==false} onChange={e=>setModalFerias(m=>({...m,descontarInss:e.target.checked}))}/>
+                        Descontar INSS/IRRF dos valores (ferias e 13o)
                       </label>
                     </div>
                     {itens.length===0&&<div style={{background:"#f59e0b0d",border:"1px solid #f59e0b33",borderRadius:8,padding:"10px 14px",fontSize:12,color:"#a87840"}}>Informe ao menos um periodo com data de inicio e dias.</div>}
@@ -5493,7 +5498,7 @@ const TelaCustos = ({showToast, custos, setCustos, sb, colaboradores}) => {
               <button style={S.btnSec} onClick={()=>setModalFerias(null)} className="bs">Cancelar</button>
               <button style={S.btnSec} onClick={()=>{
                 const periodos = modalFerias.periodos && modalFerias.periodos.length>0 ? modalFerias.periodos : [{inicio:"",dias:""}];
-                const {itens,totalPago} = calcCronograma(modalFerias.func, periodos, !!modalFerias.incluir13);
+                const {itens,totalPago} = calcCronograma(modalFerias.func, periodos, !!modalFerias.incluir13, modalFerias.descontarInss!==false);
                 if(itens.length===0) return showToast("Informe ao menos um periodo.","erro");
                 const fR3=(v)=>Number(v||0).toLocaleString("pt-BR",{minimumFractionDigits:2});
                 const w=window.open("","_blank");
@@ -5511,7 +5516,7 @@ const TelaCustos = ({showToast, custos, setCustos, sb, colaboradores}) => {
               }} className="bs">Imprimir Cronograma</button>
               <button style={S.btnPrimary} onClick={async()=>{
                 const periodos = modalFerias.periodos && modalFerias.periodos.length>0 ? modalFerias.periodos : [{inicio:"",dias:""}];
-                const {itens} = calcCronograma(modalFerias.func, periodos, !!modalFerias.incluir13);
+                const {itens} = calcCronograma(modalFerias.func, periodos, !!modalFerias.incluir13, modalFerias.descontarInss!==false);
                 const lancaveis = itens.filter(it=>it.valor!=null);
                 if(lancaveis.length===0) return showToast("Informe ao menos um periodo valido.","erro");
                 if(!window.confirm("Lancar "+lancaveis.length+" pagamento(s) pendente(s) no Financeiro para "+modalFerias.func.nome+"?")) return;
