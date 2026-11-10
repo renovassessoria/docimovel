@@ -1191,7 +1191,7 @@ const AppContent=({session})=>{
         {tela==="andamento"&&processoAberto&&<TelaProcessoDetalhe servico={processoAberto} aba={abaProcesso} setAba={setAbaProcesso} atualizar={p=>atualizarServico(processoAberto.id,p)} voltar={()=>setProcessoAberto(null)} cn={cn}/>}
         {tela==="financeiro"&&<TelaFinanceiro aba={abaFin} setAba={setAbaFin} recebimentos={recebimentos} pagamentos={pagamentos} setRecebimentos={setRecebimentos} setPagamentos={setPagamentos} totRec={totRec} totPag={totPag} lucro={lucro} dadosMensais={dadosMensais} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} abrirModal={abrirModal} setReciboData={setReciboData} sb={sb} colaboradores={colaboradores} setColaboradores={setColaboradores} metas={metas} setMetas={setMetas} servicos={servicos}/>}
         {tela==="relatorios"&&<TelaRelatorios dadosMensais={dadosMensais} totRec={totRec} totPag={totPag} lucro={lucro} recAno={recAno} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} recebimentos={recebimentos} pagamentos={pagamentos} servicos={servicos} cn={cn} clientes={clientes} snapshots={snapshots} setSnapshots={setSnapshots} agenda={agenda} sb={sb}/>}
-        {tela==="custos"&&<TelaCustos showToast={showToast} custos={custos} setCustos={v=>{setCustos(v);sb.from("configuracoes").upsert({id:"custos",dados:v,updated_at:new Date().toISOString()}).then(()=>{}).catch(()=>{});}} sb={sb} colaboradores={colaboradores}/>}
+        {tela==="custos"&&<TelaCustos showToast={showToast} custos={custos} setCustos={v=>{setCustos(v);return sb.from("configuracoes").upsert({id:"custos",dados:v,updated_at:new Date().toISOString()});}} sb={sb} colaboradores={colaboradores}/>}
         {tela==="alertas"&&<TelaAlertas alertas={alertas} setAlertas={setAlertas} servicos={servicos} cn={cn} sb={sb} showToast={showToast}/>}
         {tela==="captacao"&&<TelaCaptacao leads={leads} setLeads={setLeads} atualizarLead={atualizarLead} showToast={showToast} sb={sb}/>}
         {tela==="usuarios"&&<TelaUsuarios usuarios={usuarios} setUsuarios={setUsuarios} abrirModal={abrirModal} session={session} logs={logs} sb={sb} setLogs={setLogs}/>}
@@ -5110,7 +5110,7 @@ const TelaCustos = ({showToast, custos, setCustos, sb, colaboradores}) => {
     return {itens, totalPago};
   };
 
-  const arquivarCronograma = (func, periodos, incluir13, descontarInss, itens, totalPago, lancado) => {
+  const arquivarCronograma = async (func, periodos, incluir13, descontarInss, itens, totalPago, lancado) => {
     const registro = {
       id: Date.now(),
       criadoEm: new Date().toISOString(),
@@ -5121,8 +5121,18 @@ const TelaCustos = ({showToast, custos, setCustos, sb, colaboradores}) => {
       totalPago,
       itens: itens.map(it => ({data: fmtD(it.data), evento: it.evento, valor: it.valor})),
     };
-    setFuncs(prev => prev.map(x => x.id === func.id ? {...x, cronogramasFerias:[...(x.cronogramasFerias||[]), registro]} : x));
     setModalFerias(m => m ? {...m, func:{...m.func, cronogramasFerias:[...(m.func.cronogramasFerias||[]), registro]}} : m);
+    try{
+      const res = await setFuncs(prev => prev.map(x => x.id === func.id ? {...x, cronogramasFerias:[...(x.cronogramasFerias||[]), registro]} : x));
+      if(res && res.error){
+        showToast("Cronograma gerado, mas NAO foi possivel salvar no arquivo: "+res.error.message,"erro");
+        return false;
+      }
+      return true;
+    }catch(e){
+      showToast("Cronograma gerado, mas NAO foi possivel salvar no arquivo (verifique sua conexao e tente novamente).","erro");
+      return false;
+    }
   };
 
   return (
@@ -5550,7 +5560,7 @@ const TelaCustos = ({showToast, custos, setCustos, sb, colaboradores}) => {
             </div>}
             {modalFerias.aba==="cronograma"&&<div style={S.modalFooter}>
               <button style={S.btnSec} onClick={()=>setModalFerias(null)} className="bs">Cancelar</button>
-              <button style={S.btnSec} onClick={()=>{
+              <button style={S.btnSec} onClick={async()=>{
                 const periodos = modalFerias.periodos && modalFerias.periodos.length>0 ? modalFerias.periodos : [{inicio:"",dias:""}];
                 const {itens,totalPago} = calcCronograma(modalFerias.func, periodos, !!modalFerias.incluir13, modalFerias.descontarInss!==false);
                 if(itens.length===0) return showToast("Informe ao menos um periodo.","erro");
@@ -5567,7 +5577,8 @@ const TelaCustos = ({showToast, custos, setCustos, sb, colaboradores}) => {
                   "<br><button onclick='window.print()' style='background:#1e293b;color:#fff;border:none;padding:10px 22px;border-radius:6px;cursor:pointer;margin-top:16px'>Imprimir / PDF</button>"+
                   "</body></html>");
                 w.document.close();
-                arquivarCronograma(modalFerias.func, periodos, modalFerias.incluir13, modalFerias.descontarInss!==false, itens, totalPago, false);
+                const ok = await arquivarCronograma(modalFerias.func, periodos, modalFerias.incluir13, modalFerias.descontarInss!==false, itens, totalPago, false);
+                if(ok) showToast("Cronograma impresso e arquivado!");
               }} className="bs">Imprimir Cronograma</button>
               <button style={S.btnPrimary} onClick={async()=>{
                 const periodos = modalFerias.periodos && modalFerias.periodos.length>0 ? modalFerias.periodos : [{inicio:"",dias:""}];
@@ -5580,7 +5591,7 @@ const TelaCustos = ({showToast, custos, setCustos, sb, colaboradores}) => {
                 const {error} = await sb.from("pagamentos").insert(payload);
                 if(error){ showToast("Erro ao lancar: "+error.message,"erro"); return; }
                 regLog("pagamentos","criou","Cronograma de ferias - "+modalFerias.func.nome+" ("+lancaveis.length+" lancamentos)");
-                arquivarCronograma(modalFerias.func, periodos, modalFerias.incluir13, modalFerias.descontarInss!==false, itens, totalPago, true);
+                await arquivarCronograma(modalFerias.func, periodos, modalFerias.incluir13, modalFerias.descontarInss!==false, itens, totalPago, true);
                 showToast(colabEncontrado?"Lancamentos criados no Financeiro!":"Lancamentos criados (sem vinculo de colaborador - nome nao encontrado em Colaboradores)!");
                 setModalFerias(null);
               }} className="bp">Lancar no Financeiro</button>
