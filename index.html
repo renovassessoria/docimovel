@@ -4902,13 +4902,15 @@ const imprimirRelatorioColab = (colab, ano, pgs, servicos) => {
     }
     return "—";
   };
+  const hoje = td();
   const ordenados = pgs.slice().sort((a,b) => (a.data||"").localeCompare(b.data||""));
-  const pago = ordenados.filter(p => p.status==="pago").reduce((a,p) => a+Number(p.valor||0), 0);
-  const pendente = ordenados.filter(p => p.status!=="pago").reduce((a,p) => a+Number(p.valor||0), 0);
+  const pago = ordenados.filter(p => p.data && p.data<=hoje).reduce((a,p) => a+Number(p.valor||0), 0);
+  const pendente = ordenados.filter(p => !p.data || p.data>hoje).reduce((a,p) => a+Number(p.valor||0), 0);
   const total = pago + pendente;
   const rows = ordenados.map(p => {
-    const statusTxt = p.status==="pago" ? "Pago" : "Pendente";
-    const statusColor = p.status==="pago" ? "#16a34a" : "#d97706";
+    const jaPassou = p.data && p.data<=hoje;
+    const statusTxt = jaPassou ? "Realizado" : "Futuro (agendado)";
+    const statusColor = jaPassou ? "#16a34a" : "#d97706";
     return "<tr><td>"+(p.data||"—")+"</td><td>"+(p.categoria||"—")+"</td><td>"+(p.descricao||"—")+"</td><td>"+achaProto(p)+"</td><td style='color:"+statusColor+";font-weight:700'>"+statusTxt+"</td><td style='text-align:right;font-weight:600'>R$ "+fmt(Number(p.valor||0))+"</td></tr>";
   }).join("");
   const css = "body{font-family:Arial,sans-serif;padding:28px;max-width:820px;margin:0 auto;}h1{font-size:16px;border-bottom:2px solid #000;padding-bottom:8px;}table{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px;}th{background:#1e293b;color:#fff;padding:7px 10px;text-align:left;}td{padding:6px 10px;border-bottom:1px solid #eee;}.tot td{background:#f0f0f0;font-weight:800;}@media print{button{display:none;}}";
@@ -4917,8 +4919,8 @@ const imprimirRelatorioColab = (colab, ano, pgs, servicos) => {
     "<p><b>Colaborador:</b> "+colab.nome+" &nbsp;&nbsp; <b>Tipo:</b> "+(colab.tipo_parceria||"-")+"</p>"+
     "<p style='color:#666;font-size:11px'>Emitido em "+new Date().toLocaleDateString("pt-BR")+" | "+ordenados.length+" lancamento(s)</p>"+
     "<table><tr><th>Data</th><th>Categoria</th><th>Descricao</th><th>Protocolo</th><th>Status</th><th>Valor</th></tr>"+rows+
-    "<tr class='tot'><td colspan='5'>TOTAL PAGO</td><td style='text-align:right;color:#16a34a'>R$ "+fmt(pago)+"</td></tr>"+
-    "<tr class='tot'><td colspan='5'>TOTAL PENDENTE</td><td style='text-align:right;color:#d97706'>R$ "+fmt(pendente)+"</td></tr>"+
+    "<tr class='tot'><td colspan='5'>TOTAL REALIZADO (ate "+new Date(hoje+"T12:00:00").toLocaleDateString("pt-BR")+")</td><td style='text-align:right;color:#16a34a'>R$ "+fmt(pago)+"</td></tr>"+
+    "<tr class='tot'><td colspan='5'>TOTAL FUTURO (agendado)</td><td style='text-align:right;color:#d97706'>R$ "+fmt(pendente)+"</td></tr>"+
     "<tr class='tot'><td colspan='5'>TOTAL GERAL</td><td style='text-align:right'>R$ "+fmt(total)+"</td></tr></table>"+
     "<br><button onclick='window.print()' style='background:#1e293b;color:#fff;border:none;padding:10px 22px;border-radius:6px;cursor:pointer'>Imprimir / PDF</button>"+
     "</body></html>");
@@ -5521,7 +5523,7 @@ const TelaCustos = ({showToast, custos, setCustos, sb, colaboradores}) => {
                 if(lancaveis.length===0) return showToast("Informe ao menos um periodo valido.","erro");
                 if(!window.confirm("Lancar "+lancaveis.length+" pagamento(s) pendente(s) no Financeiro para "+modalFerias.func.nome+"?")) return;
                 const colabEncontrado = (colaboradores||[]).find(c=>(c.nome||"").trim().toLowerCase()===(modalFerias.func.nome||"").trim().toLowerCase());
-                const payload = lancaveis.map(it=>({descricao:it.evento+" - "+modalFerias.func.nome,categoria:"Folha de Pagamento",valor:Number(it.valor.toFixed(2)),data:fmtD(it.data),forma:"",status:"pendente",colaborador_id:colabEncontrado?colabEncontrado.id:null}));
+                const payload = lancaveis.map(it=>({descricao:it.evento+" - "+modalFerias.func.nome,categoria:"Folha de Pagamento",valor:Number(it.valor.toFixed(2)),data:fmtD(it.data),forma:"",colaborador_id:colabEncontrado?colabEncontrado.id:null}));
                 const {error} = await sb.from("pagamentos").insert(payload);
                 if(error){ showToast("Erro ao lancar: "+error.message,"erro"); return; }
                 regLog("pagamentos","criou","Cronograma de ferias - "+modalFerias.func.nome+" ("+lancaveis.length+" lancamentos)");
