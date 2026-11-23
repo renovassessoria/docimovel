@@ -2515,9 +2515,21 @@ const TelaJudicial=({servicos,setServicos,clientes,cn,irPara,sb,showToast,abrirS
   const [filtroStatus,setFiltroStatus]=useState("Todos");
   const processos=servicos.filter(s=>s.tipoProcesso==="judicial"||s.tipo_processo==="judicial"||(s.dadosJudiciais&&Object.keys(s.dadosJudiciais||{}).length>0)||s.estagio==="Judiciário"||s.estagio==="Judicial");
   const filtrados=processos.filter(s=>{
-    const q=busca.toLowerCase();
+    const q=busca.toLowerCase().trim();
+    const qDig=busca.replace(/\D/g,"");
     const cli=clientes.find(c=>c.id===(s.clienteId||s.cliente_id));
-    const mb=!q||(cli?.nome||"").toLowerCase().includes(q)||(s.dadosJudiciais?.numero||"").includes(q)||(s.protocolo||"").toLowerCase().includes(q);
+    const numPrincipal=s.dadosJudiciais?.numero||s.dadosJudiciais?.numeroProcesso||"";
+    const numPrincipalDig=numPrincipal.replace(/\D/g,"");
+    const recursos=s.dadosJudiciais?.recursos||[];
+    // Casa tanto pelo numero principal quanto pelos numeros de recurso vinculados,
+    // comparando tambem so os digitos (ignora pontos/tracos digitados de forma diferente).
+    const matchNumero=!!numPrincipal&&(numPrincipal.toLowerCase().includes(q)||(qDig.length>=6&&numPrincipalDig.includes(qDig)));
+    const matchRecurso=recursos.some(rc=>{
+      const numR=rc.numero||"";
+      const numRDig=numR.replace(/\D/g,"");
+      return !!numR&&(numR.toLowerCase().includes(q)||(qDig.length>=6&&numRDig.includes(qDig)));
+    });
+    const mb=!q||(cli?.nome||"").toLowerCase().includes(q)||matchNumero||matchRecurso||(s.protocolo||"").toLowerCase().includes(q);
     const ms=filtroStatus==="Todos"||s.status===filtroStatus;
     return mb&&ms;
   });
@@ -2537,7 +2549,7 @@ const TelaJudicial=({servicos,setServicos,clientes,cn,irPara,sb,showToast,abrirS
   return(
     <div style={S.tela}>
       <PageHeader title="Processos Judiciais" sub={filtrados.length+" processo(s)"}>
-        <input style={{...S.search,width:280}} placeholder="Buscar por nome, numero do processo..." value={busca} onChange={e=>setBusca(e.target.value)}/>
+        <input style={{...S.search,width:280}} placeholder="Buscar por nome, numero do processo ou recurso..." value={busca} onChange={e=>setBusca(e.target.value)}/>
         <select style={S.selectSm} value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)}>
           <option>Todos</option><option>Aberto</option><option value="Concluído">Concluido</option>
         </select>
