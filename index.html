@@ -1186,7 +1186,7 @@ const AppContent=({session})=>{
         {tela==="servicos"&&servicoAberto&&<TelaServicoDetalhe servico={servicoAberto} clientes={clientes} aba={abaServico} setAba={setAbaServico} atualizar={p=>atualizarServico(servicoAberto.id,p)} showToast={showToast} sb={sb} abrirModal={abrirModal} voltar={()=>setServicoAberto(null)} setPrintData={setPrintData}/>}
         {tela==="diligencias_all"&&<TelaDiligencias servicos={servicos} cn={cn} abrirServico={s=>{setServicoAberto(s);setAbaServico("diligencias");setTela("servicos");}}/>}
         {tela==="agenda"&&<TelaAgenda agenda={agenda} setAgenda={setAgenda} clientes={clientes} servicos={servicos} cn={cn} sb={sb} showToast={showToast} load2={load2}/>}
-        {tela==="judicial"&&<TelaJudicial servicos={servicos} setServicos={setServicos} clientes={clientes} cn={cn} irPara={setTela} sb={sb} showToast={showToast} abrirServico={s=>{setServicoAberto(s);setAbaServico("visao");setTela("servicos");}}/>}
+        {tela==="judicial"&&<TelaJudicial servicos={servicos} setServicos={setServicos} clientes={clientes} alertas={alertas} cn={cn} irPara={setTela} sb={sb} showToast={showToast} abrirServico={s=>{setServicoAberto(s);setAbaServico("visao");setTela("servicos");}}/>}
         {tela==="andamento"&&!processoAberto&&<TelaAndamento servicos={servicos} cn={cn} diligVenc={diligVenc} diligHoje={diligHoje} abrirProcesso={s=>{setProcessoAberto(s);setAbaProcesso("timeline");}}/>}
         {tela==="andamento"&&processoAberto&&<TelaProcessoDetalhe servico={processoAberto} aba={abaProcesso} setAba={setAbaProcesso} atualizar={p=>atualizarServico(processoAberto.id,p)} voltar={()=>setProcessoAberto(null)} cn={cn}/>}
         {tela==="financeiro"&&<TelaFinanceiro aba={abaFin} setAba={setAbaFin} recebimentos={recebimentos} pagamentos={pagamentos} setRecebimentos={setRecebimentos} setPagamentos={setPagamentos} totRec={totRec} totPag={totPag} lucro={lucro} dadosMensais={dadosMensais} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} abrirModal={abrirModal} setReciboData={setReciboData} sb={sb} colaboradores={colaboradores} setColaboradores={setColaboradores} metas={metas} setMetas={setMetas} servicos={servicos}/>}
@@ -1600,11 +1600,63 @@ const TelaServicos=({servicos,search,setSearch,cn,abrirModal,abrirServico,setPri
 
   const estagiosUnicos=[...new Set(servicos.map(s=>s.estagio).filter(Boolean))].sort();
 
+  const stats=useMemo(()=>{
+    const abertos=servicos.filter(s=>s.status!=="Concluído"&&s.status!=="Concluido");
+    const concluidos=servicos.filter(s=>s.status==="Concluído"||s.status==="Concluido");
+    const extra=servicos.filter(s=>(s.tipoProcesso||"extrajudicial")==="extrajudicial").length;
+    const jud=servicos.filter(s=>s.tipoProcesso==="judicial").length;
+    const mapa={};
+    servicos.forEach(s=>{const k=(s.tipo||"").trim()||"Nao informado";mapa[k]=(mapa[k]||0)+1;});
+    const entradas=Object.entries(mapa).sort((a,b)=>b[1]-a[1]);
+    const porTipo=entradas.slice(0,5);
+    const restoQtd=entradas.slice(5).reduce((acc,[,v])=>acc+v,0);
+    if(restoQtd>0)porTipo.push(["Outras",restoQtd]);
+    const maxTipo=Math.max(1,...porTipo.map(x=>x[1]));
+    const maxExtraJud=Math.max(1,extra,jud);
+    return{total:servicos.length,abertosQtd:abertos.length,concluidosQtd:concluidos.length,extra,jud,porTipo,maxTipo,maxExtraJud};
+  },[servicos]);
+
   return(<div style={S.tela}><PageHeader title="Serviços / Protocolos" sub={filtrados.length+" de "+servicos.length+" serviço(s)"}>
     <input style={S.search} placeholder="Buscar por nome, CPF, protocolo, tipo..." value={search} onChange={e=>setSearch(e.target.value)}/>
     <button style={S.btnPrimary} onClick={()=>abrirModal("servico",{orcamento:{valor:"",desconto:0,obs:"",status:"Orçamento"},checklist:{},outrosDesc:""})} className="bp">+ Novo Serviço</button>
   </PageHeader>
   <div style={S.body}>
+    {servicos.length>0&&(
+      <div style={{marginBottom:14}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:12}}>
+          <div style={S.card}>
+            <div style={{fontSize:26,fontWeight:700,color:"#d6d3cc",lineHeight:1.1}}>{stats.total}</div>
+            <div style={{fontSize:11,color:"#8a8782",marginTop:6}}>Total de serviços cadastrados</div>
+          </div>
+          <div style={S.card}>
+            <div style={{fontSize:26,fontWeight:700,color:"#5a8f6e",lineHeight:1.1}}>{stats.abertosQtd}</div>
+            <div style={{fontSize:11,color:"#8a8782",marginTop:6}}>Abertos &nbsp;·&nbsp; {stats.concluidosQtd} concluidos</div>
+          </div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>
+          <div style={S.card}>
+            <div style={{fontSize:10,fontWeight:700,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"1px",marginBottom:10}}>Extrajudicial × Judicial</div>
+            {[["Extrajudicial",stats.extra,"#5a7aaa"],["Judicial",stats.jud,"#8a5a7a"]].map(([k,v,cor])=>(
+              <div key={k} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7,fontSize:11.5}}>
+                <div style={{width:116,flexShrink:0,color:"#b4b1a9",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{k}</div>
+                <div style={{flex:1,height:7,background:"#16181d",borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:(v/stats.maxExtraJud*100)+"%",background:cor,borderRadius:4}}/></div>
+                <div style={{width:22,textAlign:"right",color:"#8a8782",flexShrink:0}}>{v}</div>
+              </div>
+            ))}
+          </div>
+          <div style={S.card}>
+            <div style={{fontSize:10,fontWeight:700,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"1px",marginBottom:10}}>Por Tipo de Demanda</div>
+            {stats.porTipo.map(([k,v])=>(
+              <div key={k} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7,fontSize:11.5}}>
+                <div style={{width:150,flexShrink:0,color:"#b4b1a9",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{k}</div>
+                <div style={{flex:1,height:7,background:"#16181d",borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:(v/stats.maxTipo*100)+"%",background:"#8a7049",borderRadius:4}}/></div>
+                <div style={{width:22,textAlign:"right",color:"#8a8782",flexShrink:0}}>{v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
     {/* Filtros */}
     <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
       <span style={{fontSize:11,color:"#4a4d56",fontWeight:600}}>Filtrar:</span>
@@ -2510,10 +2562,83 @@ const imprimirCustos=(ML,vals,funcs,outros,custoMes,ano)=>{
   const corpo=_t("h1","","Relatorio de Custos - "+ano)+_t("p","color:#666;font-size:11px","Emitido em "+new Date().toLocaleDateString("pt-BR"))+pessoalStr+_tbl(thead+rows+tf);
   _abrir("Custos "+ano,corpo);
 };
-const TelaJudicial=({servicos,setServicos,clientes,cn,irPara,sb,showToast,abrirServico})=>{
+const TelaJudicial=({servicos,setServicos,clientes,alertas,cn,irPara,sb,showToast,abrirServico})=>{
   const [busca,setBusca]=useState("");
   const [filtroStatus,setFiltroStatus]=useState("Todos");
   const processos=servicos.filter(s=>s.tipoProcesso==="judicial"||s.tipo_processo==="judicial"||(s.dadosJudiciais&&Object.keys(s.dadosJudiciais||{}).length>0)||s.estagio==="Judiciário"||s.estagio==="Judicial");
+
+  // Casa um alerta de movimentacao com um processo: por servico_id direto, ou comparando
+  // os 15 digitos finais do numero (tanto do numero principal quanto dos recursos vinculados).
+  // Mesma logica usada em getServico, para o painel ficar consistente com a tela de Alertas.
+  const matchAlertaServico=(a,s)=>{
+    if(a.servico_id)return a.servico_id===s.id;
+    if(!a.numero_processo)return false;
+    const numA=a.numero_processo.replace(/\D/g,"");
+    if(numA.length<15)return false;
+    const numS=(s.dadosJudiciais?.numero||s.dadosJudiciais?.numeroProcesso||"").replace(/\D/g,"");
+    if(numS.length>=15&&numS.slice(-15)===numA.slice(-15))return true;
+    return (s.dadosJudiciais?.recursos||[]).some(rc=>{
+      const numR=(rc.numero||"").replace(/\D/g,"");
+      return numR.length>=15&&numR.slice(-15)===numA.slice(-15);
+    });
+  };
+
+  const stats=useMemo(()=>{
+    const procJud=servicos.filter(s=>s.tipoProcesso==="judicial"||s.tipo_processo==="judicial"||(s.dadosJudiciais&&Object.keys(s.dadosJudiciais||{}).length>0)||s.estagio==="Judiciário"||s.estagio==="Judicial");
+    const abertos=procJud.filter(s=>s.status!=="Concluído");
+    const concluidos=procJud.filter(s=>s.status==="Concluído");
+
+    const agrupar=(arr,getKey,limite)=>{
+      const mapa={};
+      arr.forEach(s=>{const k=(getKey(s)||"").trim()||"Nao informado";mapa[k]=(mapa[k]||0)+1;});
+      const entradas=Object.entries(mapa).sort((a,b)=>b[1]-a[1]);
+      const top=entradas.slice(0,limite);
+      const restoQtd=entradas.slice(limite).reduce((acc,[,v])=>acc+v,0);
+      if(restoQtd>0)top.push(["Outras",restoQtd]);
+      return top;
+    };
+    const porVara=agrupar(procJud,s=>s.dadosJudiciais?.vara,5);
+    const porComarca=agrupar(procJud,s=>s.dadosJudiciais?.comarca,5);
+    const porTipo=agrupar(procJud,s=>s.dadosJudiciais?.tipoDemanda||s.tipo,5);
+    const maxVara=Math.max(1,...porVara.map(x=>x[1]));
+    const maxComarca=Math.max(1,...porComarca.map(x=>x[1]));
+    const maxTipo=Math.max(1,...porTipo.map(x=>x[1]));
+
+    const hoje=Date.now();
+    let paradosMais90=0;
+    const ranking=[];
+    const semRegistro=[];
+    abertos.forEach(s=>{
+      const ligados=(alertas||[]).filter(a=>matchAlertaServico(a,s));
+      const manualIso=s.dadosJudiciais?.ultimaMovimentacaoManual||null;
+      let ultimaData=null,origem=null;
+      if(ligados.length>0){
+        const maisRecente=ligados.reduce((m,a)=>new Date(a.created_at)>new Date(m.created_at)?a:m);
+        ultimaData=new Date(maisRecente.created_at);
+        origem="Via alerta de e-mail";
+      }
+      if(manualIso){
+        const dManual=new Date(manualIso);
+        if(!ultimaData||dManual>ultimaData){ultimaData=dManual;origem="Marcado manualmente em "+dManual.toLocaleDateString("pt-BR");}
+      }
+      if(!ultimaData){semRegistro.push(s);return;}
+      const dias=Math.floor((hoje-ultimaData.getTime())/86400000);
+      if(dias>90)paradosMais90++;
+      ranking.push({s,dias,origem});
+    });
+    ranking.sort((a,b)=>b.dias-a.dias);
+
+    return{total:procJud.length,abertosQtd:abertos.length,concluidosQtd:concluidos.length,paradosMais90,semRegistro,porVara,porComarca,porTipo,maxVara,maxComarca,maxTipo,ranking:ranking.slice(0,10)};
+  },[servicos,alertas]);
+
+  const marcarMovimentacao=async(s)=>{
+    const agora=new Date().toISOString();
+    const novoDadosJud={...(s.dadosJudiciais||{}),ultimaMovimentacaoManual:agora};
+    const{error}=await sb.from("servicos").update({dados_judiciais:novoDadosJud}).eq("id",s.id);
+    if(error){showToast("Erro ao registrar movimentacao: "+error.message,"erro");return;}
+    setServicos(prev=>prev.map(x=>x.id===s.id?{...x,dadosJudiciais:novoDadosJud}:x));
+    showToast("Movimentacao registrada em "+new Date(agora).toLocaleDateString("pt-BR")+"!");
+  };
   const filtrados=processos.filter(s=>{
     const q=busca.toLowerCase().trim();
     const qDig=busca.replace(/\D/g,"");
@@ -2548,14 +2673,98 @@ const TelaJudicial=({servicos,setServicos,clientes,cn,irPara,sb,showToast,abrirS
 
   return(
     <div style={S.tela}>
-      <PageHeader title="Processos Judiciais" sub={filtrados.length+" processo(s)"}>
-        <input style={{...S.search,width:280}} placeholder="Buscar por nome, numero do processo ou recurso..." value={busca} onChange={e=>setBusca(e.target.value)}/>
-        <select style={S.selectSm} value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)}>
-          <option>Todos</option><option>Aberto</option><option value="Concluído">Concluido</option>
-        </select>
-        <button style={S.btnPrimary} onClick={()=>imprimirJudicial(filtrados,cn)} className="bp">Imprimir</button>
-      </PageHeader>
+      <PageHeader title="Processos Judiciais" sub={stats.total+" processo(s) cadastrado(s)"}/>
       <div style={S.body}>
+        {processos.length>0&&(
+          <div style={{marginBottom:16}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:12}}>
+              <div style={S.card}>
+                <div style={{fontSize:26,fontWeight:700,color:"#d6d3cc",lineHeight:1.1}}>{stats.total}</div>
+                <div style={{fontSize:11,color:"#8a8782",marginTop:6}}>Total de processos</div>
+              </div>
+              <div style={S.card}>
+                <div style={{fontSize:26,fontWeight:700,color:"#5a8f6e",lineHeight:1.1}}>{stats.abertosQtd}</div>
+                <div style={{fontSize:11,color:"#8a8782",marginTop:6}}>Abertos &nbsp;·&nbsp; {stats.concluidosQtd} concluidos</div>
+              </div>
+              <div style={{...S.card,border:"1px solid #b4646455"}}>
+                <div style={{fontSize:26,fontWeight:700,color:"#d98080",lineHeight:1.1}}>{stats.paradosMais90}</div>
+                <div style={{fontSize:11,color:"#8a8782",marginTop:6}}>Parados ha mais de 90 dias</div>
+              </div>
+              <div style={{...S.card,border:"1px solid #d9a44155"}}>
+                <div style={{fontSize:26,fontWeight:700,color:"#d9a441",lineHeight:1.1}}>{stats.semRegistro.length}</div>
+                <div style={{fontSize:11,color:"#8a8782",marginTop:6}}>Sem nenhuma movimentacao registrada</div>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:12}}>
+              {[["Por Vara",stats.porVara,stats.maxVara,"#8a7049"],["Por Comarca",stats.porComarca,stats.maxComarca,"#5a7aaa"],["Por Tipo de Demanda",stats.porTipo,stats.maxTipo,"#8a5a7a"]].map(([titulo,dados,max,cor])=>(
+                <div key={titulo} style={S.card}>
+                  <div style={{fontSize:10,fontWeight:700,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"1px",marginBottom:10}}>{titulo}</div>
+                  {dados.map(([k,v])=>(
+                    <div key={k} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7,fontSize:11.5}}>
+                      <div style={{width:116,flexShrink:0,color:"#b4b1a9",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{k}</div>
+                      <div style={{flex:1,height:7,background:"#16181d",borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:(v/max*100)+"%",background:cor,borderRadius:4}}/></div>
+                      <div style={{width:22,textAlign:"right",color:"#8a8782",flexShrink:0}}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            {stats.semRegistro.length>0&&(
+              <div style={{...S.card,border:"1px solid #d9a44155",marginBottom:12}}>
+                <div style={{fontSize:10,fontWeight:700,color:"#d9a441",textTransform:"uppercase",letterSpacing:"1px",marginBottom:4}}>⚠ Sem nenhuma movimentacao registrada ({stats.semRegistro.length})</div>
+                <div style={{fontSize:11,color:"#8a8782",marginBottom:10}}>Processos em curso sem alerta de e-mail algum vinculado. Clique em "Marcar movimentacao" se voce conferiu e sabe que esta tudo em ordem — isso comeca a contar os dias a partir de hoje.</div>
+                <div style={{maxHeight:206,overflowY:"auto"}}>
+                  {stats.semRegistro.map(s=>(
+                    <div key={s.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 10px 8px 0",borderBottom:"1px solid rgba(255,255,255,0.025)"}}>
+                      <div>
+                        <div style={{fontSize:12,color:"#b4b1a9"}}>{cn(s.clienteId||s.cliente_id)}</div>
+                        <div style={{fontSize:10.5,color:"#d9a441",marginTop:2,fontWeight:600}}>{s.dadosJudiciais?.tipoDemanda||s.tipo||"-"}{" · "}{s.dadosJudiciais?.numero||s.dadosJudiciais?.numeroProcesso||"sem numero informado"}</div>
+                        <div style={{fontSize:10.5,color:"#4a4d56",marginTop:1}}>{(s.dadosJudiciais?.vara||s.dadosJudiciais?.comarca)?[s.dadosJudiciais?.vara,s.dadosJudiciais?.comarca].filter(Boolean).join(" · "):"sem vara/comarca informado"}</div>
+                      </div>
+                      <button style={{...S.btnSm,background:"#1e3a2a",color:"#5a8f6e",border:"1px solid #5a8f6e55",flexShrink:0}} className="bs" onClick={()=>marcarMovimentacao(s)}>✓ Marcar movimentacao</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {stats.ranking.length>0&&(
+              <div style={S.card}>
+                <div style={{fontSize:10,fontWeight:700,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"1px",marginBottom:10}}>Mais tempo sem movimentacao (alerta ou marcacao manual)</div>
+                <div style={{maxHeight:230,overflowY:"auto"}}>
+                  <table style={S.table}>
+                    <thead><tr>{["Cliente","Vara","Comarca","Dias parado",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                    <tbody>
+                      {stats.ranking.map(({s,dias,origem})=>(
+                        <tr key={s.id}>
+                          <td style={S.td}>{cn(s.clienteId||s.cliente_id)}<div style={{fontSize:10.5,color:"#d9a441",fontWeight:600,marginTop:2}}>{s.dadosJudiciais?.tipoDemanda||s.tipo||"-"}{" · "}{s.dadosJudiciais?.numero||s.dadosJudiciais?.numeroProcesso||"sem numero informado"}</div></td>
+                          <td style={S.td}>{s.dadosJudiciais?.vara||"-"}</td>
+                          <td style={S.td}>{s.dadosJudiciais?.comarca||"-"}</td>
+                          <td style={{...S.td,fontWeight:700,color:dias>90?"#d98080":"#d9a441"}}>{dias} dias<div style={{fontWeight:400,fontSize:10,color:"#4a4d56",marginTop:1}}>{origem}</div></td>
+                          <td style={S.td}>
+                            <button style={S.btnSm} className="bs" onClick={()=>abrirServico(s)}>Ver</button>
+                            <button style={{...S.btnSm,background:"#1e3a2a",color:"#5a8f6e",border:"1px solid #5a8f6e55"}} className="bs" onClick={()=>marcarMovimentacao(s)}>✓ Marcar movimentacao</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        {processos.length>0&&(
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,flexWrap:"wrap",gap:8}}>
+            <div style={{fontSize:13,fontWeight:600,color:"#d6d3cc"}}>Processos cadastrados <span style={{color:"#4a4d56",fontWeight:400,fontSize:12}}>({filtrados.length})</span></div>
+            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+              <input style={{...S.search,width:280}} placeholder="Buscar por nome, numero do processo ou recurso..." value={busca} onChange={e=>setBusca(e.target.value)}/>
+              <select style={S.selectSm} value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)}>
+                <option>Todos</option><option>Aberto</option><option value="Concluído">Concluido</option>
+              </select>
+              <button style={S.btnPrimary} onClick={()=>imprimirJudicial(filtrados,cn)} className="bp">Imprimir</button>
+            </div>
+          </div>
+        )}
         {processos.length===0?(
           <div style={{...S.card,textAlign:"center",padding:"40px"}}>
             <div style={{fontSize:14,fontWeight:600,color:"#d6d3cc",marginBottom:8}}>Nenhum processo judicial cadastrado</div>
