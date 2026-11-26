@@ -1189,7 +1189,7 @@ const AppContent=({session})=>{
         {tela==="judicial"&&<TelaJudicial servicos={servicos} setServicos={setServicos} clientes={clientes} alertas={alertas} cn={cn} irPara={setTela} sb={sb} showToast={showToast} abrirServico={s=>{setServicoAberto(s);setAbaServico("visao");setTela("servicos");}}/>}
         {tela==="andamento"&&!processoAberto&&<TelaAndamento servicos={servicos} cn={cn} diligVenc={diligVenc} diligHoje={diligHoje} abrirProcesso={s=>{setProcessoAberto(s);setAbaProcesso("timeline");}}/>}
         {tela==="andamento"&&processoAberto&&<TelaProcessoDetalhe servico={processoAberto} aba={abaProcesso} setAba={setAbaProcesso} atualizar={p=>atualizarServico(processoAberto.id,p)} voltar={()=>setProcessoAberto(null)} cn={cn}/>}
-        {tela==="financeiro"&&<TelaFinanceiro aba={abaFin} setAba={setAbaFin} recebimentos={recebimentos} pagamentos={pagamentos} setRecebimentos={setRecebimentos} setPagamentos={setPagamentos} totRec={totRec} totPag={totPag} lucro={lucro} dadosMensais={dadosMensais} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} abrirModal={abrirModal} setReciboData={setReciboData} sb={sb} colaboradores={colaboradores} setColaboradores={setColaboradores} metas={metas} setMetas={setMetas} servicos={servicos}/>}
+        {tela==="financeiro"&&<TelaFinanceiro aba={abaFin} setAba={setAbaFin} recebimentos={recebimentos} pagamentos={pagamentos} setRecebimentos={setRecebimentos} setPagamentos={setPagamentos} totRec={totRec} totPag={totPag} lucro={lucro} dadosMensais={dadosMensais} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} abrirModal={abrirModal} setReciboData={setReciboData} sb={sb} colaboradores={colaboradores} setColaboradores={setColaboradores} metas={metas} setMetas={setMetas} servicos={servicos} cn={cn} abrirServico={s=>{setServicoAberto(s);setAbaServico("pagamentos");setTela("servicos");}}/>}
         {tela==="relatorios"&&<TelaRelatorios dadosMensais={dadosMensais} totRec={totRec} totPag={totPag} lucro={lucro} recAno={recAno} melhorMes={melhorMes} anoFin={anoFin} setAnoFin={setAnoFin} recebimentos={recebimentos} pagamentos={pagamentos} servicos={servicos} cn={cn} clientes={clientes} snapshots={snapshots} setSnapshots={setSnapshots} agenda={agenda} sb={sb}/>}
         {tela==="custos"&&<TelaCustos showToast={showToast} custos={custos} setCustos={v=>{setCustos(v);return sb.from("configuracoes").upsert({id:"custos",dados:v,updated_at:new Date().toISOString()});}} sb={sb} colaboradores={colaboradores}/>}
         {tela==="alertas"&&<TelaAlertas alertas={alertas} setAlertas={setAlertas} servicos={servicos} cn={cn} sb={sb} showToast={showToast}/>}
@@ -3377,7 +3377,7 @@ const TelaAgenda=({agenda,setAgenda,clientes,servicos,cn,sb,showToast,load2})=>{
   );
 };
 
-const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPagamentos,totRec,totPag,lucro,dadosMensais,melhorMes,anoFin,setAnoFin,abrirModal,setReciboData,sb,colaboradores,setColaboradores,metas,setMetas,servicos})=>{
+const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPagamentos,totRec,totPag,lucro,dadosMensais,melhorMes,anoFin,setAnoFin,abrirModal,setReciboData,sb,colaboradores,setColaboradores,metas,setMetas,servicos,cn,abrirServico})=>{
   // Hooks do DRE — declarados no topo do componente (sempre executados, conforme Rules of Hooks)
   const dreRef=useRef(null);
   const dreAnualRef=useRef(null);
@@ -3388,6 +3388,8 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
   const [buscaColab,setBuscaColab]=useState("");
   const [editandoMeta,setEditandoMeta]=useState(false);
   const [valorMetaInput,setValorMetaInput]=useState("");
+  const [verListaReceber,setVerListaReceber]=useState(false);
+  const [verSemPrevisao,setVerSemPrevisao]=useState(false);
   const [dtIni,setDtIni]=useState("");
   const [dtFim,setDtFim]=useState("");
   const mesAtualNum=anoFin===new Date().getFullYear()?new Date().getMonth()+1:1;
@@ -3873,17 +3875,31 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
           const recebidoReal=recebimentos
             .filter(r=>(r.data||"").startsWith(anoAtual))
             .reduce((a,r)=>a+Number(r.valor||0),0);
-          // A receber = saldo remanescente dos serviços fechados (lógica do Relatório Honorários)
-          const saldosMeta=(servicos||[])
-            .filter(s=>s.status!=="Orçamento"&&s.orcamento?.status!=="Orçamento")
-            .map(s=>{
-              const valorLiq=Number(s.orcamento?.valor||0)-Number(s.orcamento?.desconto||0);
-              const pago=(s.pagamentos||[])
-                .filter(p=>p.status==="pago"||(p.data&&p.data<=hoje))
-                .reduce((a,p)=>a+Number(p.valor||0),0);
-              return Math.max(0,valorLiq-pago);
+          // A receber = soma das parcelas realmente pendentes (nao pagas E com vencimento ainda nao passado),
+          // com vencimento cadastrado ate 31/12 do ano em consulta. Segue a mesma convencao usada no resto
+          // do sistema (DRE, relatorios): uma parcela com data ja vencida e considerada recebida mesmo sem
+          // o status "pago" marcado manualmente — por isso entradas antigas ja vencidas nao aparecem aqui.
+          // Parcelas sem data nao entram (so contam quando a data for lancada, no recebimento real).
+          // Parcelas com vencimento em anos seguintes tambem ficam de fora (vao para aReceberFuturo).
+          const fimDoAno=anoAtual+"-12-31";
+          // Só orçamentos com status "Fechado" entram como saldo em aberto. "Concluído" é um status
+          // que o usuário marca manualmente (botão "Concluído" + confirmação de entrega), sinalizando
+          // que aquele contrato já foi encerrado/quitado na prática — mesmo que os lançamentos de
+          // pagamentos não somem exatamente o valor líquido (desconto informal, lançamento incompleto,
+          // etc.). Por isso "Concluído" não entra em nenhuma conta de saldo pendente.
+          const servicosFechados=(servicos||[]).filter(s=>s.orcamento?.status==="Fechado");
+          const aReceberItens=[];
+          servicosFechados.forEach(s=>{
+            (s.pagamentos||[]).filter(p=>p.status!=="pago"&&p.data&&p.data>hoje&&p.data<=fimDoAno).forEach(p=>{
+              aReceberItens.push({servico:s,pagamento:p});
             });
-          const aReceber=saldosMeta.reduce((a,s)=>a+s,0);
+          });
+          aReceberItens.sort((a,b)=>(a.pagamento.data||"").localeCompare(b.pagamento.data||""));
+          const aReceber=aReceberItens.reduce((a,it)=>a+Number(it.pagamento.valor||0),0);
+          const aReceberFuturo=servicosFechados.reduce((total,s)=>{
+            const pend=(s.pagamentos||[]).filter(p=>p.status!=="pago"&&p.data&&p.data>fimDoAno);
+            return total+pend.reduce((a,p)=>a+Number(p.valor||0),0);
+          },0);
 
           // Orçamentos em aberto (potencial extra, não entra no "a receber")
           const orcamentosAbertos=(servicos||[])
@@ -3891,6 +3907,19 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
             .reduce((a,s)=>a+Number(s.orcamento?.valor||0),0);
 
           const potencialTotal=recebidoReal+aReceber;
+
+          // ── Saldos sem previsão de recebimento (controle; não entra na meta) ──
+          // Mesmo universo de servicosFechados (só "Fechado") — "Concluído" fica de fora,
+          // então contratos já encerrados não aparecem aqui mesmo com pagamentos incompletos.
+          const linhasSemPrevisao=servicosFechados.map(s=>{
+            const valorLiq=Number(s.orcamento?.valor||0)-Number(s.orcamento?.desconto||0);
+            const recebido=(s.pagamentos||[]).filter(p=>p.status==="pago"||(p.data&&p.data<=hoje)).reduce((a,p)=>a+Number(p.valor||0),0);
+            const saldoRestante=Math.max(0,valorLiq-recebido);
+            const agendado=(s.pagamentos||[]).filter(p=>p.status!=="pago"&&p.data&&p.data>hoje).reduce((a,p)=>a+Number(p.valor||0),0);
+            const semPrevisao=Math.max(0,saldoRestante-agendado);
+            return{s,valorLiq,recebido,saldoRestante,agendado,semPrevisao};
+          }).filter(l=>l.semPrevisao>0.009).sort((a,b)=>b.semPrevisao-a.semPrevisao);
+          const totalSemPrevisao=linhasSemPrevisao.reduce((a,l)=>a+l.semPrevisao,0);
 
           // ── Meta do ano ─────────────────────────────────────────────────
           const metaAnoAtual=metas[anoAtual];
@@ -3944,10 +3973,82 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
               {/* Cards resumo */}
               <div style={S.sg4}>
                 <div style={{...S.card,borderLeft:"2px solid #5a8f6e77"}}><div style={S.cardTitle}>Recebido (caixa)</div><div style={{fontSize:17,fontWeight:400,color:"#5a8f6e",opacity:.85}}>R$ {fmt(recebidoReal)}</div></div>
-                <div style={{...S.card,borderLeft:"2px solid #5a7aaa77"}}><div style={S.cardTitle}>A receber (cadastrado)</div><div style={{fontSize:17,fontWeight:400,color:"#5a7aaa",opacity:.85}}>R$ {fmt(aReceber)}</div></div>
+                <div style={{...S.card,borderLeft:"2px solid #5a7aaa77"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                    <div style={S.cardTitle}>A receber (cadastrado)</div>
+                    {aReceberItens.length>0&&<button style={{...S.btnSm,fontSize:10,marginRight:0}} onClick={()=>setVerListaReceber(v=>!v)} className="bs">{verListaReceber?"Ocultar":"Ver lista"}</button>}
+                  </div>
+                  <div style={{fontSize:17,fontWeight:400,color:"#5a7aaa",opacity:.85}}>R$ {fmt(aReceber)}</div>
+                </div>
                 <div style={{...S.card,borderLeft:"2px solid #b8965a77"}}><div style={S.cardTitle}>Falta para a meta</div><div style={{fontSize:17,fontWeight:400,color:"#b8965a",opacity:.85}}>R$ {fmt(faltaParaMeta)}</div></div>
                 <div style={{...S.card,borderLeft:"2px solid #7a6aaa77"}}><div style={S.cardTitle}>+ Orçamentos em aberto</div><div style={{fontSize:17,fontWeight:400,color:"#7a6aaa",opacity:.85}}>R$ {fmt(orcamentosAbertos)}</div></div>
               </div>
+              {verListaReceber&&aReceberItens.length>0&&(
+                <div style={{...S.card,marginTop:12}}>
+                  <div style={{...S.cardTitle,marginBottom:10}}>Parcelas que compõem "A receber" — vencimento até 31/12/{anoAtual} ({aReceberItens.length})</div>
+                  <div style={{maxHeight:280,overflowY:"auto"}}>
+                    <table style={S.table}>
+                      <thead><tr>{["Cliente","Protocolo","Descrição","Vencimento","Valor"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {aReceberItens.map(({servico:s,pagamento:p})=>(
+                          <tr key={p.id} style={S.tr} className="tr">
+                            <td style={S.td}>{cn(s.clienteId||s.cliente_id)}</td>
+                            <td style={S.td}><span style={S.proto}>{s.protocolo}</span></td>
+                            <td style={S.td}>{p.descricao||"-"}</td>
+                            <td style={S.td}>{p.data?new Date(p.data+"T12:00:00").toLocaleDateString("pt-BR"):"-"}</td>
+                            <td style={{...S.td,fontWeight:600,color:"#5a7aaa"}}>R$ {fmt(p.valor)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              {aReceberFuturo>0&&(
+                <div style={{...S.card,marginTop:12,border:"1px solid #2a2d36",opacity:.8}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div style={S.cardTitle}>A receber em anos futuros <span style={{textTransform:"none",fontWeight:400}}>(não entra na meta de {anoAtual})</span></div>
+                    <div style={{fontSize:14,fontWeight:400,color:"#5a5d66"}}>R$ {fmt(aReceberFuturo)}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Sem previsão de recebimento — só controle, não entra na meta */}
+              <div style={{...S.card,marginTop:12,border:"1px solid #d9a44155"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                  <div>
+                    <div style={S.cardTitle}>Sem previsão de recebimento <span style={{textTransform:"none",fontWeight:400}}>(controle — não entra na meta)</span></div>
+                    <div style={{fontSize:11,color:"#8a8782",marginTop:4,maxWidth:520}}>Contratos fechados com saldo restante maior do que o total já agendado em parcelas com data futura — parte do valor devido ainda não tem previsão de quando vai entrar.</div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0,marginLeft:12}}>
+                    <div style={{fontSize:20,fontWeight:400,color:"#d9a441"}}>R$ {fmt(totalSemPrevisao)}</div>
+                    {linhasSemPrevisao.length>0&&<button style={{...S.btnSm,fontSize:10,marginTop:6}} onClick={()=>setVerSemPrevisao(v=>!v)} className="bs">{verSemPrevisao?"Ocultar":"Ver lista"}</button>}
+                  </div>
+                </div>
+              </div>
+              {verSemPrevisao&&linhasSemPrevisao.length>0&&(
+                <div style={{...S.card,marginTop:12}}>
+                  <div style={{...S.cardTitle,marginBottom:10}}>Contratos com saldo sem previsão ({linhasSemPrevisao.length})</div>
+                  <div style={{maxHeight:320,overflowY:"auto"}}>
+                    <table style={S.table}>
+                      <thead><tr>{["Cliente","Protocolo","Tipo","Saldo restante","Agendado (com data)","Sem previsão",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {linhasSemPrevisao.map(({s,saldoRestante,agendado,semPrevisao})=>(
+                          <tr key={s.id} style={S.tr} className="tr">
+                            <td style={S.td}><div style={{fontWeight:600,color:"#d6d3cc"}}>{cn(s.clienteId||s.cliente_id)}</div></td>
+                            <td style={S.td}><span style={S.proto}>{s.protocolo}</span></td>
+                            <td style={S.td}>{s.tipo}</td>
+                            <td style={S.td}>R$ {fmt(saldoRestante)}</td>
+                            <td style={S.td}>R$ {fmt(agendado)}</td>
+                            <td style={{...S.td,fontWeight:700,color:"#d9a441"}}>R$ {fmt(semPrevisao)}</td>
+                            <td style={S.td}>{abrirServico&&<button style={S.btnSm} onClick={()=>abrirServico(s)} className="bs">Abrir</button>}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               {/* Termômetro / barra de progresso em camadas */}
               <div style={{...S.card,marginTop:14}}>
@@ -4013,7 +4114,7 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
               )}
 
               <div style={{marginTop:10,fontSize:10,color:"#4a4d56",textAlign:"right"}}>
-                * Cálculo: Recebido = pagamentos já confirmados até hoje · A receber = parcelas futuras já cadastradas nos serviços · Não inclui orçamentos ainda não fechados.
+                * Cálculo: Recebido = recebimentos lançados no ano · A receber = parcelas pendentes com vencimento cadastrado até 31/12/{anoAtual}, de orçamentos com status "Fechado" · Parcelas sem data ou com vencimento em anos seguintes não entram na meta · Orçamentos "Orçamento" (ainda não fechados) e "Concluído" (já encerrados/entregues) não entram em nenhum cálculo de saldo pendente.
               </div>
             </div>
           );
