@@ -3389,6 +3389,7 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
   const [editandoMeta,setEditandoMeta]=useState(false);
   const [valorMetaInput,setValorMetaInput]=useState("");
   const [verListaReceber,setVerListaReceber]=useState(false);
+  const [verListaReceberFuturo,setVerListaReceberFuturo]=useState(false);
   const [verSemPrevisao,setVerSemPrevisao]=useState(false);
   const [dtIni,setDtIni]=useState("");
   const [dtFim,setDtFim]=useState("");
@@ -3896,10 +3897,14 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
           });
           aReceberItens.sort((a,b)=>(a.pagamento.data||"").localeCompare(b.pagamento.data||""));
           const aReceber=aReceberItens.reduce((a,it)=>a+Number(it.pagamento.valor||0),0);
-          const aReceberFuturo=servicosFechados.reduce((total,s)=>{
-            const pend=(s.pagamentos||[]).filter(p=>p.status!=="pago"&&p.data&&p.data>fimDoAno);
-            return total+pend.reduce((a,p)=>a+Number(p.valor||0),0);
-          },0);
+          const aReceberFuturoItens=[];
+          servicosFechados.forEach(s=>{
+            (s.pagamentos||[]).filter(p=>p.status!=="pago"&&p.data&&p.data>fimDoAno).forEach(p=>{
+              aReceberFuturoItens.push({servico:s,pagamento:p});
+            });
+          });
+          aReceberFuturoItens.sort((a,b)=>(a.pagamento.data||"").localeCompare(b.pagamento.data||""));
+          const aReceberFuturo=aReceberFuturoItens.reduce((a,it)=>a+Number(it.pagamento.valor||0),0);
 
           // Orçamentos em aberto (potencial extra, não entra no "a receber")
           const orcamentosAbertos=(servicos||[])
@@ -4008,7 +4013,31 @@ const TelaFinanceiro=({aba,setAba,recebimentos,pagamentos,setRecebimentos,setPag
                 <div style={{...S.card,marginTop:12,border:"1px solid #2a2d36",opacity:.8}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <div style={S.cardTitle}>A receber em anos futuros <span style={{textTransform:"none",fontWeight:400}}>(não entra na meta de {anoAtual})</span></div>
-                    <div style={{fontSize:14,fontWeight:400,color:"#5a5d66"}}>R$ {fmt(aReceberFuturo)}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                      <div style={{fontSize:14,fontWeight:400,color:"#5a5d66"}}>R$ {fmt(aReceberFuturo)}</div>
+                      {aReceberFuturoItens.length>0&&<button style={{...S.btnSm,fontSize:10,marginRight:0}} onClick={()=>setVerListaReceberFuturo(v=>!v)} className="bs">{verListaReceberFuturo?"Ocultar":"Ver lista"}</button>}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {verListaReceberFuturo&&aReceberFuturoItens.length>0&&(
+                <div style={{...S.card,marginTop:12}}>
+                  <div style={{...S.cardTitle,marginBottom:10}}>Parcelas que compõem "A receber em anos futuros" ({aReceberFuturoItens.length})</div>
+                  <div style={{maxHeight:280,overflowY:"auto"}}>
+                    <table style={S.table}>
+                      <thead><tr>{["Cliente","Protocolo","Descrição","Vencimento","Valor"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {aReceberFuturoItens.map(({servico:s,pagamento:p})=>(
+                          <tr key={p.id} style={S.tr} className="tr">
+                            <td style={S.td}>{cn(s.clienteId||s.cliente_id)}</td>
+                            <td style={S.td}><span style={S.proto}>{s.protocolo}</span></td>
+                            <td style={S.td}>{p.descricao||"-"}</td>
+                            <td style={S.td}>{p.data?new Date(p.data+"T12:00:00").toLocaleDateString("pt-BR"):"-"}</td>
+                            <td style={{...S.td,fontWeight:600,color:"#5a5d66"}}>R$ {fmt(p.valor)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
