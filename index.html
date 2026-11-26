@@ -1584,8 +1584,6 @@ const TelaServicos=({servicos,search,setSearch,cn,abrirModal,abrirServico,setPri
   const [filtroTipo,setFiltroTipo]=useState("");
   const [filtroEstagio,setFiltroEstagio]=useState("");
 
-  const orcA=servicos.filter(s=>s.orcamento?.status==="Orçamento"&&!s.orcamento?.arquivado);
-
   const filtrados=servicos.filter(s=>{
     const q=(search||"").toLowerCase();
     const nomeCliente=(cn(s.clienteId||s.cliente_id)||"").toLowerCase();
@@ -1598,6 +1596,11 @@ const TelaServicos=({servicos,search,setSearch,cn,abrirModal,abrirServico,setPri
     return matchBusca&&matchStatus&&matchTipo&&matchEstagio;
   });
 
+  const orcamentosPendentes=filtrados.filter(s=>s.orcamento?.status==="Orçamento"&&!s.orcamento?.arquivado);
+  const servicosRestantes=filtrados.filter(s=>!(s.orcamento?.status==="Orçamento"&&!s.orcamento?.arquivado));
+
+  const renderLinha=(s)=>(<tr key={s.id} style={S.tr} className="tr"><td style={S.td}><span style={S.proto}>{s.protocolo}</span></td><td style={S.td}><div style={{fontWeight:600,color:"#d6d3cc"}}>{cn(s.clienteId)}</div></td><td style={S.td}>{s.tipo}</td><td style={S.td}><Tag label={s.estagio} color={ECOR[s.estagio]||"#5a5d66"}/></td><td style={S.td}><div style={{fontWeight:700,color:"#d6d3cc",fontSize:13}}>R$ {fmt(s.orcamento?.valor)}</div><Tag label={s.orcamento?.status||"-"} color={s.orcamento?.status==="Fechado"?"#5a8f6e":s.orcamento?.status==="Concluído"?"#5a7aaa":"#a87840"}/>{s.orcamento?.arquivado&&<div style={{marginTop:3}}><Tag label="Arquivado" color="#4a4d56"/></div>}</td><td style={S.td}><Tag label={s.status} color={s.status==="Concluído"?"#5a8f6e":"#5a7aaa"}/></td><td style={S.td}><button style={S.btnSm} onClick={()=>abrirServico(s)} className="bs">Abrir</button><button style={{...S.btnSm,color:"#5a7aaa",borderColor:"#3b82f644"}} onClick={()=>abrirModal("servico",{...s,tipoProcesso:s.tipoProcesso||"extrajudicial",dadosJudiciais:s.dadosJudiciais||{}})} className="bs">Editar</button><button style={{...S.btnSm,color:"#a87840",borderColor:"#f59e0b44"}} onClick={()=>setPrintData(s)} className="bs">🖨</button><button style={{...S.btnSm,...S.btnDang}} onClick={async()=>{if(window.confirm("Excluir este servico? Esta acao e permanente e nao pode ser desfeita.")){await sb.from("servicos").delete().eq("id",s.id);setServicos(prev=>prev.filter(x=>x.id!==s.id));showToast("Excluído.");regLog("servicos","excluiu",(s.tipo||"Serviço")+" - "+s.protocolo,s.id);}}} className="bs">✕</button></td></tr>);
+
   const estagiosUnicos=[...new Set(servicos.map(s=>s.estagio).filter(Boolean))].sort();
 
   const stats=useMemo(()=>{
@@ -1607,10 +1610,7 @@ const TelaServicos=({servicos,search,setSearch,cn,abrirModal,abrirServico,setPri
     const jud=servicos.filter(s=>s.tipoProcesso==="judicial").length;
     const mapa={};
     servicos.forEach(s=>{const k=(s.tipo||"").trim()||"Nao informado";mapa[k]=(mapa[k]||0)+1;});
-    const entradas=Object.entries(mapa).sort((a,b)=>b[1]-a[1]);
-    const porTipo=entradas.slice(0,5);
-    const restoQtd=entradas.slice(5).reduce((acc,[,v])=>acc+v,0);
-    if(restoQtd>0)porTipo.push(["Outras",restoQtd]);
+    const porTipo=Object.entries(mapa).sort((a,b)=>b[1]-a[1]);
     const maxTipo=Math.max(1,...porTipo.map(x=>x[1]));
     const maxExtraJud=Math.max(1,extra,jud);
     return{total:servicos.length,abertosQtd:abertos.length,concluidosQtd:concluidos.length,extra,jud,porTipo,maxTipo,maxExtraJud};
@@ -1645,14 +1645,16 @@ const TelaServicos=({servicos,search,setSearch,cn,abrirModal,abrirServico,setPri
             ))}
           </div>
           <div style={S.card}>
-            <div style={{fontSize:10,fontWeight:700,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"1px",marginBottom:10}}>Por Tipo de Demanda</div>
-            {stats.porTipo.map(([k,v])=>(
-              <div key={k} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7,fontSize:11.5}}>
-                <div style={{width:150,flexShrink:0,color:"#b4b1a9",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{k}</div>
-                <div style={{flex:1,height:7,background:"#16181d",borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:(v/stats.maxTipo*100)+"%",background:"#8a7049",borderRadius:4}}/></div>
-                <div style={{width:22,textAlign:"right",color:"#8a8782",flexShrink:0}}>{v}</div>
-              </div>
-            ))}
+            <div style={{fontSize:10,fontWeight:700,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"1px",marginBottom:10}}>Por Tipo de Demanda <span style={{color:"#3e4048",fontWeight:400,textTransform:"none",letterSpacing:0}}>({stats.porTipo.length})</span></div>
+            <div style={{maxHeight:220,overflowY:"auto"}}>
+              {stats.porTipo.map(([k,v])=>(
+                <div key={k} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7,fontSize:11.5}}>
+                  <div style={{width:150,flexShrink:0,color:"#b4b1a9",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{k}</div>
+                  <div style={{flex:1,height:7,background:"#16181d",borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:(v/stats.maxTipo*100)+"%",background:"#8a7049",borderRadius:4}}/></div>
+                  <div style={{width:22,textAlign:"right",color:"#8a8782",flexShrink:0}}>{v}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -1674,10 +1676,21 @@ const TelaServicos=({servicos,search,setSearch,cn,abrirModal,abrirServico,setPri
       </select>
       {(filtroStatus!=="todos"||filtroTipo||filtroEstagio)&&<button style={{...S.btnSm,color:"#b46464",borderColor:"#ef444433",fontSize:11}} onClick={()=>{setFiltroStatus("todos");setFiltroTipo("");setFiltroEstagio("");}} className="bs">Limpar filtros</button>}
     </div>
-    {orcA.length>0&&<div style={{...S.alertBanner,marginBottom:14}}>⚠ <strong>{orcA.length} orçamento(s) pendente(s)</strong> - entre em contato para fechar!</div>}
+    {orcamentosPendentes.length>0&&(<>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+        <span style={{fontSize:13,fontWeight:600,color:"#a87840"}}>⚠ Orçamentos pendentes</span>
+        <span style={{fontSize:12,color:"#4a4d56"}}>({orcamentosPendentes.length})</span>
+      </div>
+      <div style={{...S.tableCard,marginBottom:20,border:"1px solid #a8784055"}}><table style={S.table}><thead><tr>{["Protocolo","Cliente","Tipo","Estágio","Orçamento","Status","Ações"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+      <tbody>{orcamentosPendentes.map(renderLinha)}</tbody></table></div>
+    </>)}
+    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+      <span style={{fontSize:13,fontWeight:600,color:"#d6d3cc"}}>Serviços</span>
+      <span style={{fontSize:12,color:"#4a4d56"}}>({servicosRestantes.length})</span>
+    </div>
   <div style={S.tableCard}><table style={S.table}><thead><tr>{["Protocolo","Cliente","Tipo","Estágio","Orçamento","Status","Ações"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
-  <tbody>{filtrados.map(s=>(<tr key={s.id} style={S.tr} className="tr"><td style={S.td}><span style={S.proto}>{s.protocolo}</span></td><td style={S.td}><div style={{fontWeight:600,color:"#d6d3cc"}}>{cn(s.clienteId)}</div></td><td style={S.td}>{s.tipo}</td><td style={S.td}><Tag label={s.estagio} color={ECOR[s.estagio]||"#5a5d66"}/></td><td style={S.td}><div style={{fontWeight:700,color:"#d6d3cc",fontSize:13}}>R$ {fmt(s.orcamento?.valor)}</div><Tag label={s.orcamento?.status||"-"} color={s.orcamento?.status==="Fechado"?"#5a8f6e":s.orcamento?.status==="Concluído"?"#5a7aaa":"#a87840"}/>{s.orcamento?.arquivado&&<div style={{marginTop:3}}><Tag label="Arquivado" color="#4a4d56"/></div>}</td><td style={S.td}><Tag label={s.status} color={s.status==="Concluído"?"#5a8f6e":"#5a7aaa"}/></td><td style={S.td}><button style={S.btnSm} onClick={()=>abrirServico(s)} className="bs">Abrir</button><button style={{...S.btnSm,color:"#5a7aaa",borderColor:"#3b82f644"}} onClick={()=>abrirModal("servico",{...s,tipoProcesso:s.tipoProcesso||"extrajudicial",dadosJudiciais:s.dadosJudiciais||{}})} className="bs">Editar</button><button style={{...S.btnSm,color:"#a87840",borderColor:"#f59e0b44"}} onClick={()=>setPrintData(s)} className="bs">🖨</button><button style={{...S.btnSm,...S.btnDang}} onClick={async()=>{if(window.confirm("Excluir este servico? Esta acao e permanente e nao pode ser desfeita.")){await sb.from("servicos").delete().eq("id",s.id);setServicos(prev=>prev.filter(x=>x.id!==s.id));showToast("Excluído.");regLog("servicos","excluiu",(s.tipo||"Serviço")+" - "+s.protocolo,s.id);}}} className="bs">✕</button></td></tr>))}</tbody></table>
-  {filtrados.length===0&&<div style={S.empty}>Nenhum serviço encontrado com os filtros selecionados.</div>}</div></div></div>);
+  <tbody>{servicosRestantes.map(renderLinha)}</tbody></table>
+  {servicosRestantes.length===0&&<div style={S.empty}>Nenhum serviço encontrado com os filtros selecionados.</div>}</div></div></div>);
 };
 
 const getHistRec=()=>window._histRec||[];
@@ -2565,6 +2578,13 @@ const imprimirCustos=(ML,vals,funcs,outros,custoMes,ano)=>{
 const TelaJudicial=({servicos,setServicos,clientes,alertas,cn,irPara,sb,showToast,abrirServico})=>{
   const [busca,setBusca]=useState("");
   const [filtroStatus,setFiltroStatus]=useState("Todos");
+  const [destaque,setDestaque]=useState(null); // {campo:'vara'|'comarca'|'tipo', valor} - clique num item do painel para localizar os processos daquele grupo
+  const campoValor=(campo,s)=>{
+    if(campo==="vara")return (s.dadosJudiciais?.vara||"").trim()||"Nao informado";
+    if(campo==="comarca")return (s.dadosJudiciais?.comarca||"").trim()||"Nao informado";
+    if(campo==="tipo")return (s.dadosJudiciais?.tipoDemanda||s.tipo||"").trim()||"Nao informado";
+    return "";
+  };
   const processos=servicos.filter(s=>s.tipoProcesso==="judicial"||s.tipo_processo==="judicial"||(s.dadosJudiciais&&Object.keys(s.dadosJudiciais||{}).length>0)||s.estagio==="Judiciário"||s.estagio==="Judicial");
 
   // Casa um alerta de movimentacao com um processo: por servico_id direto, ou comparando
@@ -2588,18 +2608,14 @@ const TelaJudicial=({servicos,setServicos,clientes,alertas,cn,irPara,sb,showToas
     const abertos=procJud.filter(s=>s.status!=="Concluído");
     const concluidos=procJud.filter(s=>s.status==="Concluído");
 
-    const agrupar=(arr,getKey,limite)=>{
+    const agrupar=(arr,getKey)=>{
       const mapa={};
       arr.forEach(s=>{const k=(getKey(s)||"").trim()||"Nao informado";mapa[k]=(mapa[k]||0)+1;});
-      const entradas=Object.entries(mapa).sort((a,b)=>b[1]-a[1]);
-      const top=entradas.slice(0,limite);
-      const restoQtd=entradas.slice(limite).reduce((acc,[,v])=>acc+v,0);
-      if(restoQtd>0)top.push(["Outras",restoQtd]);
-      return top;
+      return Object.entries(mapa).sort((a,b)=>b[1]-a[1]);
     };
-    const porVara=agrupar(procJud,s=>s.dadosJudiciais?.vara,5);
-    const porComarca=agrupar(procJud,s=>s.dadosJudiciais?.comarca,5);
-    const porTipo=agrupar(procJud,s=>s.dadosJudiciais?.tipoDemanda||s.tipo,5);
+    const porVara=agrupar(procJud,s=>s.dadosJudiciais?.vara);
+    const porComarca=agrupar(procJud,s=>s.dadosJudiciais?.comarca);
+    const porTipo=agrupar(procJud,s=>s.dadosJudiciais?.tipoDemanda||s.tipo);
     const maxVara=Math.max(1,...porVara.map(x=>x[1]));
     const maxComarca=Math.max(1,...porComarca.map(x=>x[1]));
     const maxTipo=Math.max(1,...porTipo.map(x=>x[1]));
@@ -2656,7 +2672,8 @@ const TelaJudicial=({servicos,setServicos,clientes,alertas,cn,irPara,sb,showToas
     });
     const mb=!q||(cli?.nome||"").toLowerCase().includes(q)||matchNumero||matchRecurso||(s.protocolo||"").toLowerCase().includes(q);
     const ms=filtroStatus==="Todos"||s.status===filtroStatus;
-    return mb&&ms;
+    const md=!destaque||campoValor(destaque.campo,s)===destaque.valor;
+    return mb&&ms&&md;
   });
 
   const darBaixa=async(s)=>{
@@ -2696,19 +2713,30 @@ const TelaJudicial=({servicos,setServicos,clientes,alertas,cn,irPara,sb,showToas
               </div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:12}}>
-              {[["Por Vara",stats.porVara,stats.maxVara,"#8a7049"],["Por Comarca",stats.porComarca,stats.maxComarca,"#5a7aaa"],["Por Tipo de Demanda",stats.porTipo,stats.maxTipo,"#8a5a7a"]].map(([titulo,dados,max,cor])=>(
+              {[["Por Vara",stats.porVara,stats.maxVara,"#8a7049","vara"],["Por Comarca",stats.porComarca,stats.maxComarca,"#5a7aaa","comarca"],["Por Tipo de Demanda",stats.porTipo,stats.maxTipo,"#8a5a7a","tipo"]].map(([titulo,dados,max,cor,campo])=>(
                 <div key={titulo} style={S.card}>
-                  <div style={{fontSize:10,fontWeight:700,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"1px",marginBottom:10}}>{titulo}</div>
-                  {dados.map(([k,v])=>(
-                    <div key={k} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7,fontSize:11.5}}>
-                      <div style={{width:116,flexShrink:0,color:"#b4b1a9",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{k}</div>
-                      <div style={{flex:1,height:7,background:"#16181d",borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:(v/max*100)+"%",background:cor,borderRadius:4}}/></div>
-                      <div style={{width:22,textAlign:"right",color:"#8a8782",flexShrink:0}}>{v}</div>
-                    </div>
-                  ))}
+                  <div style={{fontSize:10,fontWeight:700,color:"#4a4d56",textTransform:"uppercase",letterSpacing:"1px",marginBottom:10}}>{titulo} <span style={{color:"#3e4048",fontWeight:400,textTransform:"none",letterSpacing:0}}>({dados.length})</span></div>
+                  <div style={{maxHeight:220,overflowY:"auto"}}>
+                    {dados.map(([k,v])=>{
+                      const ativo=destaque?.campo===campo&&destaque?.valor===k;
+                      return(
+                      <div key={k} onClick={()=>setDestaque(ativo?null:{campo,valor:k})} title="Clique para localizar os processos deste grupo na tabela abaixo" style={{display:"flex",alignItems:"center",gap:8,marginBottom:7,fontSize:11.5,cursor:"pointer",borderRadius:4,padding:"2px 4px",marginLeft:-4,background:ativo?"rgba(255,255,255,0.05)":"transparent"}} className="bs">
+                        <div style={{width:116,flexShrink:0,color:ativo?"#d6d3cc":"#b4b1a9",fontWeight:ativo?700:400,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{k}</div>
+                        <div style={{flex:1,height:7,background:"#16181d",borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:(v/max*100)+"%",background:cor,borderRadius:4}}/></div>
+                        <div style={{width:22,textAlign:"right",color:"#8a8782",flexShrink:0}}>{v}</div>
+                      </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ))}
             </div>
+            {destaque&&(
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,fontSize:12,color:"#8a8782"}}>
+                Filtrando por <strong style={{color:"#d6d3cc"}}>{destaque.campo==="vara"?"Vara":destaque.campo==="comarca"?"Comarca":"Tipo de demanda"}: {destaque.valor}</strong>
+                <button style={{...S.btnSm,color:"#b46464",borderColor:"#ef444433"}} onClick={()=>setDestaque(null)} className="bs">✕ Limpar</button>
+              </div>
+            )}
             {stats.semRegistro.length>0&&(
               <div style={{...S.card,border:"1px solid #d9a44155",marginBottom:12}}>
                 <div style={{fontSize:10,fontWeight:700,color:"#d9a441",textTransform:"uppercase",letterSpacing:"1px",marginBottom:4}}>⚠ Sem nenhuma movimentacao registrada ({stats.semRegistro.length})</div>
